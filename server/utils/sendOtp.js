@@ -1,0 +1,113 @@
+import nodemailer from 'nodemailer';
+import { emailConfig, smsConfig } from '../config.js';
+
+// Create transporter
+const transporter = nodemailer.createTransport({
+  service: emailConfig.service,
+  auth: emailConfig.auth
+});
+
+// Send OTP via SMS using Fast2SMS
+export async function sendSmsOtp(phone, otp) {
+  try {
+    const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+      method: 'POST',
+      headers: {
+        'authorization': smsConfig.apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        route: 'otp',
+        variables_values: otp,
+        numbers: phone,
+        flash: 0
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.return === true) {
+      console.log(`✅ SMS OTP sent successfully to ${phone}`);
+      return { success: true, requestId: data.request_id };
+    } else {
+      console.error('❌ Fast2SMS error:', data.message);
+      return { success: false, error: data.message };
+    }
+  } catch (error) {
+    console.error('❌ Error sending SMS OTP:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Send OTP via Email
+export async function sendEmailOtp(email, otp) {
+  const mailOptions = {
+    from: {
+      name: 'Challan One',
+      address: emailConfig.auth.user
+    },
+    to: email,
+    subject: 'Your OTP for Challan One Login',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Challan One</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Your Trusted Partner for Challan Cleaning</p>
+          </div>
+          
+          <div style="background: white; padding: 40px 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h2 style="color: #1f2937; margin: 0 0 20px 0; font-size: 22px;">Verify Your Login</h2>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              Use the following OTP to complete your login. This code is valid for <strong>5 minutes</strong>.
+            </p>
+            
+            <div style="background: #fef2f2; border: 2px dashed #dc2626; border-radius: 12px; padding: 25px; text-align: center; margin: 0 0 30px 0;">
+              <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #dc2626;">${otp}</span>
+            </div>
+            
+            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 10px 0;">
+              If you didn't request this OTP, please ignore this email or contact our support team.
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+            
+            <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+              © 2025 Challan One. All rights reserved.<br>
+              This is an automated message, please do not reply.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email OTP sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Error sending email OTP:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Verify email transporter connection
+export async function verifyEmailConnection() {
+  try {
+    await transporter.verify();
+    console.log('✅ Email transporter is ready');
+    return true;
+  } catch (error) {
+    console.error('❌ Email transporter error:', error);
+    return false;
+  }
+}
