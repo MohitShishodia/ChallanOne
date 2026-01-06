@@ -4,6 +4,7 @@ import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import challanRoutes from './routes/challan.js';
 import vehicleRoutes from './routes/vehicle.js';
+import paymentRoutes from './routes/payment.js';
 import { verifyEmailConnection } from './utils/sendOtp.js';
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/challan', challanRoutes);
 app.use('/api/vehicle', vehicleRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

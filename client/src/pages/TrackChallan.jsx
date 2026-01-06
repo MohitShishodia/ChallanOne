@@ -1,14 +1,27 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 
 export default function TrackChallan() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [vehicleNumber, setVehicleNumber] = useState(searchParams.get('vehicle') || '')
   const [loading, setLoading] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState(false)
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [selectedChallans, setSelectedChallans] = useState([])
   const [proofModal, setProofModal] = useState(null)
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    document.body.appendChild(script)
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [])
 
   useEffect(() => {
     const vehicle = searchParams.get('vehicle')
@@ -22,7 +35,7 @@ export default function TrackChallan() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/challan/${encodeURIComponent(number)}`)
+      const response = await fetch(`http://localhost:5000/api/challan/${encodeURIComponent(number)}`)
       const result = await response.json()
       
       if (result.success) {
@@ -75,50 +88,190 @@ export default function TrackChallan() {
   const convenienceFee = selectedChallans.length > 0 ? 20 : 0
   const totalPayable = getSelectedTotal() + convenienceFee
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <Link to="/" className="hover:text-gray-700">Home</Link>
-          <span>›</span>
-          <span className="text-gray-700">Track Challan</span>
-          {data && (
-            <>
-              <span>›</span>
-              <span className="text-blue-600 font-medium">Payment Details</span>
-            </>
-          )}
-        </nav>
+  const getSelectedChallanDetails = () => {
+    if (!data?.challans) return []
+    return data.challans.filter(c => selectedChallans.includes(c.id))
+  }
 
-        {/* Search Form if no data */}
-        {!data && !loading && (
-          <div className="max-w-xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4 text-center">Track Your Challan</h1>
-            <p className="text-gray-600 mb-8 text-center">Enter your vehicle number to view pending challans</p>
+  const handlePayment = async () => {
+    if (selectedChallans.length === 0) return
+    
+    setPaymentLoading(true)
+    
+    try {
+      // Get user info from localStorage
+      const userStr = localStorage.getItem('user')
+      const user = userStr ? JSON.parse(userStr) : {}
+      
+      // Create order on server
+      const orderResponse = await fetch('http://localhost:5000/api/payment/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: totalPayable,
+          vehicleNumber: data.vehicle.number,
+          challans: getSelectedChallanDetails(),
+          userEmail: user.email || ''
+        })
+      })
+      
+      const orderData = await orderResponse.json()
+      
+      if (!orderData.success) {
+        throw new Error(orderData.message || 'Failed to create order')
+      }
+      
+      // Initialize Razorpay checkout
+      const options = {
+        key: orderData.key,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: 'E-Challan Payment',
+        description: `Payment for ${selectedChallans.length} challan(s) - ${data.vehicle.number}`,
+        order_id: orderData.order.id,
+        handler: async function (response) {
+          // Verify payment on server
+          try {
+            const verifyResponse = await fetch('http://localhost:5000/api/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                vehicleNumber: data.vehicle.number,
+                challans: getSelectedChallanDetails(),
+                subtotal: getSelectedTotal(),
+                convenienceFee: convenienceFee,
+                totalAmount: totalPayable,
+                userEmail: user.email || ''
+              })
+            })
             
-            <form onSubmit={handleSearch} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  placeholder="Enter Vehicle Number (e.g., MH-12-AB-1234)"
-                  value={vehicleNumber}
-                  onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                  className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
-                />
+            const verifyData = await verifyResponse.json()
+            
+            if (verifyData.success) {
+              // Navigate to success page with receipt data
+              navigate('/payment-success', { 
+                state: { 
+                  receipt: verifyData.receipt,
+                  vehicleNumber: data.vehicle.number
+                } 
+              })
+            } else {
+              alert('Payment verification failed. Please contact support.')
+            }
+          } catch (err) {
+            console.error('Verification error:', err)
+            alert('Payment verification failed. Please contact support.')
+          }
+        },
+        prefill: {
+          name: user.name || '',
+          email: user.email || '',
+          contact: user.phone || ''
+        },
+        theme: {
+          color: '#2563eb'
+        },
+        modal: {
+          ondismiss: function() {
+            setPaymentLoading(false)
+          }
+        }
+      }
+      
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (response) {
+        alert(`Payment failed: ${response.error.description}`)
+        setPaymentLoading(false)
+      })
+      rzp.open()
+      
+    } catch (err) {
+      console.error('Payment error:', err)
+      alert(err.message || 'Failed to initiate payment. Please try again.')
+    }
+    
+    setPaymentLoading(false)
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section - when no data */}
+      {!data && !loading && (
+        <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1920&q=80')] bg-cover bg-center opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 to-slate-900/80" />
+          
+          <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-20">
+            {/* Trust Badges */}
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              <span className="flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white/90 text-xs font-medium px-4 py-2 rounded-full border border-white/20">
+                <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Secure Payments
+              </span>
+              <span className="flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white/90 text-xs font-medium px-4 py-2 rounded-full border border-white/20">
+                <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Official Gateway
+              </span>
+              <span className="flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white/90 text-xs font-medium px-4 py-2 rounded-full border border-white/20">
+                <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                </svg>
+                Instant Receipt
+              </span>
+            </div>
+
+            {/* Title */}
+            <h1 className="text-3xl md:text-4xl font-bold text-white text-center mb-3">
+              Track Your <span className="text-blue-400">Challans</span>
+            </h1>
+            <p className="text-gray-300 text-center mb-8 max-w-xl mx-auto">
+              Enter your vehicle number to check pending traffic challans and pay them instantly with secure payment options.
+            </p>
+            
+            {/* Search Form */}
+            <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
+              <div className="flex gap-3 bg-white p-2 rounded-full shadow-xl">
+                <div className="flex-1 relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Enter Vehicle Number (e.g., MH-12-AB-1234)"
+                    value={vehicleNumber}
+                    onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                    className="w-full pl-12 pr-4 py-3 border-0 rounded-full bg-transparent text-gray-900 placeholder-gray-500 focus:outline-none uppercase text-sm font-medium"
+                  />
+                </div>
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-600/30"
                 >
-                  Search
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="hidden sm:inline">Track Now</span>
                 </button>
               </div>
               {error && (
-                <p className="mt-4 text-red-500 text-sm">{error}</p>
+                <p className="mt-4 text-red-400 text-sm text-center">{error}</p>
               )}
             </form>
           </div>
-        )}
+        </section>
+      )}
+
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Loading State */}
         {loading && (
@@ -278,20 +431,30 @@ export default function TrackChallan() {
                 </div>
 
                 <button
-                  disabled={selectedChallans.length === 0}
+                  onClick={handlePayment}
+                  disabled={selectedChallans.length === 0 || paymentLoading}
                   className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                  Pay Securely
+                  {paymentLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                      Pay Securely
+                    </>
+                  )}
                 </button>
 
                 <p className="text-xs text-gray-500 text-center mt-4 flex items-center justify-center gap-1">
                   <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  256-bit SSL Encrypted Payment
+                  256-bit SSL Encrypted Payment via Razorpay
                 </p>
 
                 {/* Issue Report */}
@@ -346,3 +509,4 @@ export default function TrackChallan() {
     </div>
   )
 }
+

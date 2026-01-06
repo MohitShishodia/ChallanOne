@@ -43,3 +43,6 @@ coverage/
 *.cache
 .temp/
 tmp/
+
+# Recovered sensitive data
+recovered_env.txt

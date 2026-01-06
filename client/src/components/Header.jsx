@@ -61,7 +61,7 @@ export default function Header() {
               alt="Challan One Logo" 
               className="h-10 w-auto"
             />
-            <span className="text-xl font-bold text-gray-900">Challan One</span>
+            <span className="text-xl md:text-2xl font-bold text-gray-900">Challan One</span>
           </Link>
 
           {/* Right Side - Navigation + Login/Profile */}
@@ -72,7 +72,7 @@ export default function Header() {
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`text-base font-medium transition-colors ${
                     isActive(link.path)
                       ? 'text-blue-600'
                       : 'text-gray-600 hover:text-gray-900'
@@ -93,7 +93,7 @@ export default function Header() {
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                     {(user.name || user.email || user.phone || 'U').charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-base font-medium text-gray-700">
                     {user.name || (user.email ? user.email.split('@')[0] : user.phone)}
                   </span>
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +130,7 @@ export default function Header() {
             ) : (
               <Link
                 to="/login"
-                className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors"
               >
                 Login
               </Link>
@@ -141,6 +141,8 @@ export default function Header() {
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden p-2 text-gray-600"
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileMenuOpen}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {isMobileMenuOpen ? (

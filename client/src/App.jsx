@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import ProtectedRoute from './components/ProtectedRoute'
+import WhatsAppButton from './components/ui/WhatsAppButton'
 import Home from './pages/Home'
 import TrackChallan from './pages/TrackChallan'
 import PayChallan from './pages/PayChallan'
@@ -46,9 +47,11 @@ function App() {
           </Routes>
         </main>
         <Footer />
+        <WhatsAppButton />
       </div>
     </Router>
   )
 }
 
 export default App
+
