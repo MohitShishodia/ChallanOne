@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.js';
 import challanRoutes from './routes/challan.js';
 import vehicleRoutes from './routes/vehicle.js';
 import paymentRoutes from './routes/payment.js';
+import externalApiRoutes from './routes/externalApi.js';
 import { verifyEmailConnection } from './utils/sendOtp.js';
 
 const app = express();
@@ -19,6 +20,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/challan', challanRoutes);
 app.use('/api/vehicle', vehicleRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/external', externalApiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -27,7 +29,7 @@ app.get('/api/health', (req, res) => {
 
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  
+
   // Verify email connection
   const emailReady = await verifyEmailConnection();
   if (emailReady) {

@@ -263,7 +263,7 @@ export default function TrackChallan() {
                 </button>
               </div>
               {error && (
-                <p className="mt-4 text-red-400 text-sm text-center">{error}</p>
+                <p className="mt-4 text-blue-400 text-sm text-center">{error}</p>
               )}
             </form>
           </div>

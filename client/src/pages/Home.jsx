@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import AnimatedCounter from '../components/ui/AnimatedCounter'
 
 export default function Home() {
-  const [vehicleType, setVehicleType] = useState('')
   const [vehicleNumber, setVehicleNumber] = useState('')
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
   const navigate = useNavigate()
@@ -14,28 +13,27 @@ export default function Home() {
       name: 'Ravi Kumar',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face',
       rating: 5,
-      date: '2 days ago',
+      location: 'Mumbai, MH',
       comment: 'I was worried about my pending challans, but this site made it so easy to clear them instantly. The interface is clean and very secure!',
-      likes: 12
+      likes: 128
     },
     {
       id: 2,
       name: 'Anita Desai',
       avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=50&h=50&fit=crop&crop=face',
       rating: 5,
-      date: '1 week ago',
+      location: 'Delhi, DL',
       comment: 'Excellent support team. They helped me resolve a wrong challan issue within 24 hours. I really appreciate the quick turnaround.',
-      likes: 45,
-      dislikes: 1
+      likes: 245
     },
     {
       id: 3,
       name: 'Sandeep Singh',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=50&h=50&fit=crop&crop=face',
-      rating: 4,
-      date: '2 weeks ago',
-      comment: 'Good experience overall. The payment process is smooth and the receipt generation is instant. Tracking status is very reliable.',
-      likes: 8
+      rating: 5,
+      location: 'Bangalore, KA',
+      comment: 'Good experience overall. The payment process is smooth and the receipt generation is instant. Highly recommended!',
+      likes: 89
     }
   ]
 
@@ -51,7 +49,7 @@ export default function Home() {
     return [...Array(5)].map((_, i) => (
       <svg
         key={i}
-        className={`w-4 h-4 ${i < rating ? 'text-yellow-400' : 'text-gray-300'}`}
+        className={`w-5 h-5 ${i < rating ? 'text-yellow-400' : 'text-gray-300'}`}
         fill="currentColor"
         viewBox="0 0 20 20"
       >
@@ -63,161 +61,140 @@ export default function Home() {
   const handleSearch = (e) => {
     e.preventDefault()
     if (vehicleNumber.trim()) {
-      navigate(`/track-challan?vehicle=${encodeURIComponent(vehicleNumber.trim())}`)
+      navigate(`/pay-challan?vehicle=${encodeURIComponent(vehicleNumber.trim())}`)
     }
   }
 
   return (
     <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
-        {/* Background Image Overlay */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1920&q=80')`
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 to-slate-900/70" />
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-              Pay Your Traffic<br />
-              <span className="text-blue-400">Challans Instantly</span>
-            </h1>
-            <p className="text-lg md:text-xl text-gray-300 mb-10">
-              Enter your vehicle details below to check pending fines securely and easily.
-            </p>
-
-            {/* Search Form - Glassmorphism Card */}
-            <form onSubmit={handleSearch} className="glass-card p-6 md:p-8 max-w-3xl mx-auto">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <label className="block text-left text-sm font-medium text-gray-600 mb-2">
-                    Vehicle Type
-                  </label>
-                  <select
-                    value={vehicleType}
-                    onChange={(e) => setVehicleType(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Type</option>
-                    <option value="car">Car</option>
-                    <option value="bike">Bike</option>
-                    <option value="auto">Auto</option>
-                    <option value="commercial">Commercial</option>
-                  </select>
-                </div>
-                
-                <div className="flex-[2]">
-                  <label className="block text-left text-sm font-medium text-gray-600 mb-2">
-                    Vehicle Number
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="EX: MH-02-AB-1234"
-                      value={vehicleNumber}
-                      onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
-                    />
-                  </div>
-                </div>
-                
-                <div className="md:self-end">
-                  <button
-                    type="submit"
-                    className="btn-premium w-full md:w-auto px-8 py-3.5 rounded-xl flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    Get Details
-                  </button>
-                </div>
-              </div>
-              
-              <p className="text-xs text-gray-500 mt-4 flex items-center justify-center gap-1">
-                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                100% Secure Official Government Data Access
-              </p>
-            </form>
-          </div>
+      {/* Hero Section - Premium */}
+      <section className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 overflow-hidden min-h-[90vh] flex items-center">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1920&q=80')] bg-cover bg-center opacity-15" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-blue-900/90 to-slate-900/95" />
+          {/* Floating Gradient Orbs */}
+          <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-20 w-[500px] h-[500px] bg-indigo-500/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
-      </section>
 
-      {/* Trusted Platform Section */}
-      <section className="section-spacing bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Live Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-20">
-            <div className="stats-card">
-              <p className="text-3xl md:text-4xl font-bold text-blue-600">
-                <AnimatedCounter end={25000} suffix="+" duration={2500} />
-              </p>
-              <p className="text-base text-gray-600 mt-3 font-medium">Challans Paid This Month</p>
-            </div>
-            <div className="stats-card">
-              <p className="text-3xl md:text-4xl font-bold text-blue-500">
-                <AnimatedCounter end={2} suffix="M+" duration={2000} />
-              </p>
-              <p className="text-base text-gray-600 mt-3 font-medium">Satisfied Users</p>
-            </div>
-            <div className="stats-card">
-              <p className="text-3xl md:text-4xl font-bold text-blue-700">
-                <AnimatedCounter end={50} suffix="+" duration={1500} />
-              </p>
-              <p className="text-base text-gray-600 mt-3 font-medium">Cities Covered</p>
-            </div>
-            <div className="stats-card">
-              <p className="text-3xl md:text-4xl font-bold text-indigo-600">
-                <AnimatedCounter end={99} suffix="%" duration={2000} />
-              </p>
-              <p className="text-base text-gray-600 mt-3 font-medium">Success Rate</p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left Content */}
-            <div>
-              <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">
-                TRUSTED PLATFORM
-              </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
-                Trusted by Millions of Drivers
-              </h2>
-              <p className="text-gray-600 mb-8 leading-relaxed">
-                See how we help users clear their dues securely and hassle-free. Our transparent process ensures you're always in the driver's seat of your finances.
+            <div className="text-center lg:text-left">
+              {/* Trust Badge */}
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 text-sm font-medium px-5 py-2.5 rounded-full border border-white/20 mb-8">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                Trusted by 2M+ Users Across India
+              </div>
+
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+                Pay Your Traffic<br />
+                <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">Challans Instantly</span>
+              </h1>
+
+              <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-lg mx-auto lg:mx-0">
+                Check pending fines, view violation proofs, and pay securely with instant digital receipts recognized by all RTOs.
               </p>
-              <div className="flex gap-4">
-                <button className="btn-premium px-6 py-3 rounded-xl">
-                  Read Success Stories
-                </button>
-                <button className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
-                  View Statistics
-                </button>
+
+              {/* Quick Action Buttons */}
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-10">
+                <Link to="/pay-challan" className="btn-premium px-8 py-4 rounded-xl font-semibold flex items-center gap-3 text-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Pay Challan Now
+                </Link>
+                <Link to="/vehicle-info" className="bg-white/10 backdrop-blur-md text-white px-8 py-4 rounded-xl font-semibold border border-white/20 hover:bg-white/20 transition-all flex items-center gap-3">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Vehicle Info
+                </Link>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="flex flex-wrap gap-6 justify-center lg:justify-start text-sm text-gray-400">
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Govt. Authorized
+                </span>
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  256-bit SSL Secure
+                </span>
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                  </svg>
+                  Instant Receipt
+                </span>
               </div>
             </div>
 
-            {/* Right Image */}
+            {/* Right - Search Card */}
             <div className="relative">
-              <div className="rounded-2xl overflow-hidden shadow-2xl">
-                <img
-                  src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=600&h=400&fit=crop"
-                  alt="Happy driver using Challan One app"
-                  className="w-full h-80 object-cover"
-                />
-                <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl p-4">
-                  <p className="font-semibold text-gray-900">Hassle-free payments</p>
-                  <p className="text-sm text-gray-600">Join 2M+ satisfied users</p>
+              <div className="glass-card p-8 rounded-3xl relative overflow-hidden">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">Check Your Challans</h3>
+                      <p className="text-sm text-gray-500">Enter vehicle number to get started</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSearch} className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Number</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="MH-12-AB-1234"
+                          value={vehicleNumber}
+                          onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                          className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-lg font-medium tracking-wider"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full btn-premium py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      Check & Pay Challans
+                    </button>
+                  </form>
+
+                  <p className="text-xs text-gray-500 mt-4 flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    100% Secure • Official Government Data
+                  </p>
                 </div>
               </div>
             </div>
@@ -225,64 +202,175 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="text-center p-8 rounded-2xl bg-white border border-gray-100 hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">Secure Payments</h3>
-              <p className="text-gray-600 text-base leading-relaxed">
-                Your transactions are encrypted and processed through official government gateways.
-              </p>
-            </div>
+      {/* Live Stats Section */}
+      <section className="py-20 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="text-center mb-16">
+            <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
+              TRUSTED BY MILLIONS
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              India's #1 Challan Payment Platform
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Join millions of drivers who trust us for secure and hassle-free traffic fine payments
+            </p>
+          </div>
 
-            {/* Feature 2 */}
-            <div className="text-center p-8 rounded-2xl bg-white border border-gray-100 hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { value: 25000, suffix: '+', label: 'Challans Paid Today', color: 'from-blue-500 to-blue-600', icon: '💳' },
+              { value: 2, suffix: 'M+', label: 'Happy Users', color: 'from-green-500 to-green-600', icon: '👥' },
+              { value: 50, suffix: '+', label: 'Cities Covered', color: 'from-purple-500 to-purple-600', icon: '🏙️' },
+              { value: 99, suffix: '%', label: 'Success Rate', color: 'from-orange-500 to-orange-600', icon: '✅' }
+            ].map((stat, idx) => (
+              <div key={idx} className="glass-card p-6 text-center hover-lift group">
+                <div className={`w-14 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl group-hover:scale-110 transition-transform shadow-lg`}>
+                  {stat.icon}
+                </div>
+                <p className="text-3xl md:text-4xl font-bold text-gray-900">
+                  <AnimatedCounter end={stat.value} suffix={stat.suffix} duration={2500} />
+                </p>
+                <p className="text-sm text-gray-600 mt-2 font-medium">{stat.label}</p>
               </div>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">Real-time Updates</h3>
-              <p className="text-gray-600 text-base leading-relaxed">
-                Challan status is updated instantly after payment. Download receipts immediately.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="text-center p-8 rounded-2xl bg-white border border-gray-100 hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">24/7 Support</h3>
-              <p className="text-gray-600 text-base leading-relaxed">
-                Have a dispute or payment issue? Our support team is available around the clock.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Real Stories / Testimonials Section */}
-      <section className="py-16 bg-white">
+      {/* Features Section - Premium */}
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-8">
+          <div className="text-center mb-16">
+            <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
+              WHY CHOOSE US
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Everything You Need in One Place
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Experience the most seamless way to manage your traffic challans
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: '🔒',
+                title: 'Bank-Grade Security',
+                desc: 'Your transactions are protected with 256-bit encryption through RBI-approved gateways.',
+                gradient: 'from-blue-500 to-indigo-600'
+              },
+              {
+                icon: '⚡',
+                title: 'Instant Processing',
+                desc: 'Pay your challans and get digital receipts instantly. Status updates within minutes.',
+                gradient: 'from-orange-500 to-red-500'
+              },
+              {
+                icon: '🛡️',
+                title: 'Official & Verified',
+                desc: 'Authorized government partner with direct access to official RTO & traffic databases.',
+                gradient: 'from-green-500 to-emerald-600'
+              },
+              {
+                icon: '📱',
+                title: 'All Payment Modes',
+                desc: 'Pay via UPI, Credit Card, Debit Card, Net Banking, or Wallets - your choice.',
+                gradient: 'from-purple-500 to-pink-600'
+              },
+              {
+                icon: '🎧',
+                title: '24/7 Support',
+                desc: 'Our dedicated support team is always available to help with any queries or disputes.',
+                gradient: 'from-cyan-500 to-blue-600'
+              },
+              {
+                icon: '📋',
+                title: 'Complete History',
+                desc: 'Track all your payments, download receipts, and manage your vehicle challan history.',
+                gradient: 'from-rose-500 to-orange-500'
+              }
+            ].map((feature, idx) => (
+              <div key={idx} className="glass-card p-8 hover-lift group">
+                <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works - Premium */}
+      <section className="py-20 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="text-center mb-16">
+            <span className="inline-block bg-white/10 text-blue-300 text-xs font-semibold px-4 py-2 rounded-full mb-4 border border-white/20">
+              SIMPLE PROCESS
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Pay Your Challan in 3 Easy Steps
+            </h2>
+            <p className="text-gray-300 max-w-2xl mx-auto">
+              It takes less than 2 minutes to clear your pending traffic fines
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Connector Lines */}
+            <div className="hidden md:block absolute top-16 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500" />
+
+            {[
+              { step: 1, icon: '🚗', title: 'Enter Vehicle Number', desc: 'Simply enter your vehicle registration number to fetch all pending challans' },
+              { step: 2, icon: '👁️', title: 'Review & Verify', desc: 'View challan details, violation photos, dates, and fine amounts' },
+              { step: 3, icon: '💳', title: 'Pay Securely', desc: 'Choose your preferred payment method and get instant digital receipt' }
+            ].map((item, idx) => (
+              <div key={idx} className="relative text-center group">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform relative z-10">
+                  {item.step}
+                </div>
+                <div className="text-4xl mb-4">{item.icon}</div>
+                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                <p className="text-gray-400">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link to="/pay-challan" className="btn-premium px-10 py-4 rounded-xl font-bold text-lg inline-flex items-center gap-3">
+              Get Started Now
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials - Premium */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Real Stories from Verified Users</h2>
-              <p className="text-gray-600 mt-2 text-base">See what people are saying about their experience with Challan One.</p>
+              <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
+                USER TESTIMONIALS
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">What Our Users Say</h2>
+              <p className="text-gray-600 mt-2">Real stories from verified users across India</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 onClick={prevTestimonial}
-                className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                className="w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
               >
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -290,7 +378,7 @@ export default function Home() {
               </button>
               <button
                 onClick={nextTestimonial}
-                className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700 transition-colors"
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/30"
               >
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -299,45 +387,33 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Testimonial Cards */}
           <div className="grid md:grid-cols-3 gap-6">
             {testimonials.map((testimonial, index) => (
               <div
                 key={testimonial.id}
-                className={`bg-white rounded-xl p-6 border border-gray-200 transition-all ${
-                  index === currentTestimonial ? 'ring-2 ring-red-500 shadow-lg' : ''
-                }`}
+                className={`glass-card p-6 transition-all ${index === currentTestimonial ? 'ring-2 ring-blue-500 shadow-lg scale-[1.02]' : 'opacity-80'
+                  }`}
               >
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-4 mb-4">
                   <img
                     src={testimonial.avatar}
                     alt={testimonial.name}
-                    className="w-12 h-12 rounded-full object-cover"
+                    className="w-14 h-14 rounded-full object-cover ring-2 ring-blue-100"
                   />
                   <div>
-                    <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
-                    <p className="text-sm text-gray-500">{testimonial.date}</p>
+                    <h4 className="font-bold text-gray-900">{testimonial.name}</h4>
+                    <p className="text-sm text-gray-500">{testimonial.location}</p>
                   </div>
                 </div>
-                <div className="flex gap-1 mb-3">
+                <div className="flex gap-1 mb-4">
                   {renderStars(testimonial.rating)}
                 </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">"{testimonial.comment}"</p>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                    </svg>
-                    {testimonial.likes}
-                  </span>
-                  {testimonial.dislikes && (
-                    <span className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-                      </svg>
-                      {testimonial.dislikes}
-                    </span>
-                  )}
+                <p className="text-gray-600 leading-relaxed mb-4">"{testimonial.comment}"</p>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                  </svg>
+                  {testimonial.likes} found helpful
                 </div>
               </div>
             ))}
@@ -345,125 +421,91 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works Section */}
+      {/* Services Grid */}
       <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">How It Works</h2>
-          <p className="text-gray-600 mb-12">
-            Paying your fine is simple and takes less than 2 minutes.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Step 1 */}
-            <div className="relative">
-              <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-6">
-                1
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Enter Details</h3>
-              <p className="text-gray-600 text-sm">Input vehicle number</p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="relative">
-              <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-6">
-                2
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Verify Challan</h3>
-              <p className="text-gray-600 text-sm">Check fine amount & photos</p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="relative">
-              <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-6">
-                3
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Pay Securely</h3>
-              <p className="text-gray-600 text-sm">Use Card, UPI, or NetBanking</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How Can We Help Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">How can we help you today?</h2>
-          <p className="text-gray-600 mb-12">Explore our resources or get in touch with our dedicated support team.</p>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* FAQ */}
-            <div className="p-8 border border-gray-200 rounded-2xl hover:shadow-lg transition-shadow">
-              <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Frequently Asked Questions</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Find answers to common questions about payments, tracking challans, and receipt downloads.
-              </p>
-              <Link to="/faq" className="text-red-600 font-medium text-sm inline-flex items-center gap-1 hover:text-red-700">
-                View FAQs
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-
-            {/* Legal & Privacy */}
-            <div className="p-8 border border-gray-200 rounded-2xl hover:shadow-lg transition-shadow">
-              <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Legal & Privacy</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Read our terms of service, privacy policies, and information about secure data handling.
-              </p>
-              <Link to="/" className="text-red-600 font-medium text-sm inline-flex items-center gap-1 hover:text-red-700">
-                Read Policies
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-
-            {/* Customer Care */}
-            <div className="p-8 border border-gray-200 rounded-2xl hover:shadow-lg transition-shadow">
-              <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Customer Care</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Need help with a payment dispute? Chat with our support team or raise a ticket.
-              </p>
-              <Link to="/support" className="text-red-600 font-medium text-sm inline-flex items-center gap-1 hover:text-red-700">
-                Contact Support
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Secure Partner Banner */}
-      <section className="py-8 bg-red-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center gap-3">
-            <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <span className="font-semibold text-gray-900">Secure & Official Partner</span>
-              <span className="text-gray-600 text-sm ml-2">
-                All payments are processed through government approved secure gateways.
-              </span>
+          <div className="text-center mb-16">
+            <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
+              OUR SERVICES
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">How Can We Help You?</h2>
+            <p className="text-gray-600">Explore our comprehensive range of traffic-related services</p>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-6">
+            {[
+              { icon: '💳', title: 'Pay Challans', desc: 'Pay pending traffic fines instantly', link: '/pay-challan', color: 'from-blue-500 to-blue-600' },
+              { icon: '🚗', title: 'Vehicle Info', desc: 'Get complete RC & ownership details', link: '/vehicle-info', color: 'from-green-500 to-green-600' },
+              { icon: '📍', title: 'Track Status', desc: 'Track your challan payment status', link: '/track-challan', color: 'from-purple-500 to-purple-600' },
+              { icon: '🎧', title: 'Get Support', desc: '24/7 customer support assistance', link: '/support', color: 'from-orange-500 to-orange-600' }
+            ].map((service, idx) => (
+              <Link key={idx} to={service.link} className="glass-card p-6 hover-lift group text-center">
+                <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
+                  {service.icon}
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{service.title}</h3>
+                <p className="text-sm text-gray-600 mb-4">{service.desc}</p>
+                <span className="text-blue-600 font-medium text-sm inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+                  Explore
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Banner */}
+      <section className="py-16 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0tNC00aC0ydi0yaDJ2MnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="text-center md:text-left">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Ready to Clear Your Pending Challans?
+              </h2>
+              <p className="text-blue-100 text-lg">
+                Join 2 million+ users who trust Challan One for secure payments
+              </p>
             </div>
+            <Link
+              to="/pay-challan"
+              className="bg-white text-blue-600 px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-50 transition-all shadow-xl flex items-center gap-3"
+            >
+              Pay Now
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Banner */}
+      <section className="py-8 bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center justify-center gap-8 text-white/70 text-sm">
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Government Authorized Partner
+            </span>
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Secure Payment via Razorpay
+            </span>
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              4.9/5 Rating (50K+ Reviews)
+            </span>
           </div>
         </div>
       </section>
