@@ -1,13 +1,23 @@
 import nodemailer from 'nodemailer';
 import { emailConfig, smsConfig } from '../config.js';
 
-// Create nodemailer transporter for Gmail
+// Log email config at startup (without password)
+console.log('📧 Email Config Loaded:', {
+  service: 'gmail',
+  user: emailConfig.auth.user,
+  passLength: emailConfig.auth.pass ? emailConfig.auth.pass.length : 0
+});
+
+// Create nodemailer transporter for Gmail with timeout settings
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: emailConfig.auth.user,
     pass: emailConfig.auth.pass
-  }
+  },
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,
+  socketTimeout: 15000
 });
 
 // Send OTP via SMS using Fast2SMS
@@ -90,11 +100,13 @@ function getOtpEmailHtml(otp) {
 export async function sendEmailOtp(email, otp) {
   const htmlContent = getOtpEmailHtml(otp);
 
-  try {
-    console.log('📧 Attempting to send OTP via Nodemailer/Gmail...');
-    console.log('📧 From:', emailConfig.auth.user);
-    console.log('📧 To:', email);
+  console.log('📧 ==============================================');
+  console.log('📧 Starting email send process...');
+  console.log('📧 From:', emailConfig.auth.user);
+  console.log('📧 To:', email);
+  console.log('📧 OTP:', otp);
 
+  try {
     const mailOptions = {
       from: {
         name: 'Challan One',
@@ -105,25 +117,43 @@ export async function sendEmailOtp(email, otp) {
       html: htmlContent
     };
 
+    console.log('📧 Attempting to send email...');
+    const startTime = Date.now();
+
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email OTP sent successfully:', info.messageId);
+
+    const duration = Date.now() - startTime;
+    console.log(`✅ Email OTP sent successfully in ${duration}ms`);
+    console.log('✅ Message ID:', info.messageId);
+    console.log('📧 ==============================================');
+
     return { success: true, messageId: info.messageId, provider: 'nodemailer' };
   } catch (error) {
-    console.error('❌ Email sending failed:', error.message);
-    console.error('❌ Full error:', error);
+    console.error('❌ ==============================================');
+    console.error('❌ Email sending FAILED');
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error response:', error.response);
+    console.error('❌ Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error('❌ ==============================================');
+
     return { success: false, error: `Email sending failed: ${error.message}` };
   }
 }
 
 // Verify email transporter connection (for startup check)
 export async function verifyEmailConnection() {
+  console.log('📧 Verifying email transporter connection...');
   try {
     await transporter.verify();
-    console.log('✅ Email transporter is ready (Gmail/Nodemailer)');
+    console.log('✅ Email transporter verified successfully!');
     return true;
   } catch (error) {
-    console.error('⚠️ Email verification warning:', error.message);
-    console.log('📧 Will attempt to send emails anyway...');
-    return true; // Return true to not block startup
+    console.error('⚠️ Email transporter verification FAILED:', error.message);
+    console.error('⚠️ Error code:', error.code);
+    console.error('⚠️ This may indicate invalid credentials or network issues');
+    // Still return true to not block startup, but log the issue
+    return true;
   }
 }
