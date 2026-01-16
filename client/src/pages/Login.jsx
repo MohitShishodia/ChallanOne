@@ -58,8 +58,8 @@ export default function Login() {
     setLoading(true)
 
     try {
-      // For login - use direct login (no OTP required)
       if (activeTab === 'login') {
+        // For login - use direct login
         const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -69,13 +69,9 @@ export default function Login() {
         const data = await response.json()
 
         if (data.success) {
-          // Store token in localStorage
           localStorage.setItem('authToken', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
-
           setSuccess('Login successful! Redirecting...')
-
-          // Redirect to home after 1 second
           setTimeout(() => {
             navigate('/')
           }, 1000)
@@ -83,27 +79,24 @@ export default function Login() {
           setError(data.message || 'Login failed')
         }
       } else {
-        // For signup - still use OTP flow
-        const payload = {
-          email,
-          password,
-          isLogin: false
-        }
-
-        const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
+        // For signup - use direct signup (no OTP)
+        const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ email, password, name, phone })
         })
 
         const data = await response.json()
 
         if (data.success) {
-          setSuccess(data.message)
-          setStep('otp')
-          setCountdown(300) // 5 minutes
+          localStorage.setItem('authToken', data.token)
+          localStorage.setItem('user', JSON.stringify(data.user))
+          setSuccess('Account created successfully! Redirecting...')
+          setTimeout(() => {
+            navigate('/')
+          }, 1000)
         } else {
-          setError(data.message || 'Failed to send OTP')
+          setError(data.message || 'Signup failed')
         }
       }
     } catch (err) {
@@ -112,6 +105,7 @@ export default function Login() {
       setLoading(false)
     }
   }
+
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault()
@@ -369,8 +363,8 @@ export default function Login() {
                 <button
                   onClick={() => handleTabChange('login')}
                   className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'login'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   Login
@@ -378,8 +372,8 @@ export default function Login() {
                 <button
                   onClick={() => handleTabChange('signup')}
                   className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'signup'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   Sign Up
@@ -418,11 +412,6 @@ export default function Login() {
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  {activeTab === 'signup' && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      OTP will be sent to this email address
-                    </p>
-                  )}
                 </div>
 
                 {/* Mobile Number field for signup */}
@@ -541,10 +530,10 @@ export default function Login() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      {activeTab === 'login' ? 'Logging in...' : 'Sending OTP...'}
+                      {activeTab === 'login' ? 'Logging in...' : 'Creating account...'}
                     </>
                   ) : (
-                    activeTab === 'login' ? 'Login' : 'Sign Up with OTP'
+                    activeTab === 'login' ? 'Login' : 'Sign Up'
                   )}
                 </button>
 
