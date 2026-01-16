@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from '../config/api'
 
 export default function TrackChallan() {
   const [searchParams] = useSearchParams()
@@ -35,9 +36,9 @@ export default function TrackChallan() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`http://localhost:5000/api/challan/${encodeURIComponent(number)}`)
+      const response = await fetch(`${API_BASE_URL}/api/challan/${encodeURIComponent(number)}`)
       const result = await response.json()
-      
+
       if (result.success) {
         setData(result)
         // Auto-select pending challans
@@ -64,8 +65,8 @@ export default function TrackChallan() {
   }
 
   const toggleChallan = (id) => {
-    setSelectedChallans(prev => 
-      prev.includes(id) 
+    setSelectedChallans(prev =>
+      prev.includes(id)
         ? prev.filter(x => x !== id)
         : [...prev, id]
     )
@@ -95,16 +96,16 @@ export default function TrackChallan() {
 
   const handlePayment = async () => {
     if (selectedChallans.length === 0) return
-    
+
     setPaymentLoading(true)
-    
+
     try {
       // Get user info from localStorage
       const userStr = localStorage.getItem('user')
       const user = userStr ? JSON.parse(userStr) : {}
-      
+
       // Create order on server
-      const orderResponse = await fetch('http://localhost:5000/api/payment/create-order', {
+      const orderResponse = await fetch(`${API_BASE_URL}/api/payment/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,13 +115,13 @@ export default function TrackChallan() {
           userEmail: user.email || ''
         })
       })
-      
+
       const orderData = await orderResponse.json()
-      
+
       if (!orderData.success) {
         throw new Error(orderData.message || 'Failed to create order')
       }
-      
+
       // Initialize Razorpay checkout
       const options = {
         key: orderData.key,
@@ -132,7 +133,7 @@ export default function TrackChallan() {
         handler: async function (response) {
           // Verify payment on server
           try {
-            const verifyResponse = await fetch('http://localhost:5000/api/payment/verify', {
+            const verifyResponse = await fetch(`${API_BASE_URL}/api/payment/verify`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -147,16 +148,16 @@ export default function TrackChallan() {
                 userEmail: user.email || ''
               })
             })
-            
+
             const verifyData = await verifyResponse.json()
-            
+
             if (verifyData.success) {
               // Navigate to success page with receipt data
-              navigate('/payment-success', { 
-                state: { 
+              navigate('/payment-success', {
+                state: {
                   receipt: verifyData.receipt,
                   vehicleNumber: data.vehicle.number
-                } 
+                }
               })
             } else {
               alert('Payment verification failed. Please contact support.')
@@ -175,24 +176,24 @@ export default function TrackChallan() {
           color: '#2563eb'
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setPaymentLoading(false)
           }
         }
       }
-      
+
       const rzp = new window.Razorpay(options)
       rzp.on('payment.failed', function (response) {
         alert(`Payment failed: ${response.error.description}`)
         setPaymentLoading(false)
       })
       rzp.open()
-      
+
     } catch (err) {
       console.error('Payment error:', err)
       alert(err.message || 'Failed to initiate payment. Please try again.')
     }
-    
+
     setPaymentLoading(false)
   }
 
@@ -203,7 +204,7 @@ export default function TrackChallan() {
         <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1920&q=80')] bg-cover bg-center opacity-20" />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 to-slate-900/80" />
-          
+
           <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-20">
             {/* Trust Badges */}
             <div className="flex flex-wrap justify-center gap-4 mb-8">
@@ -234,7 +235,7 @@ export default function TrackChallan() {
             <p className="text-gray-300 text-center mb-8 max-w-xl mx-auto">
               Enter your vehicle number to check pending traffic challans and pay them instantly with secure payment options.
             </p>
-            
+
             {/* Search Form */}
             <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
               <div className="flex gap-3 bg-white p-2 rounded-full shadow-xl">
@@ -291,9 +292,9 @@ export default function TrackChallan() {
               {/* Vehicle Card */}
               <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 flex items-center gap-4">
                 <div className="w-20 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                  <img 
-                    src={data.vehicle.image} 
-                    alt="Vehicle" 
+                  <img
+                    src={data.vehicle.image}
+                    alt="Vehicle"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.target.src = 'https://via.placeholder.com/80x56?text=Car'
@@ -331,7 +332,7 @@ export default function TrackChallan() {
               {/* Pending Challans Header */}
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Pending Challans</h3>
-                <button 
+                <button
                   onClick={selectAll}
                   className="text-blue-600 text-sm font-medium hover:text-blue-700"
                 >
@@ -344,20 +345,18 @@ export default function TrackChallan() {
                 {data.challans.map((challan) => (
                   <div
                     key={challan.id}
-                    className={`bg-white rounded-xl border-2 p-5 transition-all cursor-pointer ${
-                      selectedChallans.includes(challan.id)
+                    className={`bg-white rounded-xl border-2 p-5 transition-all cursor-pointer ${selectedChallans.includes(challan.id)
                         ? 'border-blue-500 shadow-md'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                      }`}
                     onClick={() => toggleChallan(challan.id)}
                   >
                     <div className="flex items-start gap-4">
                       {/* Checkbox */}
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
-                        selectedChallans.includes(challan.id)
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 ${selectedChallans.includes(challan.id)
                           ? 'bg-blue-600 border-blue-600'
                           : 'border-gray-300'
-                      }`}>
+                        }`}>
                         {selectedChallans.includes(challan.id) && (
                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -374,7 +373,7 @@ export default function TrackChallan() {
                           </span>
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-3">{challan.description}</h4>
-                        
+
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-gray-500 text-xs uppercase tracking-wide">Date & Time</span>
@@ -491,9 +490,9 @@ export default function TrackChallan() {
                   </svg>
                 </button>
               </div>
-              <img 
-                src={proofModal.proofImage} 
-                alt="Violation proof" 
+              <img
+                src={proofModal.proofImage}
+                alt="Violation proof"
                 className="w-full rounded-lg mb-4"
               />
               <div className="text-sm text-gray-600">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { API_BASE_URL } from '../config/api'
 
 export default function VehicleInfo() {
   const [searchParams] = useSearchParams()
@@ -31,7 +32,7 @@ export default function VehicleInfo() {
     setVehicle(null)
 
     try {
-      const response = await fetch(`http://localhost:5000/api/external/vehicle/${encodeURIComponent(number.trim())}`)
+      const response = await fetch(`${API_BASE_URL}/api/external/vehicle/${encodeURIComponent(number.trim())}`)
       const data = await response.json()
 
       if (data.success && data.vehicle?.response) {

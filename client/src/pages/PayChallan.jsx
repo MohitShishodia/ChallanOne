@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from '../config/api'
 
 export default function PayChallan() {
   const [searchParams] = useSearchParams()
@@ -35,7 +36,7 @@ export default function PayChallan() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`http://localhost:5000/api/external/challan/${encodeURIComponent(number)}`)
+      const response = await fetch(`${API_BASE_URL}/api/external/challan/${encodeURIComponent(number)}`)
       const result = await response.json()
 
       if (result.success && result.challan?.response) {
@@ -173,7 +174,7 @@ export default function PayChallan() {
       const userStr = localStorage.getItem('user')
       const user = userStr ? JSON.parse(userStr) : {}
 
-      const orderResponse = await fetch('http://localhost:5000/api/payment/create-order', {
+      const orderResponse = await fetch(`${API_BASE_URL}/api/payment/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -199,7 +200,7 @@ export default function PayChallan() {
         order_id: orderData.order.id,
         handler: async function (response) {
           try {
-            const verifyResponse = await fetch('http://localhost:5000/api/payment/verify', {
+            const verifyResponse = await fetch(`${API_BASE_URL}/api/payment/verify`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

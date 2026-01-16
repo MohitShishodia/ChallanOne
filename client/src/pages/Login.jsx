@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from '../config/api'
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState('login')
@@ -16,7 +17,7 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  
+
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
@@ -26,7 +27,7 @@ export default function Login() {
   const [forgotStep, setForgotStep] = useState('email') // 'email', 'otp', 'password'
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false)
-  
+
   const navigate = useNavigate()
 
   // Countdown timer for resend OTP
@@ -59,7 +60,7 @@ export default function Login() {
     try {
       // For login - use direct login (no OTP required)
       if (activeTab === 'login') {
-        const response = await fetch('http://localhost:5000/api/auth/login', {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -71,9 +72,9 @@ export default function Login() {
           // Store token in localStorage
           localStorage.setItem('authToken', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
-          
+
           setSuccess('Login successful! Redirecting...')
-          
+
           // Redirect to home after 1 second
           setTimeout(() => {
             navigate('/')
@@ -83,13 +84,13 @@ export default function Login() {
         }
       } else {
         // For signup - still use OTP flow
-        const payload = { 
+        const payload = {
           email,
           password,
           isLogin: false
         }
-        
-        const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+
+        const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -119,16 +120,16 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const payload = { 
-        email, 
-        otp, 
+      const payload = {
+        email,
+        otp,
         password,
         name: activeTab === 'signup' ? name : undefined,
         phone: activeTab === 'signup' ? phone : undefined,
         isSignup: activeTab === 'signup'
       }
-      
-      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -140,9 +141,9 @@ export default function Login() {
         // Store token in localStorage
         localStorage.setItem('authToken', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        
+
         setSuccess('Login successful! Redirecting...')
-        
+
         // Redirect to home after 1 second
         setTimeout(() => {
           navigate('/')
@@ -159,7 +160,7 @@ export default function Login() {
 
   const handleResendOtp = () => {
     setOtp('')
-    handleSendOtp({ preventDefault: () => {} })
+    handleSendOtp({ preventDefault: () => { } })
   }
 
   const handleBack = () => {
@@ -210,7 +211,7 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/forgot-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })
@@ -259,13 +260,13 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/reset-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: forgotEmail, 
-          otp: forgotOtp, 
-          newPassword 
+        body: JSON.stringify({
+          email: forgotEmail,
+          otp: forgotOtp,
+          newPassword
         })
       })
 
@@ -292,30 +293,30 @@ export default function Login() {
       <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex">
         {/* Left Side - Image */}
         <div className="hidden md:block w-1/2 relative">
-          <div 
+          <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80')`
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/50 to-slate-900/30" />
-          
+
           <div className="relative h-full flex flex-col justify-end p-8">
             <div className="bg-white rounded-xl p-3 w-fit mb-6">
-              <img 
-                src="/logo.png" 
-                alt="Challan One Logo" 
+              <img
+                src="/logo.png"
+                alt="Challan One Logo"
                 className="h-12 w-auto"
               />
             </div>
-            
+
             <h2 className="text-3xl font-bold text-white mb-4">
               Pay your Challan instantly.
             </h2>
             <p className="text-gray-300 mb-6">
               Track your vehicle violations and clear dues securely. Login to manage your payments and access support anytime, anywhere.
             </p>
-            
+
             <div className="flex items-center gap-6 text-sm">
               <span className="flex items-center gap-2 text-green-400">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -339,10 +340,10 @@ export default function Login() {
             {step === 'input' ? (activeTab === 'login' ? 'Welcome Back' : 'Create Account') : 'Enter OTP'}
           </h1>
           <p className="text-gray-600 mb-8">
-            {step === 'input' 
-              ? (activeTab === 'login' 
-                  ? 'Enter your credentials to access your challan history.' 
-                  : 'Sign up to start managing your challans.')
+            {step === 'input'
+              ? (activeTab === 'login'
+                ? 'Enter your credentials to access your challan history.'
+                : 'Sign up to start managing your challans.')
               : `We've sent a verification code to ${email}.`
             }
           </p>
@@ -367,21 +368,19 @@ export default function Login() {
               <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
                 <button
                   onClick={() => handleTabChange('login')}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'login'
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'login'
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   Login
                 </button>
                 <button
                   onClick={() => handleTabChange('signup')}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'signup'
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'signup'
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   Sign Up
                 </button>
