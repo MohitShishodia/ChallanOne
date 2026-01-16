@@ -1,14 +1,13 @@
-import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
-import { resendConfig, emailConfig, smsConfig } from '../config.js';
+import { emailConfig, smsConfig } from '../config.js';
 
-// Initialize Resend client
-const resend = new Resend(resendConfig.apiKey);
-
-// Create nodemailer transporter as fallback
+// Create nodemailer transporter for Gmail
 const transporter = nodemailer.createTransport({
-  service: emailConfig.service,
-  auth: emailConfig.auth
+  service: 'gmail',
+  auth: {
+    user: emailConfig.auth.user,
+    pass: emailConfig.auth.pass
+  }
 });
 
 // Send OTP via SMS using Fast2SMS
@@ -87,64 +86,40 @@ function getOtpEmailHtml(otp) {
   `;
 }
 
-// Send OTP via Email using Resend (primary) with Nodemailer fallback
+// Send OTP via Email using Nodemailer (Gmail)
 export async function sendEmailOtp(email, otp) {
   const htmlContent = getOtpEmailHtml(otp);
 
-  // Try Resend first (works better on cloud platforms)
   try {
-    console.log('📧 Attempting to send OTP via Resend...');
-    const { data, error } = await resend.emails.send({
-      from: resendConfig.from,
-      to: [email],
+    console.log('📧 Attempting to send OTP via Nodemailer/Gmail...');
+    console.log('📧 From:', emailConfig.auth.user);
+    console.log('📧 To:', email);
+
+    const mailOptions = {
+      from: {
+        name: 'Challan One',
+        address: emailConfig.auth.user
+      },
+      to: email,
       subject: 'Your OTP for Challan One Login',
       html: htmlContent
-    });
+    };
 
-    if (error) {
-      console.error('❌ Resend error:', error);
-      throw new Error(error.message);
-    }
-
-    console.log('✅ Email OTP sent successfully via Resend:', data.id);
-    return { success: true, messageId: data.id, provider: 'resend' };
-  } catch (resendError) {
-    console.error('⚠️ Resend failed, trying Nodemailer fallback:', resendError.message);
-
-    // Fallback to Nodemailer/Gmail
-    try {
-      const mailOptions = {
-        from: {
-          name: 'Challan One',
-          address: emailConfig.auth.user
-        },
-        to: email,
-        subject: 'Your OTP for Challan One Login',
-        html: htmlContent
-      };
-
-      const info = await transporter.sendMail(mailOptions);
-      console.log('✅ Email OTP sent successfully via Nodemailer:', info.messageId);
-      return { success: true, messageId: info.messageId, provider: 'nodemailer' };
-    } catch (nodemailerError) {
-      console.error('❌ Both Resend and Nodemailer failed:', nodemailerError.message);
-      return { success: false, error: `Email sending failed: ${nodemailerError.message}` };
-    }
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email OTP sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId, provider: 'nodemailer' };
+  } catch (error) {
+    console.error('❌ Email sending failed:', error.message);
+    console.error('❌ Full error:', error);
+    return { success: false, error: `Email sending failed: ${error.message}` };
   }
 }
 
 // Verify email transporter connection (for startup check)
 export async function verifyEmailConnection() {
   try {
-    // Test Resend connection by checking if API key is valid
-    if (resendConfig.apiKey && resendConfig.apiKey.startsWith('re_')) {
-      console.log('✅ Resend API key configured');
-      return true;
-    }
-
-    // Fallback: verify nodemailer
     await transporter.verify();
-    console.log('✅ Email transporter is ready (Nodemailer)');
+    console.log('✅ Email transporter is ready (Gmail/Nodemailer)');
     return true;
   } catch (error) {
     console.error('⚠️ Email verification warning:', error.message);
