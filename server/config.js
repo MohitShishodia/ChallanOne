@@ -1,9 +1,15 @@
-// Email configuration for Nodemailer
+// Resend configuration (recommended for cloud platforms)
+export const resendConfig = {
+  apiKey: process.env.RESEND_API_KEY || 're_ZfjGraxw_CfkkesGkTA8suwNa16kopGX6',
+  from: 'Challan One <onboarding@resend.dev>' // Use your verified domain in production
+};
+
+// Email configuration for Nodemailer (fallback)
 export const emailConfig = {
   service: 'gmail',
   auth: {
-    user: 'mohitsisodia667@gmail.com',
-    pass: 'xnyb ytpc lonk lawf'
+    user: process.env.SMTP_USER || 'mohitsisodia667@gmail.com',
+    pass: process.env.SMTP_PASS || 'xnyb ytpc lonk lawf'
   }
 };
 
