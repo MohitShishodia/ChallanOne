@@ -79,24 +79,21 @@ export default function Login() {
           setError(data.message || 'Login failed')
         }
       } else {
-        // For signup - use direct signup (no OTP)
-        const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        // For signup - send OTP first
+        const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name, phone })
+          body: JSON.stringify({ email, password, isLogin: false })
         })
 
         const data = await response.json()
 
         if (data.success) {
-          localStorage.setItem('authToken', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
-          setSuccess('Account created successfully! Redirecting...')
-          setTimeout(() => {
-            navigate('/')
-          }, 1000)
+          setSuccess(data.message)
+          setStep('otp')
+          setCountdown(data.expiresIn || 300)
         } else {
-          setError(data.message || 'Signup failed')
+          setError(data.message || 'Failed to send OTP')
         }
       }
     } catch (err) {
@@ -530,10 +527,10 @@ export default function Login() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      {activeTab === 'login' ? 'Logging in...' : 'Creating account...'}
+                      {activeTab === 'login' ? 'Logging in...' : 'Sending OTP...'}
                     </>
                   ) : (
-                    activeTab === 'login' ? 'Login' : 'Sign Up'
+                    activeTab === 'login' ? 'Login' : 'Send OTP'
                   )}
                 </button>
 
