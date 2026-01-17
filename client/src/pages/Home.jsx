@@ -5,6 +5,7 @@ import AnimatedCounter from '../components/ui/AnimatedCounter'
 export default function Home() {
   const [vehicleNumber, setVehicleNumber] = useState('')
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
+  const [currentStep, setCurrentStep] = useState(0)
   const navigate = useNavigate()
 
   const testimonials = [
@@ -44,6 +45,20 @@ export default function Home() {
     }, 4000)
     return () => clearInterval(timer)
   }, [testimonials.length])
+
+  // Auto-rotate steps on mobile
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentStep((prev) => (prev + 1) % 3)
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const steps = [
+    { step: 1, icon: '🚗', title: 'Enter Vehicle Number', desc: 'Simply enter your vehicle registration number to fetch all pending challans' },
+    { step: 2, icon: '👁️', title: 'Review & Verify', desc: 'View challan details, violation photos, dates, and fine amounts' },
+    { step: 3, icon: '💳', title: 'Pay Securely', desc: 'Choose your preferred payment method and get instant digital receipt' }
+  ]
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
@@ -333,15 +348,56 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 relative">
-            {/* Connector Lines */}
-            <div className="hidden md:block absolute top-16 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500" />
+          {/* Mobile: Single step slider */}
+          <div className="md:hidden">
+            <div className="text-center">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg shadow-blue-500/30">
+                  {steps[currentStep].step}
+                </div>
+                <div className="text-5xl mb-4">{steps[currentStep].icon}</div>
+                <h3 className="text-2xl font-bold text-white mb-3">{steps[currentStep].title}</h3>
+                <p className="text-gray-400 text-lg">{steps[currentStep].desc}</p>
+              </div>
 
-            {[
-              { step: 1, icon: '🚗', title: 'Enter Vehicle Number', desc: 'Simply enter your vehicle registration number to fetch all pending challans' },
-              { step: 2, icon: '👁️', title: 'Review & Verify', desc: 'View challan details, violation photos, dates, and fine amounts' },
-              { step: 3, icon: '💳', title: 'Pay Securely', desc: 'Choose your preferred payment method and get instant digital receipt' }
-            ].map((item, idx) => (
+              {/* Navigation dots */}
+              <div className="flex items-center justify-center gap-4 mt-6">
+                <button
+                  onClick={() => setCurrentStep((prev) => (prev - 1 + 3) % 3)}
+                  className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="flex gap-2">
+                  {[0, 1, 2].map((idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentStep(idx)}
+                      className={`h-2 rounded-full transition-all ${idx === currentStep ? 'bg-blue-500 w-6' : 'bg-white/30 w-2'
+                        }`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCurrentStep((prev) => (prev + 1) % 3)}
+                  className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: Grid of all steps */}
+          <div className="hidden md:grid md:grid-cols-3 gap-8 relative">
+            {/* Connector Lines */}
+            <div className="absolute top-16 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500" />
+
+            {steps.map((item, idx) => (
               <div key={idx} className="relative text-center group">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform relative z-10">
                   {item.step}

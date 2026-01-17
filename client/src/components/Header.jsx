@@ -18,15 +18,15 @@ export default function Header() {
         setUser(null)
       }
     }
-    
+
     checkUser()
-    
+
     // Listen for storage changes (logout from other components)
     window.addEventListener('storage', checkUser)
-    
+
     // Custom event for same-tab logout
     window.addEventListener('userLogout', checkUser)
-    
+
     return () => {
       window.removeEventListener('storage', checkUser)
       window.removeEventListener('userLogout', checkUser)
@@ -55,13 +55,13 @@ export default function Header() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 max-w-7xl mx-auto">
           {/* Logo - Left Side */}
-          <Link to="/" className="flex items-center gap-2">
-            <img 
-              src="/logo.png" 
-              alt="Challan One Logo" 
-              className="h-10 w-auto"
+          <Link to="/" className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="Challan One Logo"
+              className="h-12 md:h-14 w-auto"
             />
-            <span className="text-xl md:text-2xl font-bold text-gray-900">Challan One</span>
+            <span className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">ChallanOne</span>
           </Link>
 
           {/* Right Side - Navigation + Login/Profile */}
@@ -72,11 +72,10 @@ export default function Header() {
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`text-base font-medium transition-colors ${
-                    isActive(link.path)
+                  className={`text-base font-medium transition-colors ${isActive(link.path)
                       ? 'text-blue-600'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   {link.label}
                 </Link>
@@ -163,14 +162,13 @@ export default function Header() {
                   key={link.path}
                   to={link.path}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`text-sm font-medium ${
-                    isActive(link.path) ? 'text-blue-600' : 'text-gray-600'
-                  }`}
+                  className={`text-sm font-medium ${isActive(link.path) ? 'text-blue-600' : 'text-gray-600'
+                    }`}
                 >
                   {link.label}
                 </Link>
               ))}
-              
+
               {user ? (
                 <>
                   <hr className="border-gray-200" />
