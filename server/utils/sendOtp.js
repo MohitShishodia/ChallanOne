@@ -1,14 +1,11 @@
-import { Resend } from 'resend';
 import { emailConfig, smsConfig } from '../config.js';
-
-// Initialize Resend client
-const resend = new Resend(emailConfig.apiKey);
 
 // Log email config at startup (without full API key)
 console.log('📧 Email Config Loaded:', {
-  provider: 'Resend',
-  apiKeyPrefix: emailConfig.apiKey ? emailConfig.apiKey.substring(0, 10) + '...' : 'NOT SET',
-  fromEmail: emailConfig.fromEmail
+  provider: 'Brevo',
+  apiKeyPrefix: emailConfig.apiKey ? emailConfig.apiKey.substring(0, 15) + '...' : 'NOT SET',
+  fromEmail: emailConfig.fromEmail,
+  fromName: emailConfig.fromName
 });
 
 // Send OTP via SMS using Fast2SMS
@@ -87,13 +84,13 @@ function getOtpEmailHtml(otp) {
   `;
 }
 
-// Send OTP via Email using Resend
+// Send OTP via Email using Brevo API
 export async function sendEmailOtp(email, otp) {
   const htmlContent = getOtpEmailHtml(otp);
 
   console.log('📧 ==============================================');
-  console.log('📧 Starting email send process via Resend...');
-  console.log('📧 From:', emailConfig.fromEmail);
+  console.log('📧 Starting email send process via Brevo...');
+  console.log('📧 From:', `${emailConfig.fromName} <${emailConfig.fromEmail}>`);
   console.log('📧 To:', email);
   console.log('📧 OTP:', otp);
 
@@ -101,27 +98,40 @@ export async function sendEmailOtp(email, otp) {
     console.log('📧 Attempting to send email...');
     const startTime = Date.now();
 
-    const { data, error } = await resend.emails.send({
-      from: emailConfig.fromEmail,
-      to: email,
-      subject: 'Your OTP for Challan One Login',
-      html: htmlContent
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': emailConfig.apiKey,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: {
+          name: emailConfig.fromName,
+          email: emailConfig.fromEmail
+        },
+        to: [{ email: email }],
+        subject: 'Your OTP for Challan One Login',
+        htmlContent: htmlContent
+      })
     });
 
-    if (error) {
+    const data = await response.json();
+
+    if (!response.ok) {
       console.error('❌ ==============================================');
       console.error('❌ Email sending FAILED');
-      console.error('❌ Resend error:', error);
+      console.error('❌ Brevo error:', data);
       console.error('❌ ==============================================');
-      return { success: false, error: `Email sending failed: ${error.message}` };
+      return { success: false, error: `Email sending failed: ${data.message || JSON.stringify(data)}` };
     }
 
     const duration = Date.now() - startTime;
     console.log(`✅ Email OTP sent successfully in ${duration}ms`);
-    console.log('✅ Message ID:', data.id);
+    console.log('✅ Message ID:', data.messageId);
     console.log('📧 ==============================================');
 
-    return { success: true, messageId: data.id, provider: 'resend' };
+    return { success: true, messageId: data.messageId, provider: 'brevo' };
   } catch (error) {
     console.error('❌ ==============================================');
     console.error('❌ Email sending FAILED');
@@ -136,12 +146,12 @@ export async function sendEmailOtp(email, otp) {
 
 // Verify email service connection (for startup check)
 export async function verifyEmailConnection() {
-  console.log('📧 Verifying Resend API key...');
-  if (!emailConfig.apiKey || emailConfig.apiKey === 'your-resend-api-key') {
-    console.error('⚠️ Resend API key not configured!');
+  console.log('📧 Verifying Brevo API key...');
+  if (!emailConfig.apiKey || emailConfig.apiKey === 'your-brevo-api-key') {
+    console.error('⚠️ Brevo API key not configured!');
     return false;
   }
-  console.log('✅ Resend API key is configured');
+  console.log('✅ Brevo API key is configured');
   console.log('✅ Email service is ready');
   return true;
 }
