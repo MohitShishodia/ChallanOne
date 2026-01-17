@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import AnimatedCounter from '../components/ui/AnimatedCounter'
 
@@ -36,6 +36,14 @@ export default function Home() {
       likes: 89
     }
   ]
+
+  // Auto-rotate testimonials on mobile
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [testimonials.length])
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
@@ -120,12 +128,6 @@ export default function Home() {
               {/* Trust Indicators */}
               <div className="flex flex-wrap gap-6 justify-center lg:justify-start text-sm text-gray-400">
                 <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Govt. Authorized
-                </span>
-                <span className="flex items-center gap-2">
                   <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
@@ -136,6 +138,12 @@ export default function Home() {
                     <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
                   </svg>
                   Instant Receipt
+                </span>
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  RTO Verified
                 </span>
               </div>
             </div>
@@ -193,7 +201,7 @@ export default function Home() {
                     <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    100% Secure • Official Government Data
+                    100% Secure • Official RTO Data
                   </p>
                 </div>
               </div>
@@ -239,7 +247,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section - Premium */}
+      {/* Features Section - Premium (2 columns on mobile) */}
       <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -254,7 +262,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
             {[
               {
                 icon: '🔒',
@@ -271,7 +279,7 @@ export default function Home() {
               {
                 icon: '🛡️',
                 title: 'Official & Verified',
-                desc: 'Authorized government partner with direct access to official RTO & traffic databases.',
+                desc: 'Direct access to official RTO & traffic databases for accurate information.',
                 gradient: 'from-green-500 to-emerald-600'
               },
               {
@@ -293,12 +301,12 @@ export default function Home() {
                 gradient: 'from-rose-500 to-orange-500'
               }
             ].map((feature, idx) => (
-              <div key={idx} className="glass-card p-8 hover-lift group">
-                <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-6 text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
+              <div key={idx} className="glass-card p-4 md:p-8 hover-lift group">
+                <div className={`w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br ${feature.gradient} rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
+                <h3 className="text-base md:text-xl font-bold text-gray-900 mb-2 md:mb-3">{feature.title}</h3>
+                <p className="text-gray-600 text-sm md:text-base leading-relaxed hidden md:block">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -356,7 +364,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials - Premium */}
+      {/* Testimonials - Slider for Mobile */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
@@ -387,7 +395,46 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          {/* Mobile: Single testimonial slider */}
+          <div className="md:hidden">
+            <div className="glass-card p-6 transition-all ring-2 ring-blue-500 shadow-lg">
+              <div className="flex items-center gap-4 mb-4">
+                <img
+                  src={testimonials[currentTestimonial].avatar}
+                  alt={testimonials[currentTestimonial].name}
+                  className="w-14 h-14 rounded-full object-cover ring-2 ring-blue-100"
+                />
+                <div>
+                  <h4 className="font-bold text-gray-900">{testimonials[currentTestimonial].name}</h4>
+                  <p className="text-sm text-gray-500">{testimonials[currentTestimonial].location}</p>
+                </div>
+              </div>
+              <div className="flex gap-1 mb-4">
+                {renderStars(testimonials[currentTestimonial].rating)}
+              </div>
+              <p className="text-gray-600 leading-relaxed mb-4">"{testimonials[currentTestimonial].comment}"</p>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                </svg>
+                {testimonials[currentTestimonial].likes} found helpful
+              </div>
+            </div>
+            {/* Dots indicator */}
+            <div className="flex justify-center gap-2 mt-4">
+              {testimonials.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentTestimonial(index)}
+                  className={`w-2 h-2 rounded-full transition-all ${index === currentTestimonial ? 'bg-blue-500 w-6' : 'bg-gray-300'
+                    }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: Grid of all testimonials */}
+          <div className="hidden md:grid md:grid-cols-3 gap-6">
             {testimonials.map((testimonial, index) => (
               <div
                 key={testimonial.id}
@@ -432,22 +479,22 @@ export default function Home() {
             <p className="text-gray-600">Explore our comprehensive range of traffic-related services</p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {[
               { icon: '💳', title: 'Pay Challans', desc: 'Pay pending traffic fines instantly', link: '/pay-challan', color: 'from-blue-500 to-blue-600' },
               { icon: '🚗', title: 'Vehicle Info', desc: 'Get complete RC & ownership details', link: '/vehicle-info', color: 'from-green-500 to-green-600' },
               { icon: '📍', title: 'Track Status', desc: 'Track your challan payment status', link: '/track-challan', color: 'from-purple-500 to-purple-600' },
               { icon: '🎧', title: 'Get Support', desc: '24/7 customer support assistance', link: '/support', color: 'from-orange-500 to-orange-600' }
             ].map((service, idx) => (
-              <Link key={idx} to={service.link} className="glass-card p-6 hover-lift group text-center">
-                <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
+              <Link key={idx} to={service.link} className="glass-card p-4 md:p-6 hover-lift group text-center">
+                <div className={`w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br ${service.color} rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
                   {service.icon}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{service.title}</h3>
-                <p className="text-sm text-gray-600 mb-4">{service.desc}</p>
-                <span className="text-blue-600 font-medium text-sm inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+                <h3 className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2">{service.title}</h3>
+                <p className="text-xs md:text-sm text-gray-600 mb-2 md:mb-4 hidden md:block">{service.desc}</p>
+                <span className="text-blue-600 font-medium text-xs md:text-sm inline-flex items-center gap-1 group-hover:gap-2 transition-all">
                   Explore
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </span>
@@ -489,12 +536,6 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-center gap-8 text-white/70 text-sm">
             <span className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Government Authorized Partner
-            </span>
-            <span className="flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
@@ -505,6 +546,12 @@ export default function Home() {
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
               4.9/5 Rating (50K+ Reviews)
+            </span>
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              RTO Authorized Data
             </span>
           </div>
         </div>

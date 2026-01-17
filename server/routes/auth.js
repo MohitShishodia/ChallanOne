@@ -14,7 +14,7 @@ const pendingRegistrations = new Map();
 router.post('/send-otp', async (req, res) => {
   try {
     const { email, password, isLogin } = req.body;
-    
+
     // Validate email
     if (!email) {
       return res.status(400).json({
@@ -22,7 +22,7 @@ router.post('/send-otp', async (req, res) => {
         message: 'Email is required'
       });
     }
-    
+
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({
@@ -30,7 +30,7 @@ router.post('/send-otp', async (req, res) => {
         message: 'Invalid email format'
       });
     }
-    
+
     // Validate password
     if (!password || password.length < 6) {
       return res.status(400).json({
@@ -38,7 +38,7 @@ router.post('/send-otp', async (req, res) => {
         message: 'Password must be at least 6 characters'
       });
     }
-    
+
     // For login - verify credentials first
     if (isLogin) {
       const verification = await verifyUserCredentials(email, password);
@@ -57,28 +57,28 @@ router.post('/send-otp', async (req, res) => {
         });
       }
     }
-    
+
     // Generate OTP
     const otp = generateOtp(otpConfig.length);
-    
+
     // Store OTP
     storeOtp(email, otp, otpConfig.expiryMinutes);
-    
+
     // Store password temporarily for signup verification
     if (!isLogin) {
       pendingRegistrations.set(email, { password });
     }
-    
+
     // Send OTP via email
     const result = await sendEmailOtp(email, otp);
-    
+
     if (!result.success) {
       return res.status(500).json({
         success: false,
         message: 'Failed to send OTP email. Please try again.'
       });
     }
-    
+
     return res.json({
       success: true,
       message: `OTP sent successfully to ${email}`,
@@ -97,7 +97,7 @@ router.post('/send-otp', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     // Validate email
     if (!email) {
       return res.status(400).json({
@@ -105,7 +105,7 @@ router.post('/login', async (req, res) => {
         message: 'Email is required'
       });
     }
-    
+
     // Validate password
     if (!password) {
       return res.status(400).json({
@@ -113,7 +113,7 @@ router.post('/login', async (req, res) => {
         message: 'Password is required'
       });
     }
-    
+
     // Verify credentials
     const verification = await verifyUserCredentials(email, password);
     if (!verification.success) {
@@ -122,17 +122,17 @@ router.post('/login', async (req, res) => {
         message: verification.message
       });
     }
-    
+
     // Update last login
     updateUserLogin(email);
-    
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: verification.user.id, email },
       jwtConfig.secret,
       { expiresIn: jwtConfig.expiresIn }
     );
-    
+
     return res.json({
       success: true,
       message: 'Login successful',
@@ -148,10 +148,97 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Direct signup endpoint (no OTP required)
+router.post('/signup', async (req, res) => {
+  try {
+    const { email, password, name, phone } = req.body;
+
+    // Validate email
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+
+    // Validate password
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
+
+    // Validate name
+    if (!name || name.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name is required'
+      });
+    }
+
+    // Check if user already exists
+    if (await userExists(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists. Please login instead.'
+      });
+    }
+
+    // Create new user
+    const createResult = await createUser(email, password, name, phone);
+    if (!createResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: createResult.message
+      });
+    }
+
+    const user = createResult.user;
+
+    // Update last login
+    updateUserLogin(email);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, email },
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Account created successfully!',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp, password, name, phone, isSignup } = req.body;
-    
+
     // Validate input
     if (!email) {
       return res.status(400).json({
@@ -159,26 +246,26 @@ router.post('/verify-otp', async (req, res) => {
         message: 'Email is required'
       });
     }
-    
+
     if (!otp) {
       return res.status(400).json({
         success: false,
         message: 'OTP is required'
       });
     }
-    
+
     // Verify OTP
     const verification = verifyOtp(email, otp);
-    
+
     if (!verification.valid) {
       return res.status(400).json({
         success: false,
         message: verification.message
       });
     }
-    
+
     let user;
-    
+
     if (isSignup) {
       // Get the pending registration
       const pending = pendingRegistrations.get(email);
@@ -188,7 +275,7 @@ router.post('/verify-otp', async (req, res) => {
           message: 'Registration session expired. Please start again.'
         });
       }
-      
+
       // Create new user
       const createResult = await createUser(email, pending.password, name, phone);
       if (!createResult.success) {
@@ -197,9 +284,9 @@ router.post('/verify-otp', async (req, res) => {
           message: createResult.message
         });
       }
-      
+
       user = createResult.user;
-      
+
       // Clean up pending registration
       pendingRegistrations.delete(email);
     } else {
@@ -213,17 +300,17 @@ router.post('/verify-otp', async (req, res) => {
       }
       user = credVerification.user;
     }
-    
+
     // Update last login
     updateUserLogin(email);
-    
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email },
       jwtConfig.secret,
       { expiresIn: jwtConfig.expiresIn }
     );
-    
+
     return res.json({
       success: true,
       message: isSignup ? 'Account created successfully!' : 'Login successful',
@@ -249,27 +336,27 @@ router.post('/verify-otp', async (req, res) => {
 router.get('/me', (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
         message: 'No token provided'
       });
     }
-    
+
     const token = authHeader.split(' ')[1];
-    
+
     try {
       const decoded = jwt.verify(token, jwtConfig.secret);
       const user = getUser(decoded.email);
-      
+
       if (!user) {
         return res.status(404).json({
           success: false,
           message: 'User not found'
         });
       }
-      
+
       return res.json({
         success: true,
         user
@@ -293,7 +380,7 @@ router.get('/me', (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     // Validate email
     if (!email) {
       return res.status(400).json({
@@ -301,7 +388,7 @@ router.post('/forgot-password', async (req, res) => {
         message: 'Email is required'
       });
     }
-    
+
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({
@@ -309,7 +396,7 @@ router.post('/forgot-password', async (req, res) => {
         message: 'Invalid email format'
       });
     }
-    
+
     // Check if user exists
     if (!await userExists(email)) {
       return res.status(400).json({
@@ -317,23 +404,23 @@ router.post('/forgot-password', async (req, res) => {
         message: 'No account found with this email address.'
       });
     }
-    
+
     // Generate OTP
     const otp = generateOtp(otpConfig.length);
-    
+
     // Store OTP
     storeOtp(email, otp, otpConfig.expiryMinutes);
-    
+
     // Send OTP via email
     const result = await sendEmailOtp(email, otp);
-    
+
     if (!result.success) {
       return res.status(500).json({
         success: false,
         message: 'Failed to send OTP email. Please try again.'
       });
     }
-    
+
     return res.json({
       success: true,
       message: `Password reset OTP sent to ${email}`,
@@ -352,7 +439,7 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-    
+
     // Validate input
     if (!email) {
       return res.status(400).json({
@@ -360,42 +447,42 @@ router.post('/reset-password', async (req, res) => {
         message: 'Email is required'
       });
     }
-    
+
     if (!otp) {
       return res.status(400).json({
         success: false,
         message: 'OTP is required'
       });
     }
-    
+
     if (!newPassword || newPassword.length < 6) {
       return res.status(400).json({
         success: false,
         message: 'Password must be at least 6 characters'
       });
     }
-    
+
     // Verify OTP
     const verification = verifyOtp(email, otp);
-    
+
     if (!verification.valid) {
       return res.status(400).json({
         success: false,
         message: verification.message
       });
     }
-    
+
     // Update password (need to import updatePassword)
     const { updatePassword } = await import('../data/users.js');
     const updateResult = updatePassword(email, newPassword);
-    
+
     if (!updateResult.success) {
       return res.status(400).json({
         success: false,
         message: updateResult.message
       });
     }
-    
+
     return res.json({
       success: true,
       message: 'Password reset successfully! You can now login with your new password.'
