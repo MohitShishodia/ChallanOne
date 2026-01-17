@@ -1,10 +1,7 @@
-// Email configuration for Nodemailer (Gmail)
+// Email configuration for Resend
 export const emailConfig = {
-  service: 'gmail',
-  auth: {
-    user: process.env.SMTP_USER || 'mohitsisodia667@gmail.com',
-    pass: process.env.SMTP_PASS || 'xnybytpclonklawf'
-  }
+  apiKey: process.env.RESEND_API_KEY || 're_8rqMiqqa_8R3jeteMf2BDTdGGqSWM5Lp2',
+  fromEmail: 'Challan One <onboarding@resend.dev>'
 };
 
 // Fast2SMS configuration for SMS OTP

@@ -1,23 +1,14 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { emailConfig, smsConfig } from '../config.js';
 
-// Log email config at startup (without password)
-console.log('📧 Email Config Loaded:', {
-  service: 'gmail',
-  user: emailConfig.auth.user,
-  passLength: emailConfig.auth.pass ? emailConfig.auth.pass.length : 0
-});
+// Initialize Resend client
+const resend = new Resend(emailConfig.apiKey);
 
-// Create nodemailer transporter for Gmail with timeout settings
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: emailConfig.auth.user,
-    pass: emailConfig.auth.pass
-  },
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000,
-  socketTimeout: 15000
+// Log email config at startup (without full API key)
+console.log('📧 Email Config Loaded:', {
+  provider: 'Resend',
+  apiKeyPrefix: emailConfig.apiKey ? emailConfig.apiKey.substring(0, 10) + '...' : 'NOT SET',
+  fromEmail: emailConfig.fromEmail
 });
 
 // Send OTP via SMS using Fast2SMS
@@ -96,45 +87,46 @@ function getOtpEmailHtml(otp) {
   `;
 }
 
-// Send OTP via Email using Nodemailer (Gmail)
+// Send OTP via Email using Resend
 export async function sendEmailOtp(email, otp) {
   const htmlContent = getOtpEmailHtml(otp);
 
   console.log('📧 ==============================================');
-  console.log('📧 Starting email send process...');
-  console.log('📧 From:', emailConfig.auth.user);
+  console.log('📧 Starting email send process via Resend...');
+  console.log('📧 From:', emailConfig.fromEmail);
   console.log('📧 To:', email);
   console.log('📧 OTP:', otp);
 
   try {
-    const mailOptions = {
-      from: {
-        name: 'Challan One',
-        address: emailConfig.auth.user
-      },
-      to: email,
-      subject: 'Your OTP for Challan One Login',
-      html: htmlContent
-    };
-
     console.log('📧 Attempting to send email...');
     const startTime = Date.now();
 
-    const info = await transporter.sendMail(mailOptions);
+    const { data, error } = await resend.emails.send({
+      from: emailConfig.fromEmail,
+      to: email,
+      subject: 'Your OTP for Challan One Login',
+      html: htmlContent
+    });
+
+    if (error) {
+      console.error('❌ ==============================================');
+      console.error('❌ Email sending FAILED');
+      console.error('❌ Resend error:', error);
+      console.error('❌ ==============================================');
+      return { success: false, error: `Email sending failed: ${error.message}` };
+    }
 
     const duration = Date.now() - startTime;
     console.log(`✅ Email OTP sent successfully in ${duration}ms`);
-    console.log('✅ Message ID:', info.messageId);
+    console.log('✅ Message ID:', data.id);
     console.log('📧 ==============================================');
 
-    return { success: true, messageId: info.messageId, provider: 'nodemailer' };
+    return { success: true, messageId: data.id, provider: 'resend' };
   } catch (error) {
     console.error('❌ ==============================================');
     console.error('❌ Email sending FAILED');
     console.error('❌ Error name:', error.name);
     console.error('❌ Error message:', error.message);
-    console.error('❌ Error code:', error.code);
-    console.error('❌ Error response:', error.response);
     console.error('❌ Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     console.error('❌ ==============================================');
 
@@ -142,18 +134,14 @@ export async function sendEmailOtp(email, otp) {
   }
 }
 
-// Verify email transporter connection (for startup check)
+// Verify email service connection (for startup check)
 export async function verifyEmailConnection() {
-  console.log('📧 Verifying email transporter connection...');
-  try {
-    await transporter.verify();
-    console.log('✅ Email transporter verified successfully!');
-    return true;
-  } catch (error) {
-    console.error('⚠️ Email transporter verification FAILED:', error.message);
-    console.error('⚠️ Error code:', error.code);
-    console.error('⚠️ This may indicate invalid credentials or network issues');
-    // Still return true to not block startup, but log the issue
-    return true;
+  console.log('📧 Verifying Resend API key...');
+  if (!emailConfig.apiKey || emailConfig.apiKey === 'your-resend-api-key') {
+    console.error('⚠️ Resend API key not configured!');
+    return false;
   }
+  console.log('✅ Resend API key is configured');
+  console.log('✅ Email service is ready');
+  return true;
 }
