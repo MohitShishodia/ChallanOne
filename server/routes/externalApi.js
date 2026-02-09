@@ -72,11 +72,14 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
     }
 });
 
+// New Challan Plus API configuration
+const KASHI_DIGITAL_API_URL = 'https://core.kashidigitalapis.com/v1/challan-plus';
+const KASHI_ACCESS_TOKEN = '04639b9c30e85373631e64612510a210:6da58aa12d7df097a5dfbfefecdb6343';
+
 /**
  * GET /api/external/challan/:vehicleNumber
- * Fetch challan information from external APIClub API
- * First fetches vehicle info to get chassis_number and engine_number,
- * then calls challan API with all required fields
+ * Fetch challan information from Kashi Digital APIs
+ * Uses the new challan-plus endpoint with rcNumber
  */
 router.get('/challan/:vehicleNumber', async (req, res) => {
     try {
@@ -92,51 +95,17 @@ router.get('/challan/:vehicleNumber', async (req, res) => {
         const normalizedVehicleNumber = vehicleNumber.replace(/[\s-]/g, '').toUpperCase();
 
         console.log(`📋 [External API] Fetching challan info for: ${vehicleNumber}`);
+        console.log(`🔍 [External API] Calling Kashi Digital challan-plus API...`);
 
-        // Step 1: Fetch vehicle info to get chassis_number and engine_number
-        console.log(`🔍 [External API] Step 1: Fetching vehicle details first...`);
-
-        const vehicleData = await fetchVehicleInfoFromExternal(normalizedVehicleNumber);
-
-        if (!vehicleData || vehicleData.error || vehicleData.status === 'error') {
-            console.error('[External API] Failed to fetch vehicle info:', vehicleData?.message);
-            return res.status(404).json({
-                success: false,
-                message: 'Could not fetch vehicle information. Vehicle number may be invalid.',
-                externalResponse: vehicleData
-            });
-        }
-
-        // Extract chassis_number and engine_number from vehicle response
-        // The data is nested under response object from APIClub
-        const responseData = vehicleData.response || vehicleData.result || vehicleData;
-        const chassisNumber = responseData.chassis_number || responseData.chassisNumber;
-        const engineNumber = responseData.engine_number || responseData.engineNumber;
-
-        if (!chassisNumber || !engineNumber) {
-            console.error('[External API] Missing chassis_number or engine_number in vehicle data');
-            return res.status(400).json({
-                success: false,
-                message: 'Could not extract chassis number or engine number from vehicle data',
-                vehicleData: vehicleData
-            });
-        }
-
-        console.log(`✅ [External API] Got chassis: ${chassisNumber.substring(0, 4)}***, engine: ${engineNumber.substring(0, 4)}***`);
-
-        // Step 2: Call challan API with all required fields
-        console.log(`🔍 [External API] Step 2: Fetching challan details...`);
-
-        const challanResponse = await fetch(`${APICLUB_BASE_URL}/challan_info_v2`, {
+        // Call the new challan-plus API
+        const challanResponse = await fetch(KASHI_DIGITAL_API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': APICLUB_API_KEY
+                'accessToken': KASHI_ACCESS_TOKEN
             },
             body: JSON.stringify({
-                vehicleId: normalizedVehicleNumber,
-                chassis: chassisNumber,
-                engine_no: engineNumber
+                rcNumber: normalizedVehicleNumber
             })
         });
 
@@ -155,7 +124,7 @@ router.get('/challan/:vehicleNumber', async (req, res) => {
 
         return res.json({
             success: true,
-            source: 'APICLUB_EXTERNAL',
+            source: 'KASHI_DIGITAL',
             vehicleNumber: normalizedVehicleNumber,
             challan: challanData
         });

@@ -39,28 +39,54 @@ export default function PayChallan() {
       const response = await fetch(`${API_BASE_URL}/api/external/challan/${encodeURIComponent(number)}`)
       const result = await response.json()
 
-      if (result.success && result.challan?.response) {
-        const challanResponse = result.challan.response
+      // Handle new Kashi Digital API format (result.challan.data) or old APIClub format (result.challan.response)
+      const challanData = result.challan?.data || result.challan?.response?.challans
+
+      if (result.success && challanData && challanData.length > 0) {
+        // Determine if it's new Kashi Digital format or old APIClub format
+        const isKashiFormat = result.source === 'KASHI_DIGITAL' || result.challan?.data
 
         // Transform external API response to match UI expected format
-        const transformedChallans = (challanResponse.challans || []).map((c, idx) => ({
-          id: c.challan_no || `CH${idx + 1}`,
-          dbId: c.challan_no,
-          vehicleNumber: result.vehicleNumber,
-          type: c.offence,
-          description: c.offence_list?.map(o => o.offence_name).join(', ') || c.offence,
-          amount: parseFloat(c.amount) || 0,
-          status: mapChallanStatus(c.challan_status),
-          date: formatChallanDate(c.date),
-          time: formatChallanTime(c.date),
-          location: `${c.area}, ${c.state}`,
-          proofImage: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&h=300&fit=crop'
-        }))
+        const transformedChallans = challanData.map((c, idx) => {
+          if (isKashiFormat) {
+            // New Kashi Digital API format
+            const offencesList = c.offences?.map(o => o.offenceName || o.offence_name).join(', ') || 'Traffic Violation'
+            return {
+              id: c.challanNumber || `CH${idx + 1}`,
+              dbId: c.challanNumber,
+              vehicleNumber: c.rcNumber || result.vehicleNumber,
+              type: offencesList,
+              description: offencesList,
+              amount: parseFloat(c.challanAmount) || 0,
+              status: mapChallanStatus(c.challanStatus),
+              date: formatChallanDate(c.challanDate),
+              time: formatChallanTime(c.challanDate),
+              location: c.challanPlace || c.rtoOfficeName || 'N/A',
+              proofImage: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&h=300&fit=crop'
+            }
+          } else {
+            // Old APIClub format
+            return {
+              id: c.challan_no || `CH${idx + 1}`,
+              dbId: c.challan_no,
+              vehicleNumber: result.vehicleNumber,
+              type: c.offence,
+              description: c.offence_list?.map(o => o.offence_name).join(', ') || c.offence,
+              amount: parseFloat(c.amount) || 0,
+              status: mapChallanStatus(c.challan_status),
+              date: formatChallanDate(c.date),
+              time: formatChallanTime(c.date),
+              location: `${c.area}, ${c.state}`,
+              proofImage: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&h=300&fit=crop'
+            }
+          }
+        })
 
         // Create vehicle object from available data
+        const firstChallan = challanData[0]
         const transformedVehicle = {
-          number: result.vehicleNumber,
-          owner: 'Owner',
+          number: result.vehicleNumber || firstChallan?.rcNumber,
+          owner: firstChallan?.accusedName || 'Owner',
           vehicleType: 'Private Vehicle',
           isVerified: true,
           image: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=100&h=60&fit=crop'
@@ -68,7 +94,7 @@ export default function PayChallan() {
 
         const transformedData = {
           success: true,
-          dataSource: 'APICLUB_EXTERNAL',
+          dataSource: result.source || 'EXTERNAL',
           vehicle: transformedVehicle,
           challans: transformedChallans,
           pendingCount: transformedChallans.filter(c => c.status !== 'PAID').length
