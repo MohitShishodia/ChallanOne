@@ -1,5 +1,6 @@
 import express from 'express';
-import supabase from '../config/supabase.js';
+import VehicleModel from '../models/Vehicle.js';
+import ChallanModel from '../models/Challan.js';
 
 const router = express.Router();
 
@@ -11,20 +12,8 @@ router.get('/:vehicleNumber', async (req, res) => {
   console.log(`📋 Fetching challans for: ${vehicleNumber}`);
 
   try {
-    // First find the vehicle
-    const { data: vehicles, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('*');
+    const vehicles = await VehicleModel.find();
 
-    if (vehicleError) {
-      console.error('Supabase vehicle error:', vehicleError);
-      return res.status(500).json({
-        success: false,
-        message: 'Database error occurred'
-      });
-    }
-
-    // Find matching vehicle
     const vehicle = vehicles?.find(v =>
       v.vehicle_number.replace(/[^A-Z0-9]/g, '').toUpperCase() === normalizedNumber
     );
@@ -36,26 +25,12 @@ router.get('/:vehicleNumber', async (req, res) => {
       });
     }
 
-    // Get challans for this vehicle
-    const { data: challans, error: challanError } = await supabase
-      .from('challans')
-      .select('*')
-      .eq('vehicle_id', vehicle.id)
-      .order('fine_date', { ascending: false });
-
-    if (challanError) {
-      console.error('Supabase challan error:', challanError);
-      return res.status(500).json({
-        success: false,
-        message: 'Database error occurred'
-      });
-    }
+    const challans = await ChallanModel.find({ vehicle_id: vehicle._id }).sort({ fine_date: -1 });
 
     console.log(`✅ Found ${challans?.length || 0} challans for ${vehicleNumber}`);
 
-    // Transform vehicle data
     const vehicleResponse = {
-      id: vehicle.id,
+      id: vehicle._id.toString(),
       number: vehicle.vehicle_number,
       type: vehicle.vehicle_type,
       owner: maskName(vehicle.owner_name),
@@ -64,10 +39,9 @@ router.get('/:vehicleNumber', async (req, res) => {
       image: vehicle.image_url || 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=100&h=60&fit=crop'
     };
 
-    // Transform challans data
     const challansResponse = (challans || []).map(c => ({
       id: c.challan_number,
-      dbId: c.id,
+      dbId: c._id.toString(),
       vehicleNumber: vehicle.vehicle_number,
       type: c.violation_type,
       description: c.description,
@@ -81,7 +55,7 @@ router.get('/:vehicleNumber', async (req, res) => {
 
     res.json({
       success: true,
-      dataSource: 'SUPABASE',
+      dataSource: 'MONGODB',
       vehicle: vehicleResponse,
       challans: challansResponse,
       pendingCount: challansResponse.filter(c => c.status !== 'PAID').length
@@ -89,14 +63,10 @@ router.get('/:vehicleNumber', async (req, res) => {
 
   } catch (error) {
     console.error('Fetch challans error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
-// Helper functions
 function maskName(name) {
   if (!name) return 'Unknown';
   const parts = name.split(' ');

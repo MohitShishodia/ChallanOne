@@ -1,5 +1,6 @@
 import express from 'express';
-import supabase from '../config/supabase.js';
+import VehicleModel from '../models/Vehicle.js';
+import ChallanModel from '../models/Challan.js';
 
 const router = express.Router();
 
@@ -7,34 +8,18 @@ const router = express.Router();
 router.get('/:vehicleNumber', async (req, res) => {
   try {
     const { vehicleNumber } = req.params;
+    if (!vehicleNumber) return res.status(400).json({ success: false, message: 'Vehicle number is required' });
 
-    if (!vehicleNumber) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vehicle number is required'
-      });
-    }
-
-    // Normalize vehicle number (remove spaces, dashes and convert to uppercase)
     const normalizedNumber = vehicleNumber.replace(/[\s-]/g, '').toUpperCase();
-
     console.log(`🚗 Fetching vehicle info for: ${vehicleNumber}`);
 
-    // Query Supabase for vehicle
-    const { data: vehicles, error } = await supabase
-      .from('vehicles')
-      .select('*')
-      .ilike('vehicle_number', `%${normalizedNumber.slice(0, 2)}%${normalizedNumber.slice(-4)}%`);
+    // Build a regex to loosely match vehicle number
+    const prefix = normalizedNumber.slice(0, 2);
+    const suffix = normalizedNumber.slice(-4);
+    const vehicles = await VehicleModel.find({
+      vehicle_number: { $regex: new RegExp(`${prefix}.*${suffix}`, 'i') }
+    });
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Database error occurred'
-      });
-    }
-
-    // Find exact match
     const vehicle = vehicles?.find(v =>
       v.vehicle_number.replace(/[\s-]/g, '').toUpperCase() === normalizedNumber
     );
@@ -46,18 +31,15 @@ router.get('/:vehicleNumber', async (req, res) => {
       });
     }
 
-    // Count unpaid challans for this vehicle
-    const { count: unpaidCount } = await supabase
-      .from('challans')
-      .select('*', { count: 'exact', head: true })
-      .eq('vehicle_id', vehicle.id)
-      .in('status', ['PENDING', 'OVERDUE']);
+    const unpaidCount = await ChallanModel.countDocuments({
+      vehicle_id: vehicle._id,
+      status: { $in: ['PENDING', 'OVERDUE'] }
+    });
 
-    console.log(`✅ Found vehicle: ${vehicle.vehicle_number} with ${unpaidCount || 0} unpaid challans`);
+    console.log(`✅ Found vehicle: ${vehicle.vehicle_number} with ${unpaidCount} unpaid challans`);
 
-    // Transform to match frontend expected format
     const vehicleResponse = {
-      id: vehicle.id,
+      id: vehicle._id.toString(),
       number: vehicle.vehicle_number,
       type: vehicle.vehicle_type,
       owner: maskName(vehicle.owner_name),
@@ -79,41 +61,29 @@ router.get('/:vehicleNumber', async (req, res) => {
       taxValidUpto: calculateTax(vehicle.registration_date),
       insuranceExpiry: formatDate(vehicle.insurance_expiry),
       insuranceStatus: vehicle.insurance_status || 'active',
-      unpaidChallanCount: unpaidCount || 0,
+      unpaidChallanCount: unpaidCount,
       seatingCapacity: vehicle.vehicle_type === 'Bike' ? 2 : 5,
       vehicleClass: vehicle.vehicle_type === 'Bike' ? 'Motor Cycle/Scooter (2WN)' : 'Motor Car (LMV)',
       bodyType: vehicle.vehicle_type === 'Bike' ? 'SCOOTER' : 'HATCHBACK',
-      hypothecation: null,
-      hypothecationValidUpto: null,
-      nocDetails: null,
-      blacklistStatus: false,
+      hypothecation: null, hypothecationValidUpto: null, nocDetails: null, blacklistStatus: false,
       rcStatus: vehicle.rc_status || 'ACTIVE'
     };
 
-    return res.json({
-      success: true,
-      vehicle: vehicleResponse
-    });
+    return res.json({ success: true, vehicle: vehicleResponse });
   } catch (error) {
     console.error('Get vehicle info error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
-// Helper functions
 function maskName(name) {
   if (!name) return 'Unknown';
-  const parts = name.split(' ');
-  return parts.map(p => p[0] + '***').join(' ');
+  return name.split(' ').map(p => p[0] + '***').join(' ');
 }
 
 function formatDate(dateStr) {
   if (!dateStr) return 'N/A';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function calculateFitness(regDate) {

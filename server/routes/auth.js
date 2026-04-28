@@ -333,7 +333,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // Get current user endpoint (protected)
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -348,7 +348,7 @@ router.get('/me', (req, res) => {
 
     try {
       const decoded = jwt.verify(token, jwtConfig.secret);
-      const user = getUser(decoded.email);
+      const user = await getUser(decoded.email);
 
       if (!user) {
         return res.status(404).json({
@@ -474,7 +474,7 @@ router.post('/reset-password', async (req, res) => {
 
     // Update password (need to import updatePassword)
     const { updatePassword } = await import('../data/users.js');
-    const updateResult = updatePassword(email, newPassword);
+    const updateResult = await updatePassword(email, newPassword);
 
     if (!updateResult.success) {
       return res.status(400).json({

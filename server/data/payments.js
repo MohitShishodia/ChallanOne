@@ -1,9 +1,8 @@
-// In-memory storage for payment receipts
-// Will be replaced with Supabase integration later
-
-const payments = new Map();
+// In-memory storage for payment receipts (legacy - now MongoDB-backed)
+import PaymentModel from '../models/Payment.js';
 
 export function storePayment(paymentData) {
+  // Legacy in-memory method kept for compatibility - main storage is MongoDB via payment route
   const receipt = {
     id: paymentData.receiptId,
     razorpayOrderId: paymentData.razorpay_order_id,
@@ -19,30 +18,29 @@ export function storePayment(paymentData) {
     paidAt: new Date().toISOString(),
     createdAt: new Date().toISOString()
   };
-  
-  payments.set(receipt.id, receipt);
   return receipt;
 }
 
-export function getPaymentById(receiptId) {
-  return payments.get(receiptId) || null;
+export async function getPaymentById(receiptId) {
+  try {
+    return await PaymentModel.findById(receiptId);
+  } catch {
+    return null;
+  }
 }
 
-export function getPaymentsByEmail(email) {
-  const userPayments = [];
-  for (const payment of payments.values()) {
-    if (payment.userEmail === email) {
-      userPayments.push(payment);
-    }
+export async function getPaymentsByEmail(email) {
+  try {
+    return await PaymentModel.find({ user_email: email }).sort({ paid_at: -1 });
+  } catch {
+    return [];
   }
-  return userPayments.sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
 }
 
-export function getPaymentByRazorpayId(razorpayPaymentId) {
-  for (const payment of payments.values()) {
-    if (payment.razorpayPaymentId === razorpayPaymentId) {
-      return payment;
-    }
+export async function getPaymentByRazorpayId(razorpayPaymentId) {
+  try {
+    return await PaymentModel.findOne({ razorpay_payment_id: razorpayPaymentId });
+  } catch {
+    return null;
   }
-  return null;
 }

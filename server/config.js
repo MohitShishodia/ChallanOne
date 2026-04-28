@@ -12,10 +12,17 @@ export const smsConfig = {
   route: 'otp'
 };
 
-// JWT configuration
+// JWT configuration (customer-facing)
 export const jwtConfig = {
   secret: process.env.JWT_SECRET || 'challan-one-jwt-secret-key-2024',
   expiresIn: '7d'
+};
+
+// Admin JWT configuration (stricter)
+export const adminJwtConfig = {
+  secret: process.env.ADMIN_JWT_SECRET || 'challanone-admin-secret-2024',
+  accessExpiresIn: '2h',
+  refreshExpiresIn: '7d'
 };
 
 // OTP configuration
@@ -23,3 +30,11 @@ export const otpConfig = {
   length: 6,
   expiryMinutes: 5
 };
+
+// Admin panel configuration
+export const adminConfig = {
+  defaultPageSize: 20,
+  maxPageSize: 100,
+  bcryptSaltRounds: 12
+};
+
