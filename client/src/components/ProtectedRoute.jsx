@@ -1,15 +1,13 @@
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import PageHeader from './PageHeader'
 
 export default function ProtectedRoute({ children }) {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const authToken = localStorage.getItem('authToken')
-  const user = localStorage.getItem('user')
-  const isAuthenticated = authToken && user
-
-  if (!isAuthenticated) {
+  if (!user) {
     return (
       <div className="screen">
         <PageHeader title="Login Required" />

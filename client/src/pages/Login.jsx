@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
+import { useAuth } from '../context/AuthContext'
 import PageHeader from '../components/PageHeader'
 
 export default function Login() {
@@ -24,6 +25,7 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0)
 
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   useEffect(() => {
     if (countdown > 0) {
@@ -58,9 +60,7 @@ export default function Login() {
         })
         const data = await res.json()
         if (data.success) {
-          localStorage.setItem('authToken', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
-          window.dispatchEvent(new Event('userLogin'))
+          login(data.user, data.token)
           setSuccess('Login successful! Redirecting...')
           setTimeout(() => navigate('/'), 800)
         } else setError(data.message || 'Login failed')
@@ -72,9 +72,7 @@ export default function Login() {
         })
         const data = await res.json()
         if (data.success) {
-          localStorage.setItem('authToken', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
-          window.dispatchEvent(new Event('userLogin'))
+          login(data.user, data.token)
           setSuccess('Account created! Redirecting...')
           setTimeout(() => navigate('/'), 800)
         } else setError(data.message || 'Signup failed')

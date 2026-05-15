@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import AppShell from './components/AppShell'
 import ProtectedRoute from './components/ProtectedRoute'
 import WhatsAppButton from './components/ui/WhatsAppButton'
@@ -14,33 +15,35 @@ import './App.css'
 
 function App() {
   return (
-    <Router>
-      <AppShell>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/pay-challan" element={
-            <ProtectedRoute>
-              <PayChallan />
-            </ProtectedRoute>
-          } />
-          <Route path="/vehicle-info" element={
-            <ProtectedRoute>
-              <VehicleInfo />
-            </ProtectedRoute>
-          } />
-          <Route path="/support" element={<Support />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/history" element={<History />} />
-          <Route path="/payment-success" element={<PaymentSuccess />} />
-        </Routes>
-        <WhatsAppButton />
-      </AppShell>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppShell>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/pay-challan" element={
+              <ProtectedRoute>
+                <PayChallan />
+              </ProtectedRoute>
+            } />
+            <Route path="/vehicle-info" element={
+              <ProtectedRoute>
+                <VehicleInfo />
+              </ProtectedRoute>
+            } />
+            <Route path="/support" element={<Support />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/history" element={<History />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+          </Routes>
+          <WhatsAppButton />
+        </AppShell>
+      </Router>
+    </AuthProvider>
   )
 }
 

@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -8,44 +9,14 @@ const navLinks = [
   { to: '/support', label: 'Support' },
 ]
 
-// Read user from localStorage safely
-const readUser = () => {
-  try {
-    const u = localStorage.getItem('user')
-    return u ? JSON.parse(u) : null
-  } catch { return null }
-}
-
 export default function Navbar() {
-  const [user, setUser] = useState(readUser)
+  const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
-  const sync = () => setUser(readUser())
-
-  useEffect(() => {
-    sync()
-    window.addEventListener('storage', sync)
-    window.addEventListener('userLogout', sync)
-    window.addEventListener('userLogin', sync)
-    return () => {
-      window.removeEventListener('storage', sync)
-      window.removeEventListener('userLogout', sync)
-      window.removeEventListener('userLogin', sync)
-    }
-  }, [])
-
-  // Re-sync on every route change — catches navigation after login
-  useEffect(() => {
-    sync()
-    setMobileOpen(false)
-  }, [pathname])
-
   const handleLogout = () => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
-    window.dispatchEvent(new Event('userLogout'))
+    logout()
     setMobileOpen(false)
     navigate('/')
   }
