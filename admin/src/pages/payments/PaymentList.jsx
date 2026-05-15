@@ -41,7 +41,7 @@ export default function PaymentList() {
       if (dateFrom) exportParams.set('dateFrom', dateFrom)
       if (dateTo) exportParams.set('dateTo', dateTo)
 
-      const res = await fetch(apiUrl(`/api/admin/payments/export/csv?${exportParams}`, {
+      const res = await fetch(apiUrl(`/api/admin/payments/export/csv?${exportParams}`), {
         headers: authHeaders()
       })
 
@@ -70,7 +70,7 @@ export default function PaymentList() {
       if (dateFrom) exportParams.set('dateFrom', dateFrom)
       if (dateTo) exportParams.set('dateTo', dateTo)
 
-      const res = await fetch(apiUrl(`/api/admin/payments/export/pdf?${exportParams}`, {
+      const res = await fetch(apiUrl(`/api/admin/payments/export/pdf?${exportParams}`), {
         headers: authHeaders()
       })
       const blob = await res.blob()

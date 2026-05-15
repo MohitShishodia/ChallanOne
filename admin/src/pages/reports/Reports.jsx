@@ -26,7 +26,7 @@ export default function Reports() {
     setLoading(true)
     try {
       const [revRes, custRes, reconcRes] = await Promise.all([
-        fetch(apiUrl(`/api/admin/reports/revenue?period=${period}`, { headers: authHeaders() }),
+        fetch(apiUrl(`/api/admin/reports/revenue?period=${period}`), { headers: authHeaders() }),
         fetch(apiUrl('/api/admin/reports/customers'), { headers: authHeaders() }),
         fetch(apiUrl('/api/admin/reports/reconciliation'), { headers: authHeaders() })
       ])
