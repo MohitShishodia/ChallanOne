@@ -117,6 +117,26 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// DB diagnostic endpoint
+app.get('/api/health/db', async (req, res) => {
+  try {
+    const mongoose = (await import('./config/mongodb.js')).default;
+    const state = mongoose.connection.readyState;
+    // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
+    const stateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    const mongoUri = process.env.MONGODB_URI;
+    res.json({
+      status: stateMap[state] || 'unknown',
+      readyState: state,
+      hasMongoUri: !!mongoUri,
+      uriPreview: mongoUri ? mongoUri.replace(/:([^@]+)@/, ':****@') : 'NOT SET',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 httpServer.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`👑 Admin API ready at http://localhost:${PORT}/api/admin`);
