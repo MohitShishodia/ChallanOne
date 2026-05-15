@@ -115,6 +115,7 @@ body {
   flex: 1;
   margin-left: 256px;
   min-height: 100vh;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   transition: margin-left var(--transition);
@@ -127,14 +128,43 @@ body {
 @media (max-width: 1024px) {
   .admin-sidebar {
     transform: translateX(-100%);
+    box-shadow: none;
   }
 
   .admin-sidebar.mobile-open {
     transform: translateX(0);
+    box-shadow: 8px 0 40px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Drawer always shows labels + readable width even if collapsed class lingers */
+  .admin-sidebar.mobile-open.collapsed {
+    width: min(288px, 86vw);
+  }
+
+  .admin-sidebar.mobile-open.collapsed .sidebar-logo-text {
+    opacity: 1;
+    width: auto;
+  }
+
+  .admin-sidebar.mobile-open.collapsed .sidebar-section-label {
+    opacity: 1;
+  }
+
+  .admin-sidebar.mobile-open.collapsed .sidebar-nav-item .nav-label {
+    opacity: 1;
+  }
+
+  .admin-sidebar.mobile-open.collapsed .nav-badge {
+    opacity: 1;
   }
 
   .admin-content {
     margin-left: 0 !important;
+  }
+
+  /* Collapse control is irrelevant on overlay drawer */
+  .sidebar-collapse-btn {
+    display: none;
   }
 }
 
@@ -155,6 +185,27 @@ body {
 .admin-main {
   flex: 1;
   padding: 28px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .admin-main {
+    padding: 14px 16px;
+  }
+
+  .admin-topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .page-title {
+    font-size: 19px;
+  }
+
+  .page-header {
+    margin-bottom: 16px;
+  }
 }
 
 /* ===============================
@@ -362,6 +413,70 @@ body {
 
 .stat-card-trend.up { color: #10b981; }
 .stat-card-trend.down { color: #ef4444; }
+
+/* ----- Dashboard: responsive grids (avoid horizontal overflow on phones) ----- */
+.dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 960px) {
+  .dashboard-charts-grid {
+    grid-template-columns: 1fr minmax(260px, 340px);
+  }
+}
+
+.dashboard-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+@media (min-width: 960px) {
+  .dashboard-bottom-grid {
+    grid-template-columns: 1fr minmax(260px, 300px);
+  }
+}
+
+.dashboard-mini-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+@media (min-width: 640px) {
+  .dashboard-mini-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card-header.dashboard-chart-header {
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.card-header.dashboard-chart-header .dashboard-period-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .topbar-profile-text {
+    display: none !important;
+  }
+}
 
 /* ===============================
    BUTTONS
@@ -702,6 +817,13 @@ body {
   margin-bottom: 24px;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.page-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .page-title {

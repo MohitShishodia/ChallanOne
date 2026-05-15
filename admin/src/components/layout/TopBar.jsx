@@ -98,7 +98,7 @@ export default function TopBar({ onMenuClick, pageTitle }) {
             }}>
               {admin?.name?.charAt(0)?.toUpperCase() || 'A'}
             </div>
-            <div style={{ textAlign: 'left' }}>
+            <div className="topbar-profile-text" style={{ textAlign: 'left' }}>
               <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {admin?.name || 'Admin'}
               </div>

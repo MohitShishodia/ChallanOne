@@ -30,13 +30,17 @@ export default function AdminLayout({ children }) {
     setMobileOpen(false)
   }, [location.pathname])
 
-  // Collapse sidebar on small screens
+  // Tablet: icon rail. Mobile (≤1024px): drawer uses full sidebar width + labels (not collapsed).
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1280px)')
-    if (mq.matches) setCollapsed(true)
-    const handler = (e) => { if (e.matches) setCollapsed(true) }
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
+    const applyForViewport = () => {
+      const w = window.innerWidth
+      if (w <= 1024) setCollapsed(false)
+      else if (w <= 1280) setCollapsed(true)
+      else setCollapsed(false)
+    }
+    applyForViewport()
+    window.addEventListener('resize', applyForViewport)
+    return () => window.removeEventListener('resize', applyForViewport)
   }, [])
 
   const pageTitle = Object.entries(PAGE_TITLES).find(([route]) =>

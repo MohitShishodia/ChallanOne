@@ -100,8 +100,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           })}
         </nav>
 
-        {/* Admin info + collapse toggle */}
-        <div style={{
+        {/* Admin info + collapse toggle (collapse hidden on mobile drawer — labels always visible) */}
+        <div className="sidebar-footer" style={{
           borderTop: '1px solid rgba(255,255,255,0.06)',
           padding: '12px',
           display: 'flex',
@@ -127,8 +127,10 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </div>
           </div>
           <button
+            type="button"
             onClick={onToggle}
-            className="nav-label"
+            className="nav-label sidebar-collapse-btn"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
               background: 'rgba(255,255,255,0.06)',
               border: 'none',

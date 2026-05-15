@@ -155,7 +155,7 @@ export default function Dashboard() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Welcome back! Here's your platform overview.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="page-header-actions">
           <button className="btn btn-secondary" onClick={loadAll}>
             <RefreshCw size={14} />
             Refresh
@@ -168,12 +168,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 18,
-        marginBottom: 28
-      }} className="stagger-children">
+      <div className="dashboard-stats-grid stagger-children">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
           : STAT_CARDS.map(card => {
@@ -201,12 +196,12 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 18, marginBottom: 24 }}>
+      <div className="dashboard-charts-grid">
         {/* Revenue Chart */}
         <div className="card">
-          <div className="card-header">
+          <div className="card-header dashboard-chart-header">
             <span className="card-title">Revenue Trends</span>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div className="dashboard-period-toggles">
               {['daily', 'monthly', 'yearly'].map(p => (
                 <button
                   key={p}
@@ -307,7 +302,7 @@ export default function Dashboard() {
       </div>
 
       {/* Activity Feed + Quick Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 18 }}>
+      <div className="dashboard-bottom-grid">
         {/* Recent Activity */}
         <div className="card">
           <div className="card-header" style={{ marginBottom: 4 }}>
@@ -431,12 +426,7 @@ export default function Dashboard() {
 
       {/* Secondary stats row */}
       {stats && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 14,
-          marginTop: 18
-        }}>
+        <div className="dashboard-mini-stats">
           {[
             { label: "Today's Revenue", value: formatCurrency(stats.todayRevenue), icon: '💰', color: '#10b981' },
             { label: "Today's Payments", value: formatNumber(stats.todayPayments), icon: '📊', color: '#2563eb' },
