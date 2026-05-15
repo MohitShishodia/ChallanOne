@@ -60,11 +60,35 @@ io.on('connection', (socket) => {
   });
 });
 
+// Allowed frontend origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://challan-6em3pm74m-mohits-projects-af211191.vercel.app',
+  'https://challanone.vercel.app',
+  /\.vercel\.app$/   // allow all vercel preview deployments
+];
+
 // Middleware
 app.use(cors({
-  origin: '*',
-  credentials: false // must be false when origin is '*'
+  origin: function (origin, callback) {
+    // allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    const isAllowed = allowedOrigins.some(o =>
+      o instanceof RegExp ? o.test(origin) : o === origin
+    );
+    if (isAllowed) return callback(null, true);
+    // still allow unknown origins in development
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Explicitly handle preflight for all routes
+app.options('*', cors());
+
 app.use(express.json());
 
 // Customer-facing routes

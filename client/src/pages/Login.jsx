@@ -138,7 +138,8 @@ export default function Login() {
         onBack={() => showForgot ? setShowForgot(false) : navigate('/')}
       />
 
-      <div className="screen-content space-y-5">
+      <div className="screen-content">
+        <div className="container-narrow py-8 md:py-12 space-y-5">
         <div className="text-center pt-2 animate-fade-up">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/30">
             <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -324,6 +325,7 @@ export default function Login() {
         <p className="text-center text-[11px] text-slate-400">
           By continuing you agree to our <Link to="/" className="text-slate-500">Terms</Link> & <Link to="/" className="text-slate-500">Privacy Policy</Link>
         </p>
+        </div>
       </div>
     </div>
   )
