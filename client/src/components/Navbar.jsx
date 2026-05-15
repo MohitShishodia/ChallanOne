@@ -22,9 +22,11 @@ export default function Navbar() {
     sync()
     window.addEventListener('storage', sync)
     window.addEventListener('userLogout', sync)
+    window.addEventListener('userLogin', sync)
     return () => {
       window.removeEventListener('storage', sync)
       window.removeEventListener('userLogout', sync)
+      window.removeEventListener('userLogin', sync)
     }
   }, [])
 

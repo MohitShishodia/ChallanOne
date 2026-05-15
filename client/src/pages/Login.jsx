@@ -60,6 +60,7 @@ export default function Login() {
         if (data.success) {
           localStorage.setItem('authToken', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
+          window.dispatchEvent(new Event('userLogin'))
           setSuccess('Login successful! Redirecting...')
           setTimeout(() => navigate('/'), 800)
         } else setError(data.message || 'Login failed')
@@ -73,6 +74,7 @@ export default function Login() {
         if (data.success) {
           localStorage.setItem('authToken', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
+          window.dispatchEvent(new Event('userLogin'))
           setSuccess('Account created! Redirecting...')
           setTimeout(() => navigate('/'), 800)
         } else setError(data.message || 'Signup failed')
