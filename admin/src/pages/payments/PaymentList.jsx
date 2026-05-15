@@ -8,6 +8,7 @@ import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
 import { formatCurrency, formatDateTime } from '../../utils/formatters'
 import toast from 'react-hot-toast'
+import { apiUrl } from '../../utils/api'
 import { useAuth } from '../../context/AuthContext'
 
 export default function PaymentList() {
@@ -40,7 +41,7 @@ export default function PaymentList() {
       if (dateFrom) exportParams.set('dateFrom', dateFrom)
       if (dateTo) exportParams.set('dateTo', dateTo)
 
-      const res = await fetch(`/api/admin/payments/export/csv?${exportParams}`, {
+      const res = await fetch(apiUrl(`/api/admin/payments/export/csv?${exportParams}`, {
         headers: authHeaders()
       })
 
@@ -69,7 +70,7 @@ export default function PaymentList() {
       if (dateFrom) exportParams.set('dateFrom', dateFrom)
       if (dateTo) exportParams.set('dateTo', dateTo)
 
-      const res = await fetch(`/api/admin/payments/export/pdf?${exportParams}`, {
+      const res = await fetch(apiUrl(`/api/admin/payments/export/pdf?${exportParams}`, {
         headers: authHeaders()
       })
       const blob = await res.blob()

@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 
 const AuthContext = createContext(null)
 
-const API_BASE = '/api/admin'
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/admin`
 
 export function AuthProvider({ children }) {
   const [admin, setAdmin] = useState(null)

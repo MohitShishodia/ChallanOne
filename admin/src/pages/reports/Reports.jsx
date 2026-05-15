@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Download, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatNumber } from '../../utils/formatters'
+import { apiUrl } from '../../utils/api'
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -25,9 +26,9 @@ export default function Reports() {
     setLoading(true)
     try {
       const [revRes, custRes, reconcRes] = await Promise.all([
-        fetch(`/api/admin/reports/revenue?period=${period}`, { headers: authHeaders() }),
-        fetch('/api/admin/reports/customers', { headers: authHeaders() }),
-        fetch('/api/admin/reports/reconciliation', { headers: authHeaders() })
+        fetch(apiUrl(`/api/admin/reports/revenue?period=${period}`, { headers: authHeaders() }),
+        fetch(apiUrl('/api/admin/reports/customers'), { headers: authHeaders() }),
+        fetch(apiUrl('/api/admin/reports/reconciliation'), { headers: authHeaders() })
       ])
       const [rev, cust, reconcData] = await Promise.all([revRes.json(), custRes.json(), reconcRes.json()])
       if (rev.success) setRevenueData(rev)

@@ -1,6 +1,7 @@
 // Custom fetch hook with auth token injection and error handling
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { apiUrl } from '../utils/api'
 
 export function useFetch(url, options = {}) {
   const { authHeaders, logout } = useAuth()
@@ -14,7 +15,7 @@ export function useFetch(url, options = {}) {
     setError(null)
 
     try {
-      const res = await fetch(url, {
+      const res = await fetch(apiUrl(url), {
         ...options,
         headers: { ...authHeaders(), ...options.headers }
       })
@@ -52,7 +53,7 @@ export function useApi() {
   const request = useCallback(async (url, { method = 'GET', body, ...opts } = {}) => {
     setLoading(true)
     try {
-      const res = await fetch(url, {
+      const res = await fetch(apiUrl(url), {
         method,
         headers: authHeaders(),
         body: body ? JSON.stringify(body) : undefined,

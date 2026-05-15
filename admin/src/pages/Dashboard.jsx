@@ -1,6 +1,6 @@
-// Admin Dashboard - Main analytics overview
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { apiUrl } from '../utils/api'
 import { formatCurrency, formatNumber, formatRelativeTime } from '../utils/formatters'
 import Badge from '../components/ui/Badge'
 import {
@@ -92,10 +92,10 @@ export default function Dashboard() {
     setLoading(true)
     try {
       const [statsRes, chartRes, challanRes, activityRes] = await Promise.all([
-        fetch('/api/admin/dashboard/stats', { headers: authHeaders() }),
-        fetch(`/api/admin/dashboard/revenue-chart?period=${period}`, { headers: authHeaders() }),
-        fetch('/api/admin/dashboard/challan-stats', { headers: authHeaders() }),
-        fetch('/api/admin/dashboard/recent-activity?limit=10', { headers: authHeaders() })
+        fetch(apiUrl('/api/admin/dashboard/stats'), { headers: authHeaders() }),
+        fetch(apiUrl(`/api/admin/dashboard/revenue-chart?period=${period}`), { headers: authHeaders() }),
+        fetch(apiUrl('/api/admin/dashboard/challan-stats'), { headers: authHeaders() }),
+        fetch(apiUrl('/api/admin/dashboard/recent-activity?limit=10'), { headers: authHeaders() })
       ])
 
       const [statsData, chartData, challanData, activityData] = await Promise.all([

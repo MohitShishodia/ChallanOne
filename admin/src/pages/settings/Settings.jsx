@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Save, RefreshCw } from 'lucide-react'
 import { useApi } from '../../hooks/useFetch'
+import { apiUrl } from '../../utils/api'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -16,7 +17,7 @@ export default function Settings() {
   async function loadSettings() {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/settings', { headers: authHeaders() })
+      const res = await fetch(apiUrl('/api/admin/settings'), { headers: authHeaders() })
       const data = await res.json()
       if (data.success) setSettings(data.settings)
     } catch { toast.error('Failed to load settings') }
