@@ -8,17 +8,23 @@ const navLinks = [
   { to: '/support', label: 'Support' },
 ]
 
+// Read user from localStorage safely
+const readUser = () => {
+  try {
+    const u = localStorage.getItem('user')
+    return u ? JSON.parse(u) : null
+  } catch { return null }
+}
+
 export default function Navbar() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(readUser)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
+  const sync = () => setUser(readUser())
+
   useEffect(() => {
-    const sync = () => {
-      const u = localStorage.getItem('user')
-      setUser(u ? JSON.parse(u) : null)
-    }
     sync()
     window.addEventListener('storage', sync)
     window.addEventListener('userLogout', sync)
@@ -30,8 +36,9 @@ export default function Navbar() {
     }
   }, [])
 
-  // Close mobile menu on route change
+  // Re-sync on every route change — catches navigation after login
   useEffect(() => {
+    sync()
     setMobileOpen(false)
   }, [pathname])
 
