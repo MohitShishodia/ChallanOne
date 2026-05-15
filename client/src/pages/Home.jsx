@@ -8,25 +8,24 @@ export default function Home() {
       <div className="screen-content">
         {/* ── HERO SECTION ── */}
         <section className="bg-gradient-to-br from-blue-50 via-sky-50 to-white">
-          <div className="container-main py-12 md:py-20">
-            <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+          <div className="container-main py-5 md:py-20">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-12 items-center">
               {/* Left - Text */}
-              <div className="space-y-6 animate-fade-up">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[12px] font-semibold text-emerald-700 border border-emerald-100">
+              <div className="space-y-3 md:space-y-6 animate-fade-up">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] md:text-[12px] font-semibold text-emerald-700 border border-emerald-100">
                   <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.7-9.3a1 1 0 00-1.4-1.4L9 10.6 7.7 9.3a1 1 0 00-1.4 1.4l2 2a1 1 0 001.4 0l4-4z" />
                   </svg>
                   India's Most Trusted Platform
                 </div>
                 <h1 className="h-display">
-                  Check Vehicle<br />
-                  Challan & RC Details<br />
+                  Check Vehicle Challan & RC Details{' '}
                   <span className="text-blue-600">in Seconds</span>
                 </h1>
-                <p className="text-[16px] md:text-[18px] leading-relaxed text-slate-500 max-w-lg">
+                <p className="text-[13px] md:text-[18px] leading-relaxed text-slate-500 max-w-lg">
                   Fast, secure and reliable platform for checking traffic challans and vehicle registration details across India.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2.5 md:gap-3 pt-1 md:pt-2">
                   <Link to="/pay-challan" className="btn-primary">
                     Check Challan
                   </Link>
@@ -37,25 +36,25 @@ export default function Home() {
               </div>
 
               {/* Right - Illustration */}
-              <div className="animate-fade-up relative">
-                <div className="hero-illu">
-                  <HeroHomeIllustration className="w-full" />
+              <div className="animate-fade-up relative mt-2 md:mt-0">
+                <div className="hero-illu h-[40vh] md:h-auto md:max-h-none">
+                  <HeroHomeIllustration className="w-full h-full object-cover" />
                 </div>
                 {/* Floating status card */}
-                <div className="absolute -bottom-4 -left-4 md:left-auto md:-right-4 md:-bottom-6 w-[240px] surface-card animate-float p-4 z-10">
+                <div className="absolute bottom-2 left-2 md:left-auto md:-right-4 md:-bottom-6 w-[170px] md:w-[240px] surface-card animate-float p-2.5 md:p-4 z-10">
                   <div className="mb-1 flex items-center justify-between">
                     <p className="text-[10px] font-semibold text-slate-500">Challan Status</p>
                     <span className="pill pill-pending text-[9px]">Pending</span>
                   </div>
                   <p className="text-[10px] text-slate-500">Amount</p>
-                  <p className="text-[20px] font-bold text-slate-900 leading-tight">₹ 2,500</p>
+                  <p className="text-[16px] md:text-[20px] font-bold text-slate-900 leading-tight">₹ 2,500</p>
                   <div className="mt-1 grid grid-cols-2 text-[10px]">
                     <div>
                       <p className="text-slate-500">Due Date</p>
                       <p className="font-semibold text-slate-900">12 May 2024</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 border-t border-slate-100 pt-2 mt-2 text-[10px]">
+                  <div className="grid grid-cols-2 gap-1 border-t border-slate-100 pt-1.5 mt-1.5 text-[10px]">
                     <div>
                       <p className="text-slate-500">RC Details</p>
                       <p className="font-semibold text-slate-900 truncate">UP32AB1234</p>
@@ -73,8 +72,8 @@ export default function Home() {
 
         {/* ── STATS ── */}
         <section className="bg-white border-b border-slate-100">
-          <div className="container-main py-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+          <div className="container-main py-6 md:py-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
               <Stat title="20K+" subtitle="Active Users" />
               <Stat title="50K+" subtitle="Searches Done" />
               <Stat title="99.9%" subtitle="Accuracy Rate" />
@@ -86,11 +85,11 @@ export default function Home() {
         {/* ── FEATURES ── */}
         <section className="section-spacing bg-slate-50">
           <div className="container-main">
-            <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
+            <div className="text-center max-w-2xl mx-auto mb-6 md:mb-14">
               <h2 className="h-section">Everything You Need in One Place</h2>
-              <p className="mt-2 text-[15px] md:text-[16px] text-slate-500">Powerful features to help you stay compliant and avoid penalties</p>
+              <p className="mt-2 text-[14px] md:text-[16px] text-slate-500">Powerful features to help you stay compliant and avoid penalties</p>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <FeatureCard
                 tone="blue"
                 title="Instant Challan Check"
@@ -131,23 +130,23 @@ export default function Home() {
         {/* ── HOW IT WORKS ── */}
         <section className="section-spacing bg-white">
           <div className="container-main">
-            <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
+            <div className="text-center max-w-2xl mx-auto mb-6 md:mb-14">
               <h2 className="h-section">How It Works</h2>
-              <p className="mt-2 text-[15px] md:text-[16px] text-slate-500">Get your vehicle information in 3 simple steps</p>
+              <p className="mt-2 text-[14px] md:text-[16px] text-slate-500">Get your vehicle information in 3 simple steps</p>
             </div>
-            <div className="grid sm:grid-cols-3 gap-8 md:gap-12 max-w-4xl mx-auto">
+            <div className="grid sm:grid-cols-3 gap-6 md:gap-12 max-w-4xl mx-auto">
               {howItWorksSteps.map((step, idx) => (
                 <div key={step.num} className="text-center animate-fade-up">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-[0_2px_8px_-2px_rgba(37,99,235,0.25)] mb-5">
+                  <div className="mx-auto flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-[0_2px_8px_-2px_rgba(37,99,235,0.25)] mb-3 md:mb-5">
                     {step.icon}
                   </div>
                   <p className="text-[11px] font-bold tracking-widest text-blue-600 mb-1">{step.num}</p>
-                  <p className="text-[17px] font-bold text-slate-900">{step.title}</p>
-                  <p className="text-[14px] text-slate-500 mt-2 leading-relaxed">{step.desc}</p>
+                  <p className="text-[16px] md:text-[17px] font-bold text-slate-900">{step.title}</p>
+                  <p className="text-[13px] md:text-[14px] text-slate-500 mt-1.5 md:mt-2 leading-relaxed">{step.desc}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-12 max-w-2xl mx-auto">
+            <div className="mt-8 md:mt-12 max-w-2xl mx-auto">
               <div className="trust-card">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
@@ -169,7 +168,7 @@ export default function Home() {
         {/* ── FOOTER ── */}
         <footer className="site-footer">
           <div className="container-main">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-10">
               <div>
                 <div className="flex items-center gap-2.5 mb-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
@@ -263,12 +262,12 @@ function ContactUsSection() {
   return (
     <section className="section-spacing bg-slate-50">
       <div className="container-main">
-        <div className="text-center max-w-2xl mx-auto mb-10">
+        <div className="text-center max-w-2xl mx-auto mb-6 md:mb-10">
           <h2 className="h-section">Contact Us</h2>
-          <p className="mt-2 text-[15px] text-slate-500">We're here to help you</p>
+          <p className="mt-2 text-[14px] md:text-[15px] text-slate-500">We're here to help you</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto">
           {/* Left - Form */}
           <div>
             {submitted ? (

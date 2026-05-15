@@ -52,7 +52,12 @@
     @apply relative flex min-h-screen flex-col bg-white;
   }
   .screen-content {
-    @apply flex-1 pt-6 pb-16;
+    @apply flex-1 pt-2 pb-10;
+  }
+  @media (min-width: 768px) {
+    .screen-content {
+      @apply pt-6 pb-16;
+    }
   }
 
   /* ===== TOP NAVBAR ===== */
@@ -61,7 +66,7 @@
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
   .site-navbar-inner {
-    @apply mx-auto flex h-16 items-center justify-between px-4;
+    @apply mx-auto flex h-14 items-center justify-between px-4;
     max-width: 1200px;
   }
   @media (min-width: 768px) {
@@ -138,11 +143,11 @@
 
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-blue-700 active:scale-[0.99] disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 md:px-6 md:py-3.5 text-[14px] md:text-[15px] font-semibold text-white transition hover:bg-blue-700 active:scale-[0.99] disabled:opacity-60;
     box-shadow: 0 8px 20px -8px rgba(37, 99, 235, 0.5);
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.99];
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 md:px-6 md:py-3.5 text-[14px] md:text-[15px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.99];
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-[15px] font-semibold text-slate-700 transition hover:bg-slate-100;
@@ -173,11 +178,11 @@
 
   /* Display headings */
   .h-display {
-    @apply text-[28px] font-bold text-slate-900 leading-[1.18] tracking-tight;
+    @apply text-[22px] font-bold text-slate-900 leading-[1.2] tracking-tight;
   }
   @media (min-width: 768px) {
     .h-display {
-      @apply text-[40px];
+      @apply text-[40px] leading-[1.18];
     }
   }
   @media (min-width: 1024px) {
@@ -201,7 +206,7 @@
 
   /* Section spacing */
   .section-spacing {
-    @apply py-12;
+    @apply py-8;
   }
   @media (min-width: 768px) {
     .section-spacing {
@@ -211,7 +216,12 @@
 
   /* Footer */
   .site-footer {
-    @apply bg-slate-900 text-slate-400 py-12;
+    @apply bg-slate-900 text-slate-400 py-8;
+  }
+  @media (min-width: 768px) {
+    .site-footer {
+      @apply py-12;
+    }
   }
   .site-footer a {
     @apply text-slate-300 hover:text-white transition;
