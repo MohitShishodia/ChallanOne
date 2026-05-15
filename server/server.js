@@ -38,7 +38,7 @@ const PORT = process.env.PORT || 5000;
 // Socket.IO for real-time updates
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: '*',
     methods: ['GET', 'POST']
   }
 });
@@ -62,8 +62,8 @@ io.on('connection', (socket) => {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
-  credentials: true
+  origin: '*',
+  credentials: false // must be false when origin is '*'
 }));
 app.use(express.json());
 
@@ -93,8 +93,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-httpServer.listen(PORT, async () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', async () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`👑 Admin API ready at http://localhost:${PORT}/api/admin`);
 
   // Connect to MongoDB

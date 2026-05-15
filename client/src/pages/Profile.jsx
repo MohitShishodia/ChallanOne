@@ -1,186 +1,121 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
+
+const readUser = () => {
+  if (typeof window === 'undefined') return null
+  const storedUser = window.localStorage.getItem('user')
+  if (!storedUser) return null
+  try { return JSON.parse(storedUser) } catch { return null }
+}
 
 export default function Profile() {
-  const [user, setUser] = useState(null)
+  const [user] = useState(readUser)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (!storedUser) {
-      navigate('/login')
-      return
-    }
-    setUser(JSON.parse(storedUser))
-  }, [navigate])
+    if (!user) navigate('/login')
+  }, [user, navigate])
 
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
-    // Dispatch custom event for Header to update
     window.dispatchEvent(new Event('userLogout'))
     navigate('/')
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="screen">
+        <PageHeader title="Profile" />
+        <div className="screen-content flex items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+        </div>
       </div>
     )
   }
 
+  const initial = (user.name || user.email || user.phone || 'U').charAt(0).toUpperCase()
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <Link to="/" className="hover:text-gray-700">Home</Link>
-          <span>›</span>
-          <span className="text-gray-700">My Profile</span>
-        </nav>
+    <div className="screen">
+      <PageHeader title="Profile" />
 
-        {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-12">
-            <div className="flex items-center gap-6">
-              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-blue-600 text-4xl font-bold shadow-lg">
-                {(user.name || user.email || user.phone || 'U').charAt(0).toUpperCase()}
-              </div>
-              <div className="text-white">
-                <h1 className="text-3xl font-bold">
-                  {user.name || 'User'}
-                </h1>
-                <p className="text-blue-100 mt-1">
-                  {user.email || user.phone}
-                </p>
-                <span className="inline-flex items-center gap-1 bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-full mt-3">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Verified Account
-                </span>
-              </div>
+      <div className="screen-content">
+        <div className="container-narrow py-8 md:py-12 space-y-6">
+          <div className="surface-card p-6 md:p-8 text-center animate-fade-up bg-gradient-to-br from-blue-600 to-blue-800 border-blue-700">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-blue-600 text-3xl font-bold shadow-md">
+              {initial}
             </div>
-          </div>
-        </div>
-
-        {/* Profile Details */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Account Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <h2 className="mt-3 text-[22px] font-bold text-white">{user.name || 'User'}</h2>
+            <p className="text-[14px] text-blue-100">{user.email || user.phone}</p>
+            <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white">
+              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
               </svg>
-              Account Information
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wide">Full Name</label>
-                <p className="text-gray-900 font-medium">{user.name || 'Not Provided'}</p>
-              </div>
-              
-              <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wide">Email Address</label>
-                <p className="text-gray-900 font-medium">{user.email || 'Not Provided'}</p>
-              </div>
-              
-              <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wide">Mobile Number</label>
-                <p className="text-gray-900 font-medium">{user.phone ? `+91 ${user.phone}` : 'Not Provided'}</p>
-              </div>
-              
-              <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wide">User ID</label>
-                <p className="text-gray-600 font-mono text-sm">{user.id}</p>
-              </div>
-              
-              <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wide">Member Since</label>
-                <p className="text-gray-900 font-medium">
-                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  }) : 'Recently Joined'}
-                </p>
-              </div>
+              Verified Account
+            </span>
+          </div>
+
+          <div className="surface-card p-5 md:p-6 animate-fade-up">
+            <h3 className="h-section">Account Information</h3>
+            <div className="mt-3 divide-y divide-slate-100">
+              <Field label="Full Name" value={user.name || 'Not Provided'} />
+              <Field label="Email" value={user.email || 'Not Provided'} />
+              <Field label="Mobile" value={user.phone ? `+91 ${user.phone}` : 'Not Provided'} />
+              <Field
+                label="Member Since"
+                value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Recently Joined'}
+              />
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Quick Actions
-            </h2>
-            
-            <div className="space-y-3">
-              <Link 
-                to="/track-challan"
-                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-              >
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Track Challan</p>
-                  <p className="text-sm text-gray-500">Search and pay pending challans</p>
-                </div>
-              </Link>
-              
-              <Link 
-                to="/my-challans"
-                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-              >
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">My Challans</p>
-                  <p className="text-sm text-gray-500">View your challan history</p>
-                </div>
-              </Link>
-              
-              <Link 
-                to="/support"
-                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-              >
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Get Support</p>
-                  <p className="text-sm text-gray-500">Contact our help center</p>
-                </div>
-              </Link>
-            </div>
+          <div className="surface-card p-2 animate-fade-up">
+            <ProfileLink to="/history" title="Search History" desc="View your recent challan and RC lookups" tone="blue" />
+            <ProfileLink to="/support" title="Help & Support" desc="Contact our help center" tone="emerald" />
           </div>
-        </div>
 
-        {/* Logout Button */}
-        <div className="mt-6">
-          <button
-            onClick={handleLogout}
-            className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <button onClick={handleLogout} className="btn-secondary border-rose-100 text-rose-600 hover:bg-rose-50 w-full">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Logout
           </button>
         </div>
       </div>
     </div>
+  )
+}
+
+function Field({ label, value }) {
+  return (
+    <div className="flex items-center justify-between py-3">
+      <span className="text-[12px] font-medium text-slate-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[13.5px] font-semibold text-slate-900 max-w-[60%] truncate text-right">{value}</span>
+    </div>
+  )
+}
+
+function ProfileLink({ to, title, desc, tone }) {
+  const tones = {
+    blue: 'bg-blue-50 text-blue-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    amber: 'bg-amber-50 text-amber-600',
+  }
+  return (
+    <Link to={to} className="flex items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold text-slate-900">{title}</p>
+        <p className="text-[12px] text-slate-500 truncate">{desc}</p>
+      </div>
+      <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </Link>
   )
 }

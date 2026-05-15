@@ -1,617 +1,396 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import AnimatedCounter from '../components/ui/AnimatedCounter'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { HeroHomeIllustration, SupportIllustration } from '../components/Illustrations'
 
 export default function Home() {
-  const [vehicleNumber, setVehicleNumber] = useState('')
-  const [currentTestimonial, setCurrentTestimonial] = useState(0)
-  const [currentStep, setCurrentStep] = useState(0)
-  const navigate = useNavigate()
+  return (
+    <div className="screen">
+      <div className="screen-content">
+        {/* ── HERO SECTION ── */}
+        <section className="bg-gradient-to-br from-blue-50 via-sky-50 to-white">
+          <div className="container-main py-12 md:py-20">
+            <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+              {/* Left - Text */}
+              <div className="space-y-6 animate-fade-up">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[12px] font-semibold text-emerald-700 border border-emerald-100">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.7-9.3a1 1 0 00-1.4-1.4L9 10.6 7.7 9.3a1 1 0 00-1.4 1.4l2 2a1 1 0 001.4 0l4-4z" />
+                  </svg>
+                  India's Most Trusted Platform
+                </div>
+                <h1 className="h-display">
+                  Check Vehicle<br />
+                  Challan & RC Details<br />
+                  <span className="text-blue-600">in Seconds</span>
+                </h1>
+                <p className="text-[16px] md:text-[18px] leading-relaxed text-slate-500 max-w-lg">
+                  Fast, secure and reliable platform for checking traffic challans and vehicle registration details across India.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Link to="/pay-challan" className="btn-primary">
+                    Check Challan
+                  </Link>
+                  <Link to="/vehicle-info" className="btn-secondary">
+                    Check RC Details
+                  </Link>
+                </div>
+              </div>
 
-  const testimonials = [
-    {
-      id: 1,
-      name: 'Ravi Kumar',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face',
-      rating: 5,
-      location: 'Mumbai, MH',
-      comment: 'I was worried about my pending challans, but this site made it so easy to clear them instantly. The interface is clean and very secure!',
-      likes: 128
-    },
-    {
-      id: 2,
-      name: 'Anita Desai',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=50&h=50&fit=crop&crop=face',
-      rating: 5,
-      location: 'Delhi, DL',
-      comment: 'Excellent support team. They helped me resolve a wrong challan issue within 24 hours. I really appreciate the quick turnaround.',
-      likes: 245
-    },
-    {
-      id: 3,
-      name: 'Sandeep Singh',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=50&h=50&fit=crop&crop=face',
-      rating: 5,
-      location: 'Bangalore, KA',
-      comment: 'Good experience overall. The payment process is smooth and the receipt generation is instant. Highly recommended!',
-      likes: 89
-    }
-  ]
+              {/* Right - Illustration */}
+              <div className="animate-fade-up relative">
+                <div className="hero-illu">
+                  <HeroHomeIllustration className="w-full" />
+                </div>
+                {/* Floating status card */}
+                <div className="absolute -bottom-4 -left-4 md:left-auto md:-right-4 md:-bottom-6 w-[240px] surface-card animate-float p-4 z-10">
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold text-slate-500">Challan Status</p>
+                    <span className="pill pill-pending text-[9px]">Pending</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">Amount</p>
+                  <p className="text-[20px] font-bold text-slate-900 leading-tight">₹ 2,500</p>
+                  <div className="mt-1 grid grid-cols-2 text-[10px]">
+                    <div>
+                      <p className="text-slate-500">Due Date</p>
+                      <p className="font-semibold text-slate-900">12 May 2024</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 border-t border-slate-100 pt-2 mt-2 text-[10px]">
+                    <div>
+                      <p className="text-slate-500">RC Details</p>
+                      <p className="font-semibold text-slate-900 truncate">UP32AB1234</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Owner</p>
+                      <p className="font-semibold text-slate-900 truncate">Amit Sharma</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-  // Auto-rotate testimonials on mobile
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
-    }, 4000)
-    return () => clearInterval(timer)
-  }, [testimonials.length])
+        {/* ── STATS ── */}
+        <section className="bg-white border-b border-slate-100">
+          <div className="container-main py-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+              <Stat title="20K+" subtitle="Active Users" />
+              <Stat title="50K+" subtitle="Searches Done" />
+              <Stat title="99.9%" subtitle="Accuracy Rate" />
+              <Stat title="100%" subtitle="Secure & Encrypted" />
+            </div>
+          </div>
+        </section>
 
-  // Auto-rotate steps on mobile
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentStep((prev) => (prev + 1) % 3)
-    }, 3000)
-    return () => clearInterval(timer)
-  }, [])
+        {/* ── FEATURES ── */}
+        <section className="section-spacing bg-slate-50">
+          <div className="container-main">
+            <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
+              <h2 className="h-section">Everything You Need in One Place</h2>
+              <p className="mt-2 text-[15px] md:text-[16px] text-slate-500">Powerful features to help you stay compliant and avoid penalties</p>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+              <FeatureCard
+                tone="blue"
+                title="Instant Challan Check"
+                desc="Check pending or paid challans by vehicle number instantly."
+                to="/pay-challan"
+                icon={
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                }
+              />
+              <FeatureCard
+                tone="emerald"
+                title="RC Details Lookup"
+                desc="Get detailed registration and ownership information."
+                to="/vehicle-info"
+                icon={
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+                  </svg>
+                }
+              />
+              <FeatureCard
+                tone="amber"
+                title="Secure & Private"
+                desc="Your data is encrypted, never stored or shared."
+                to="/support"
+                icon={
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c-1.66 0-3 1.34-3 3 0 1.31.84 2.41 2 2.83V19a1 1 0 002 0v-2.17c1.16-.42 2-1.52 2-2.83 0-1.66-1.34-3-3-3zm6-2V7a6 6 0 10-12 0v2a3 3 0 00-3 3v7a3 3 0 003 3h12a3 3 0 003-3v-7a3 3 0 00-3-3zM8 7a4 4 0 118 0v2H8V7z" />
+                  </svg>
+                }
+              />
+            </div>
+          </div>
+        </section>
 
-  const steps = [
-    { step: 1, icon: '🚗', title: 'Enter Vehicle Number', desc: 'Simply enter your vehicle registration number to fetch all pending challans' },
-    { step: 2, icon: '👁️', title: 'Review & Verify', desc: 'View challan details, violation photos, dates, and fine amounts' },
-    { step: 3, icon: '💳', title: 'Pay Securely', desc: 'Choose your preferred payment method and get instant digital receipt' }
-  ]
+        {/* ── HOW IT WORKS ── */}
+        <section className="section-spacing bg-white">
+          <div className="container-main">
+            <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
+              <h2 className="h-section">How It Works</h2>
+              <p className="mt-2 text-[15px] md:text-[16px] text-slate-500">Get your vehicle information in 3 simple steps</p>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-8 md:gap-12 max-w-4xl mx-auto">
+              {howItWorksSteps.map((step, idx) => (
+                <div key={step.num} className="text-center animate-fade-up">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-[0_2px_8px_-2px_rgba(37,99,235,0.25)] mb-5">
+                    {step.icon}
+                  </div>
+                  <p className="text-[11px] font-bold tracking-widest text-blue-600 mb-1">{step.num}</p>
+                  <p className="text-[17px] font-bold text-slate-900">{step.title}</p>
+                  <p className="text-[14px] text-slate-500 mt-2 leading-relaxed">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-12 max-w-2xl mx-auto">
+              <div className="trust-card">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c-1.66 0-3 1.34-3 3 0 1.31.84 2.41 2 2.83V19a1 1 0 002 0v-2.17c1.16-.42 2-1.52 2-2.83 0-1.66-1.34-3-3-3zm6-2V7a6 6 0 10-12 0v2a3 3 0 00-3 3v7a3 3 0 003 3h12a3 3 0 003-3v-7a3 3 0 00-3-3zM8 7a4 4 0 118 0v2H8V7z" />
+                  </svg>
+                </div>
+                <p>
+                  <span className="font-semibold text-slate-900">Your data is encrypted and secure.</span><br />
+                  We never store your personal information.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-  const nextTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
-  }
+        {/* ── CONTACT US ── */}
+        <ContactUsSection />
 
-  const prevTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length)
-  }
+        {/* ── FOOTER ── */}
+        <footer className="site-footer">
+          <div className="container-main">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+              <div>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+                    <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <span className="text-[16px] font-bold text-white">
+                    Challan<span className="text-blue-400">One</span>
+                  </span>
+                </div>
+                <p className="text-[13px] text-slate-400 leading-relaxed">India's most trusted platform for checking traffic challans and vehicle registration details.</p>
+              </div>
+              <div>
+                <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Quick Links</h4>
+                <div className="space-y-2.5">
+                  <Link to="/pay-challan" className="block text-[14px]">Check Challan</Link>
+                  <Link to="/vehicle-info" className="block text-[14px]">RC Details</Link>
+                  <Link to="/history" className="block text-[14px]">History</Link>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Support</h4>
+                <div className="space-y-2.5">
+                  <Link to="/support" className="block text-[14px]">Help Center</Link>
+                  <a href="mailto:support@challanone.com" className="block text-[14px]">support@challanone.com</a>
+                  <a href="tel:+911234567890" className="block text-[14px]">+91 12345 67890</a>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Office</h4>
+                <p className="text-[14px] leading-relaxed">193, Tech Park, Sector 62,<br />Noida, UP - 201301</p>
+              </div>
+            </div>
+            <div className="border-t border-slate-800 pt-6 text-center text-[13px]">
+              © {new Date().getFullYear()} ChallanOne. All rights reserved.
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+  )
+}
 
-  const renderStars = (rating) => {
-    return [...Array(5)].map((_, i) => (
-      <svg
-        key={i}
-        className={`w-5 h-5 ${i < rating ? 'text-yellow-400' : 'text-gray-300'}`}
-        fill="currentColor"
-        viewBox="0 0 20 20"
-      >
-        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+/* ── How It Works data ── */
+const howItWorksSteps = [
+  {
+    num: '01',
+    title: 'Enter Vehicle Number',
+    desc: 'Enter your vehicle number in the search box.',
+    icon: (
+      <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
+        <rect x="3" y="6" width="18" height="12" rx="2" />
+        <path strokeLinecap="round" d="M7 12h7M7 9h4M7 15h2" />
       </svg>
-    ))
-  }
+    ),
+  },
+  {
+    num: '02',
+    title: 'Fetch Data Securely',
+    desc: 'Our system fetches data from official sources.',
+    icon: (
+      <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4l8 4v6c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V8l8-4z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 12.5l1.8 1.8L15 10.5" />
+      </svg>
+    ),
+  },
+  {
+    num: '03',
+    title: 'View Results Instantly',
+    desc: 'Get instant results with accurate information.',
+    icon: (
+      <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l3-3 3 3 3-5 3 8 3-3 3 3" />
+      </svg>
+    ),
+  },
+]
 
-  const handleSearch = (e) => {
+/* ── Contact Us section ── */
+function ContactUsSection() {
+  const [formData, setFormData] = useState({ name: '', email: '', message: '' })
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = (e) => {
     e.preventDefault()
-    if (vehicleNumber.trim()) {
-      navigate(`/pay-challan?vehicle=${encodeURIComponent(vehicleNumber.trim())}`)
-    }
+    setSubmitted(true)
   }
 
   return (
-    <div className="flex flex-col">
-      {/* Hero Section - Premium */}
-      <section className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 overflow-hidden min-h-[90vh] flex items-center">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1920&q=80')] bg-cover bg-center opacity-15" />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-blue-900/90 to-slate-900/95" />
-          {/* Floating Gradient Orbs */}
-          <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-20 w-[500px] h-[500px] bg-indigo-500/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+    <section className="section-spacing bg-slate-50">
+      <div className="container-main">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <h2 className="h-section">Contact Us</h2>
+          <p className="mt-2 text-[15px] text-slate-500">We're here to help you</p>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left Content */}
-            <div className="text-center lg:text-left">
-              {/* Trust Badge */}
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 text-sm font-medium px-5 py-2.5 rounded-full border border-white/20 mb-8">
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                Trusted by 2M+ Users Across India
-              </div>
-
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-                Pay Your Traffic<br />
-                <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">Challans Instantly</span>
-              </h1>
-
-              <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-lg mx-auto lg:mx-0">
-                Check pending fines, view violation proofs, and pay securely with instant digital receipts recognized by all RTOs.
-              </p>
-
-              {/* Quick Action Buttons */}
-              <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-10">
-                <Link to="/pay-challan" className="btn-premium px-8 py-4 rounded-xl font-semibold flex items-center gap-3 text-lg">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {/* Left - Form */}
+          <div>
+            {submitted ? (
+              <div className="surface-card p-8 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                  <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
-                  Pay Challan Now
-                </Link>
-                <Link to="/vehicle-info" className="bg-white/10 backdrop-blur-md text-white px-8 py-4 rounded-xl font-semibold border border-white/20 hover:bg-white/20 transition-all flex items-center gap-3">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Vehicle Info
-                </Link>
-              </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap gap-6 justify-center lg:justify-start text-sm text-gray-400">
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  256-bit SSL Secure
-                </span>
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                  </svg>
-                  Instant Receipt
-                </span>
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  RTO Verified
-                </span>
-              </div>
-            </div>
-
-            {/* Right - Search Card */}
-            <div className="relative">
-              <div className="glass-card p-8 rounded-3xl relative overflow-hidden">
-                {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
-
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">Check Your Challans</h3>
-                      <p className="text-sm text-gray-500">Enter vehicle number to get started</p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleSearch} className="space-y-5">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Number</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </span>
-                        <input
-                          type="text"
-                          placeholder="MH-12-AB-1234"
-                          value={vehicleNumber}
-                          onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                          className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-lg font-medium tracking-wider"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full btn-premium py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                      Check & Pay Challans
-                    </button>
-                  </form>
-
-                  <p className="text-xs text-gray-500 mt-4 flex items-center justify-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    100% Secure • Official RTO Data
-                  </p>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Live Stats Section */}
-      <section className="py-20 bg-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="text-center mb-16">
-            <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
-              TRUSTED BY MILLIONS
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              India's #1 Challan Payment Platform
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Join millions of drivers who trust us for secure and hassle-free traffic fine payments
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { value: 25000, suffix: '+', label: 'Challans Paid Today', color: 'from-blue-500 to-blue-600', icon: '💳' },
-              { value: 2, suffix: 'M+', label: 'Happy Users', color: 'from-green-500 to-green-600', icon: '👥' },
-              { value: 50, suffix: '+', label: 'Cities Covered', color: 'from-purple-500 to-purple-600', icon: '🏙️' },
-              { value: 99, suffix: '%', label: 'Success Rate', color: 'from-orange-500 to-orange-600', icon: '✅' }
-            ].map((stat, idx) => (
-              <div key={idx} className="glass-card p-6 text-center hover-lift group">
-                <div className={`w-14 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl group-hover:scale-110 transition-transform shadow-lg`}>
-                  {stat.icon}
-                </div>
-                <p className="text-3xl md:text-4xl font-bold text-gray-900">
-                  <AnimatedCounter end={stat.value} suffix={stat.suffix} duration={2500} />
-                </p>
-                <p className="text-sm text-gray-600 mt-2 font-medium">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section - Premium (2 columns on mobile) */}
-      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
-              WHY CHOOSE US
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need in One Place
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Experience the most seamless way to manage your traffic challans
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
-            {[
-              {
-                icon: '🔒',
-                title: 'Bank-Grade Security',
-                desc: 'Your transactions are protected with 256-bit encryption through RBI-approved gateways.',
-                gradient: 'from-blue-500 to-indigo-600'
-              },
-              {
-                icon: '⚡',
-                title: 'Instant Processing',
-                desc: 'Pay your challans and get digital receipts instantly. Status updates within minutes.',
-                gradient: 'from-orange-500 to-red-500'
-              },
-              {
-                icon: '🛡️',
-                title: 'Official & Verified',
-                desc: 'Direct access to official RTO & traffic databases for accurate information.',
-                gradient: 'from-green-500 to-emerald-600'
-              },
-              {
-                icon: '📱',
-                title: 'All Payment Modes',
-                desc: 'Pay via UPI, Credit Card, Debit Card, Net Banking, or Wallets - your choice.',
-                gradient: 'from-purple-500 to-pink-600'
-              },
-              {
-                icon: '🎧',
-                title: '24/7 Support',
-                desc: 'Our dedicated support team is always available to help with any queries or disputes.',
-                gradient: 'from-cyan-500 to-blue-600'
-              },
-              {
-                icon: '📋',
-                title: 'Complete History',
-                desc: 'Track all your payments, download receipts, and manage your vehicle challan history.',
-                gradient: 'from-rose-500 to-orange-500'
-              }
-            ].map((feature, idx) => (
-              <div key={idx} className="glass-card p-4 md:p-8 hover-lift group">
-                <div className={`w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br ${feature.gradient} rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-base md:text-xl font-bold text-gray-900 mb-2 md:mb-3">{feature.title}</h3>
-                <p className="text-gray-600 text-sm md:text-base leading-relaxed hidden md:block">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works - Premium */}
-      <section className="py-20 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="text-center mb-16">
-            <span className="inline-block bg-white/10 text-blue-300 text-xs font-semibold px-4 py-2 rounded-full mb-4 border border-white/20">
-              SIMPLE PROCESS
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Pay Your Challan in 3 Easy Steps
-            </h2>
-            <p className="text-gray-300 max-w-2xl mx-auto">
-              It takes less than 2 minutes to clear your pending traffic fines
-            </p>
-          </div>
-
-          {/* Mobile: Single step slider */}
-          <div className="md:hidden">
-            <div className="text-center">
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-6 shadow-lg shadow-blue-500/30">
-                  {steps[currentStep].step}
-                </div>
-                <div className="text-5xl mb-4">{steps[currentStep].icon}</div>
-                <h3 className="text-2xl font-bold text-white mb-3">{steps[currentStep].title}</h3>
-                <p className="text-gray-400 text-lg">{steps[currentStep].desc}</p>
-              </div>
-
-              {/* Navigation dots */}
-              <div className="flex items-center justify-center gap-4 mt-6">
-                <button
-                  onClick={() => setCurrentStep((prev) => (prev - 1 + 3) % 3)}
-                  className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <div className="flex gap-2">
-                  {[0, 1, 2].map((idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentStep(idx)}
-                      className={`h-2 rounded-full transition-all ${idx === currentStep ? 'bg-blue-500 w-6' : 'bg-white/30 w-2'
-                        }`}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => setCurrentStep((prev) => (prev + 1) % 3)}
-                  className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                <h3 className="text-[17px] font-bold text-slate-900">Message Sent!</h3>
+                <p className="mt-1 text-[14px] text-slate-500">Our team will get back to you shortly.</p>
+                <button onClick={() => { setSubmitted(false); setFormData({ name: '', email: '', message: '' }) }} className="btn-primary mt-5">
+                  Send Another
                 </button>
               </div>
-            </div>
-          </div>
-
-          {/* Desktop: Grid of all steps */}
-          <div className="hidden md:grid md:grid-cols-3 gap-8 relative">
-            {/* Connector Lines */}
-            <div className="absolute top-16 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500" />
-
-            {steps.map((item, idx) => (
-              <div key={idx} className="relative text-center group">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform relative z-10">
-                  {item.step}
-                </div>
-                <div className="text-4xl mb-4">{item.icon}</div>
-                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
-                <p className="text-gray-400">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Link to="/pay-challan" className="btn-premium px-10 py-4 rounded-xl font-bold text-lg inline-flex items-center gap-3">
-              Get Started Now
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials - Slider for Mobile */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-            <div>
-              <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
-                USER TESTIMONIALS
-              </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">What Our Users Say</h2>
-              <p className="text-gray-600 mt-2">Real stories from verified users across India</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={prevTestimonial}
-                className="w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button
-                onClick={nextTestimonial}
-                className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/30"
-              >
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile: Single testimonial slider */}
-          <div className="md:hidden">
-            <div className="glass-card p-6 transition-all ring-2 ring-blue-500 shadow-lg">
-              <div className="flex items-center gap-4 mb-4">
-                <img
-                  src={testimonials[currentTestimonial].avatar}
-                  alt={testimonials[currentTestimonial].name}
-                  className="w-14 h-14 rounded-full object-cover ring-2 ring-blue-100"
-                />
+            ) : (
+              <form onSubmit={handleSubmit} className="surface-card p-6 space-y-4">
                 <div>
-                  <h4 className="font-bold text-gray-900">{testimonials[currentTestimonial].name}</h4>
-                  <p className="text-sm text-gray-500">{testimonials[currentTestimonial].location}</p>
+                  <label className="field-label">Full Name</label>
+                  <input type="text" required placeholder="Enter your full name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-field" />
                 </div>
-              </div>
-              <div className="flex gap-1 mb-4">
-                {renderStars(testimonials[currentTestimonial].rating)}
-              </div>
-              <p className="text-gray-600 leading-relaxed mb-4">"{testimonials[currentTestimonial].comment}"</p>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                </svg>
-                {testimonials[currentTestimonial].likes} found helpful
-              </div>
+                <div>
+                  <label className="field-label">Email Address</label>
+                  <input type="email" required placeholder="Enter your email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input-field" />
+                </div>
+                <div>
+                  <label className="field-label">Message</label>
+                  <textarea required rows={4} placeholder="Type your message..." value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} className="input-field resize-none" />
+                </div>
+                <button type="submit" className="btn-primary w-full">Send Message</button>
+              </form>
+            )}
+          </div>
+
+          {/* Right - Contact info */}
+          <div className="space-y-4">
+            <div className="surface-card p-5 space-y-4">
+              <ContactRow label="Email" value="support@challanone.com" icon={<svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>} />
+              <ContactRow label="Phone" value="+91 12345 67890" icon={<svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.04 11.04 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>} />
+              <ContactRow label="Office" value="193, Tech Park, Sector 62, Noida, UP - 201301" icon={<svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 11a3 3 0 100-6 3 3 0 000 6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7-7.5 11-7.5 11s-7.5-4-7.5-11a7.5 7.5 0 1115 0z" /></svg>} />
             </div>
-            {/* Dots indicator */}
-            <div className="flex justify-center gap-2 mt-4">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentTestimonial(index)}
-                  className={`w-2 h-2 rounded-full transition-all ${index === currentTestimonial ? 'bg-blue-500 w-6' : 'bg-gray-300'
-                    }`}
-                />
-              ))}
+            <div className="surface-card overflow-hidden">
+              <MapPreview />
             </div>
           </div>
-
-          {/* Desktop: Grid of all testimonials */}
-          <div className="hidden md:grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={testimonial.id}
-                className={`glass-card p-6 transition-all ${index === currentTestimonial ? 'ring-2 ring-blue-500 shadow-lg scale-[1.02]' : 'opacity-80'
-                  }`}
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <img
-                    src={testimonial.avatar}
-                    alt={testimonial.name}
-                    className="w-14 h-14 rounded-full object-cover ring-2 ring-blue-100"
-                  />
-                  <div>
-                    <h4 className="font-bold text-gray-900">{testimonial.name}</h4>
-                    <p className="text-sm text-gray-500">{testimonial.location}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1 mb-4">
-                  {renderStars(testimonial.rating)}
-                </div>
-                <p className="text-gray-600 leading-relaxed mb-4">"{testimonial.comment}"</p>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                  </svg>
-                  {testimonial.likes} found helpful
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* Services Grid */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
-              OUR SERVICES
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">How Can We Help You?</h2>
-            <p className="text-gray-600">Explore our comprehensive range of traffic-related services</p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {[
-              { icon: '💳', title: 'Pay Challans', desc: 'Pay pending traffic fines instantly', link: '/pay-challan', color: 'from-blue-500 to-blue-600' },
-              { icon: '🚗', title: 'Vehicle Info', desc: 'Get complete RC & ownership details', link: '/vehicle-info', color: 'from-green-500 to-green-600' },
-              { icon: '📍', title: 'Track Status', desc: 'Track your challan payment status', link: '/track-challan', color: 'from-purple-500 to-purple-600' },
-              { icon: '🎧', title: 'Get Support', desc: '24/7 customer support assistance', link: '/support', color: 'from-orange-500 to-orange-600' }
-            ].map((service, idx) => (
-              <Link key={idx} to={service.link} className="glass-card p-4 md:p-6 hover-lift group text-center">
-                <div className={`w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br ${service.color} rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-lg`}>
-                  {service.icon}
-                </div>
-                <h3 className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2">{service.title}</h3>
-                <p className="text-xs md:text-sm text-gray-600 mb-2 md:mb-4 hidden md:block">{service.desc}</p>
-                <span className="text-blue-600 font-medium text-xs md:text-sm inline-flex items-center gap-1 group-hover:gap-2 transition-all">
-                  Explore
-                  <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Banner */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0tNC00aC0ydi0yaDJ2MnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="text-center md:text-left">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to Clear Your Pending Challans?
-              </h2>
-              <p className="text-blue-100 text-lg">
-                Join 2 million+ users who trust Challan One for secure payments
-              </p>
-            </div>
-            <Link
-              to="/pay-challan"
-              className="bg-white text-blue-600 px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-50 transition-all shadow-xl flex items-center gap-3"
-            >
-              Pay Now
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Trust Banner */}
-      <section className="py-8 bg-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-8 text-white/70 text-sm">
-            <span className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Secure Payment via Razorpay
-            </span>
-            <span className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-              4.9/5 Rating (50K+ Reviews)
-            </span>
-            <span className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              RTO Authorized Data
-            </span>
-          </div>
-        </div>
-      </section>
+function ContactRow({ label, value, icon }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">{icon}</div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-medium text-slate-500">{label}</p>
+        <p className="text-[14px] font-semibold text-slate-900 break-words">{value}</p>
+      </div>
     </div>
+  )
+}
+
+function MapPreview() {
+  return (
+    <div className="relative h-44 w-full">
+      <svg viewBox="0 0 400 160" className="h-full w-full" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+        <rect width="400" height="160" fill="#E0E7FF" />
+        <g fill="#FFFFFF" opacity="0.85">
+          <rect x="10" y="20" width="80" height="40" rx="4" />
+          <rect x="100" y="14" width="120" height="34" rx="4" />
+          <rect x="230" y="22" width="60" height="46" rx="4" />
+          <rect x="300" y="14" width="90" height="34" rx="4" />
+          <rect x="10" y="80" width="100" height="60" rx="4" />
+          <rect x="120" y="76" width="60" height="40" rx="4" />
+          <rect x="120" y="124" width="100" height="22" rx="4" />
+          <rect x="230" y="80" width="160" height="64" rx="4" />
+        </g>
+        <g stroke="#A5B4FC" strokeWidth="3" strokeLinecap="round">
+          <line x1="0" y1="70" x2="400" y2="70" />
+          <line x1="220" y1="0" x2="220" y2="160" />
+        </g>
+        <g transform="translate(258 60)">
+          <path d="M0 14 C-12 14 -16 4 -16 -2 C-16 -12 -8 -22 0 -22 C8 -22 16 -12 16 -2 C16 4 12 14 0 14 Z" fill="#EF4444" />
+          <circle cx="0" cy="-4" r="5" fill="#FFFFFF" />
+        </g>
+      </svg>
+      <div className="absolute right-2 bottom-2 rounded-md bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow">
+        Open in Maps
+      </div>
+    </div>
+  )
+}
+
+function Stat({ title, subtitle }) {
+  return (
+    <div className="text-center py-2">
+      <p className="text-[24px] md:text-[28px] font-bold text-slate-900 leading-tight">{title}</p>
+      <p className="text-[13px] font-medium text-slate-500 mt-1">{subtitle}</p>
+    </div>
+  )
+}
+
+function FeatureCard({ icon, title, desc, to, tone = 'blue' }) {
+  const tones = {
+    blue: 'bg-blue-50 text-blue-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    amber: 'bg-amber-50 text-amber-600',
+  }
+  return (
+    <Link to={to} className="surface-card flex flex-col items-start gap-4 p-6 transition hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]">
+      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${tones[tone]}`}>{icon}</div>
+      <div>
+        <p className="text-[16px] font-semibold text-slate-900">{title}</p>
+        <p className="text-[14px] text-slate-500 leading-relaxed mt-1">{desc}</p>
+      </div>
+      <span className="text-[13px] font-semibold text-blue-600 inline-flex items-center gap-1 mt-auto">
+        Learn more
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </span>
+    </Link>
   )
 }
