@@ -2,10 +2,17 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
 import { PoliceIllustration } from '../components/Illustrations'
+import DelhiOtpFlow from '../components/DelhiOtpFlow'
+import {
+  FLOW_TYPES,
+  transformExternalChallans,
+  calculatePaymentTotal
+} from '../utils/challanUtils'
 
 export default function PayChallan() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const [flowType, setFlowType] = useState(FLOW_TYPES.SELECT)
   const [vehicleNumber, setVehicleNumber] = useState(searchParams.get('vehicle') || '')
   const [loading, setLoading] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
@@ -13,7 +20,6 @@ export default function PayChallan() {
   const [error, setError] = useState(null)
   const [selectedChallans, setSelectedChallans] = useState([])
 
-  // Lazily load Razorpay script only when payment is actually initiated
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       if (window.Razorpay) return resolve(true)
@@ -36,6 +42,7 @@ export default function PayChallan() {
     const vehicle = searchParams.get('vehicle')
     if (vehicle) {
       setVehicleNumber(vehicle)
+      setFlowType(FLOW_TYPES.ALL_CHALLANS)
       fetchChallans(vehicle)
     }
   }, [searchParams])
@@ -44,46 +51,31 @@ export default function PayChallan() {
     setLoading(true)
     setError(null)
     try {
-      // Single API call — server auto-resolves chassis/engine from DB or rc_info
       const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vehicleNumber: number })
       })
       const result = await response.json()
-      const challanData = result.challan?.response?.challans
+      if (result.success) {
+        const transformed = transformExternalChallans(result)
 
-      if (result.success && challanData && challanData.length > 0) {
-        const transformedChallans = challanData.map((c, idx) => ({
-          id: c.challan_no || `CH${idx + 1}`,
-          dbId: c.challan_no,
-          vehicleNumber: result.vehicleNumber,
-          type: c.offence,
-          description: c.offence_list?.map(o => o.offence_name).join(', ') || c.offence,
-          amount: parseFloat(c.amount) || 0,
-          status: mapChallanStatus(c.challan_status),
-          date: formatChallanDate(c.date),
-          time: formatChallanTime(c.date),
-          location: `${c.area || ''}${c.area && c.state ? ', ' : ''}${c.state || ''}` || 'N/A',
-        }))
-
-        const firstChallan = challanData[0]
-        const transformedVehicle = {
-          number: result.vehicleNumber,
-          owner: firstChallan?.accused_name || firstChallan?.owner_name || 'Owner',
-          vehicleType: 'Private Vehicle',
-          isVerified: true,
+        if (!transformed.hasRawChallans) {
+          setError(result.message || 'No challans found')
+          setData(null)
+          setLoading(false)
+          return
         }
 
-        setData({
-          success: true,
-          dataSource: result.source || 'EXTERNAL',
-          vehicle: transformedVehicle,
-          challans: transformedChallans,
-          pendingCount: transformedChallans.filter(c => c.status !== 'PAID').length
-        })
-        const pendingIds = transformedChallans.filter(c => c.status !== 'PAID').map(c => c.id)
-        setSelectedChallans(pendingIds)
+        if (transformed.challans.length === 0) {
+          setError('No pending challans found for this vehicle')
+          setData(null)
+          setLoading(false)
+          return
+        }
+
+        setData(transformed)
+        setSelectedChallans(transformed.challans.map(c => c.id))
       } else {
         setError(result.message || 'No challans found')
         setData(null)
@@ -95,34 +87,24 @@ export default function PayChallan() {
     setLoading(false)
   }
 
-  const mapChallanStatus = (status) => {
-    if (!status) return 'PENDING'
-    const s = status.toLowerCase()
-    if (s === 'pending') return 'PENDING'
-    if (s === 'cash' || s === 'paid') return 'PAID'
-    if (s === 'disposed') return 'PAID'
-    if (s === 'overdue') return 'OVERDUE'
-    return 'PENDING'
-  }
+  const handleDelhiChallansFound = ({ challans, vehicleNumber: vNum }) => {
+    if (challans.length === 0) return
 
-  const formatChallanDate = (dateStr) => {
-    if (!dateStr) return 'N/A'
-    try {
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-    } catch {
-      return dateStr.split(' ')[0] || dateStr
+    const transformedVehicle = {
+      number: vNum,
+      owner: challans[0]?.accusedName || 'Owner',
+      vehicleType: 'Private Vehicle',
+      isVerified: true,
     }
-  }
 
-  const formatChallanTime = (dateStr) => {
-    if (!dateStr) return '00:00'
-    try {
-      const parts = dateStr.split(' ')
-      if (parts[1]) return parts[1].substring(0, 5)
-      return '00:00'
-    } catch {
-      return '00:00'
-    }
+    setData({
+      success: true,
+      dataSource: 'DELHI_OTP',
+      vehicle: transformedVehicle,
+      challans,
+      pendingCount: challans.length
+    })
+    setSelectedChallans(challans.map(c => c.id))
   }
 
   const handleSearch = (e) => {
@@ -145,8 +127,7 @@ export default function PayChallan() {
       const userStr = localStorage.getItem('user')
       const user = userStr ? JSON.parse(userStr) : {}
       const challansToPay = data.challans.filter(c => idsToPay.includes(c.id) && c.status !== 'PAID')
-      const subtotal = challansToPay.reduce((s, c) => s + c.amount, 0)
-      const total = subtotal + 20
+      const { subtotal, courtFeeTotal, convenienceFee, total } = calculatePaymentTotal(challansToPay)
 
       const orderResponse = await fetch(`${API_BASE_URL}/api/payment/create-order`, {
         method: 'POST',
@@ -181,7 +162,8 @@ export default function PayChallan() {
                 vehicleNumber: data.vehicle.number,
                 challans: challansToPay,
                 subtotal,
-                convenienceFee: 20,
+                courtFee: courtFeeTotal,
+                convenienceFee,
                 totalAmount: total,
                 userEmail: user.email || ''
               })
@@ -217,8 +199,15 @@ export default function PayChallan() {
     setPaymentLoading(false)
   }
 
+  const goBackToSelector = () => {
+    setFlowType(FLOW_TYPES.SELECT)
+    setData(null)
+    setError(null)
+    setSelectedChallans([])
+  }
+
   const showResult = data && !loading
-  const showSearch = !data && !loading
+  const showAllChallansSearch = flowType === FLOW_TYPES.ALL_CHALLANS && !data && !loading
 
   return (
     <div className="screen">
@@ -227,25 +216,105 @@ export default function PayChallan() {
         <div className="bg-gradient-to-r from-blue-50 to-sky-50 border-b border-slate-100">
           <div className="container-main py-6 md:py-10">
             <div className="flex items-center gap-3 mb-2">
-              {showResult && (
-                <button onClick={() => { setData(null); setError(null) }} className="icon-btn">
+              {(showResult || flowType !== FLOW_TYPES.SELECT) && (
+                <button onClick={goBackToSelector} className="icon-btn">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
               )}
-              <h1 className="h-section">{showResult ? 'Challan Results' : 'Check Challan'}</h1>
+              <h1 className="h-section">
+                {showResult ? 'Challan Results' : flowType === FLOW_TYPES.DELHI_OTP ? 'Delhi State Challan' : flowType === FLOW_TYPES.ALL_CHALLANS ? 'Fetch All Challans' : 'Check Challan'}
+              </h1>
             </div>
             <p className="text-[14px] md:text-[15px] text-slate-500">
-              {showResult ? `Showing results for ${data?.vehicle?.number}` : 'Enter your vehicle number to check pending challans'}
+              {showResult
+                ? `Showing results for ${data?.vehicle?.number}`
+                : flowType === FLOW_TYPES.DELHI_OTP
+                  ? 'Verify via OTP to fetch Delhi state challans'
+                  : flowType === FLOW_TYPES.ALL_CHALLANS
+                    ? 'Enter vehicle number to fetch challans from all states'
+                    : 'Choose how you want to check your challans'}
             </p>
           </div>
         </div>
 
-        {showSearch && (
+        {/* Flow Selector */}
+        {flowType === FLOW_TYPES.SELECT && (
+          <div className="container-main py-8 md:py-12">
+            <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-start">
+              <div className="space-y-4 animate-fade-up">
+                <h2 className="text-[17px] font-bold text-slate-900 mb-4">Select Challan Check Type</h2>
+
+                {/* Delhi State Challan Option */}
+                <button
+                  onClick={() => setFlowType(FLOW_TYPES.DELHI_OTP)}
+                  className="w-full surface-card p-5 text-left hover:border-orange-300 hover:bg-orange-50/30 transition-all group"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 group-hover:bg-orange-200 transition">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-[16px] font-bold text-slate-900">Delhi State Challan</h3>
+                      <p className="text-[13px] text-slate-500 mt-1">OTP-based verification for Delhi traffic challans. Requires mobile number registered with Delhi Traffic Police.</p>
+                      <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                        OTP Required
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Fetch All Challans Option */}
+                <button
+                  onClick={() => setFlowType(FLOW_TYPES.ALL_CHALLANS)}
+                  className="w-full surface-card p-5 text-left hover:border-blue-300 hover:bg-blue-50/30 transition-all group"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-200 transition">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-[16px] font-bold text-slate-900">Fetch All Challans</h3>
+                      <p className="text-[13px] text-slate-500 mt-1">Quick vehicle number lookup across all states. No OTP needed — instant results.</p>
+                      <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                        All States
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Illustration */}
+              <div className="order-first md:order-last animate-fade-up">
+                <div className="hero-illu">
+                  <PoliceIllustration className="w-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delhi OTP Flow */}
+        {flowType === FLOW_TYPES.DELHI_OTP && !showResult && (
+          <div className="container-narrow py-8">
+            <DelhiOtpFlow
+              onChallansFound={handleDelhiChallansFound}
+              onBack={goBackToSelector}
+            />
+          </div>
+        )}
+
+        {/* All Challans Search Form */}
+        {showAllChallansSearch && (
           <div className="container-main py-8 md:py-12">
             <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
-              {/* Left - Search form */}
               <div className="space-y-6">
                 <form onSubmit={handleSearch} className="surface-card p-6 space-y-4 animate-fade-up">
                   <h2 className="text-[17px] font-bold text-slate-900">Vehicle Details</h2>
@@ -261,10 +330,15 @@ export default function PayChallan() {
                   </div>
                   <button type="submit" className="btn-primary w-full">Check Challan</button>
                   {error && <p className="text-sm text-rose-500">{error}</p>}
+                  <button type="button" onClick={goBackToSelector} className="btn-ghost w-full">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Options
+                  </button>
                 </form>
               </div>
 
-              {/* Illustration */}
               <div className="order-first md:order-last animate-fade-up">
                 <div className="hero-illu">
                   <PoliceIllustration className="w-full" />
@@ -289,6 +363,14 @@ export default function PayChallan() {
         {showResult && (
           <div className="container-narrow py-8">
             <div className="space-y-5">
+              {/* Source badge */}
+              {data.dataSource === 'DELHI_OTP' && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-full">
+                  <div className="h-2 w-2 rounded-full bg-orange-400"></div>
+                  <span className="text-[12px] font-medium text-orange-700">Delhi OTP Verified</span>
+                </div>
+              )}
+
               <div className="surface-card p-5 flex items-start gap-3 animate-fade-up bg-emerald-50/40 border-emerald-200">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -296,9 +378,14 @@ export default function PayChallan() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[16px] font-bold text-slate-900">{data.pendingCount} Challans Found</p>
+                  <p className="text-[16px] font-bold text-slate-900">{data.pendingCount} Pending Challan{data.pendingCount !== 1 ? 's' : ''} Found</p>
                   <p className="text-[14px] text-slate-600">
-                    Total Amount Due: <span className="font-semibold text-slate-900">₹ {data.challans.filter(c => c.status !== 'PAID').reduce((s, c) => s + c.amount, 0).toLocaleString()}</span>
+                    Total Amount Due: <span className="font-semibold text-slate-900">
+                      ₹ {data.challans.filter(c => c.status !== 'PAID').reduce((s, c) => s + c.amount + (c.courtFee || 0), 0).toLocaleString()}
+                    </span>
+                    {data.challans.some(c => c.isCourtChallan) && (
+                      <span className="text-[12px] text-amber-600 ml-2">(includes court fees)</span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -313,17 +400,30 @@ export default function PayChallan() {
                           <p className="text-[11px] font-medium text-slate-500">Challan ID</p>
                           <p className="text-[16px] font-bold text-slate-900">{challan.id}</p>
                         </div>
-                        <span className={`pill ${isPaid ? 'pill-success' : 'pill-pending'}`}>
-                          {isPaid ? 'Paid' : 'Pending'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {/* Challan type badge */}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            challan.isCourtChallan
+                              ? 'bg-amber-100 text-amber-700'
+                              : challan.displayType === 'Physical Challan'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-sky-100 text-sky-700'
+                          }`}>
+                            {challan.displayType}
+                          </span>
+                          <span className={`pill ${isPaid ? 'pill-success' : 'pill-pending'}`}>
+                            {isPaid ? 'Paid' : 'Pending'}
+                          </span>
+                        </div>
                       </div>
+
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <div>
                           <p className="text-[11px] font-medium text-slate-500">Date</p>
                           <p className="text-[14px] font-semibold text-slate-900">{challan.date}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] font-medium text-slate-500">Amount</p>
+                          <p className="text-[11px] font-medium text-slate-500">Fine Amount</p>
                           <p className="text-[14px] font-semibold text-slate-900">₹ {challan.amount.toLocaleString()}</p>
                         </div>
                         <div className="col-span-2 md:col-span-1">
@@ -331,13 +431,26 @@ export default function PayChallan() {
                           <p className="text-[14px] font-semibold text-slate-900">{challan.location}</p>
                         </div>
                       </div>
+
+                      {/* Court fee notice */}
+                      {challan.isCourtChallan && challan.courtFee > 0 && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                          <svg className="h-4 w-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <p className="text-[12px] text-amber-700">
+                            Court challan — additional court fee of <span className="font-semibold">₹{challan.courtFee}</span> applies
+                          </p>
+                        </div>
+                      )}
+
                       {!isPaid && (
                         <button
                           onClick={() => handlePayment(challan.id)}
                           disabled={paymentLoading}
                           className="btn-primary w-full md:w-auto"
                         >
-                          {paymentLoading ? 'Processing...' : 'Pay Now'}
+                          {paymentLoading ? 'Processing...' : `Pay ₹${(challan.amount + (challan.courtFee || 0)).toLocaleString()}`}
                         </button>
                       )}
                     </div>
@@ -352,7 +465,7 @@ export default function PayChallan() {
                   </svg>
                   Download Receipt
                 </button>
-                <button onClick={() => { setData(null); setError(null) }} className="btn-ghost">
+                <button onClick={goBackToSelector} className="btn-ghost">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
@@ -364,28 +477,5 @@ export default function PayChallan() {
         )}
       </div>
     </div>
-  )
-}
-
-function RecentSearchRow({ number, date, pillClass, pillLabel, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <div>
-          <p className="text-[14px] font-semibold text-slate-900">{number}</p>
-          <p className="text-[12px] text-slate-500 mt-0.5">{date}</p>
-        </div>
-      </div>
-      <span className={`pill ${pillClass}`}>{pillLabel}</span>
-    </button>
   )
 }

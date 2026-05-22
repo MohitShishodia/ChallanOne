@@ -1,0 +1,10 @@
+{
+  "name": "challanone",
+  "private": true,
+  "scripts": {
+    "test": "npm run test --prefix server && npm run test --prefix client && npm run test --prefix admin",
+    "test:server": "npm run test --prefix server",
+    "test:client": "npm run test --prefix client",
+    "test:admin": "npm run test --prefix admin"
+  }
+}

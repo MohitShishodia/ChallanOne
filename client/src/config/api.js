@@ -16,5 +16,10 @@ export const API = {
     createOrder: `${API_BASE_URL}/api/payment/create-order`,
     verify: `${API_BASE_URL}/api/payment/verify`,
     receipt: (receiptId) => `${API_BASE_URL}/api/payment/receipt/${receiptId}`,
+  },
+  delhiOtp: {
+    createRun: `${API_BASE_URL}/api/delhi-otp/runs`,
+    getRun: (runId) => `${API_BASE_URL}/api/delhi-otp/runs/${runId}`,
+    submitAction: (runId) => `${API_BASE_URL}/api/delhi-otp/runs/${runId}/actions`,
   }
 }

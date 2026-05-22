@@ -11,6 +11,7 @@ import challanRoutes from './routes/challan.js';
 import vehicleRoutes from './routes/vehicle.js';
 import paymentRoutes from './routes/payment.js';
 import externalApiRoutes from './routes/externalApi.js';
+import delhiOtpChallanRoutes from './routes/delhiOtpChallan.js';
 
 // Admin routes
 import adminAuthRoutes from './routes/admin/auth.js';
@@ -97,6 +98,7 @@ app.use('/api/challan', challanRoutes);
 app.use('/api/vehicle', vehicleRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/external', externalApiRoutes);
+app.use('/api/delhi-otp', delhiOtpChallanRoutes);
 
 // Admin routes (with rate limiting)
 app.use('/api/admin/auth', adminAuthRoutes);

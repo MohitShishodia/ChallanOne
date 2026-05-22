@@ -1,13 +1,14 @@
 import express from 'express';
 import VehicleModel from '../models/Vehicle.js';
 import ChallanModel from '../models/Challan.js';
+import { maskName, formatChallanDate, formatChallanTime, normalizeVehicleParam } from '../utils/challanHelpers.js';
 
 const router = express.Router();
 
 // Get challans by vehicle number
 router.get('/:vehicleNumber', async (req, res) => {
   const { vehicleNumber } = req.params;
-  const normalizedNumber = vehicleNumber.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const normalizedNumber = normalizeVehicleParam(vehicleNumber);
 
   console.log(`📋 Fetching challans for: ${vehicleNumber}`);
 
@@ -47,8 +48,8 @@ router.get('/:vehicleNumber', async (req, res) => {
       description: c.description,
       amount: parseFloat(c.amount),
       status: c.status,
-      date: formatDate(c.fine_date),
-      time: formatTime(c.fine_time),
+      date: formatChallanDate(c.fine_date),
+      time: formatChallanTime(c.fine_time),
       location: c.location,
       proofImage: c.proof_image_url || 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&h=300&fit=crop'
     }));
@@ -66,22 +67,5 @@ router.get('/:vehicleNumber', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-
-function maskName(name) {
-  if (!name) return 'Unknown';
-  const parts = name.split(' ');
-  return parts.map(p => p[0] + '***').join(' ');
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return 'N/A';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function formatTime(timeStr) {
-  if (!timeStr) return '00:00';
-  return timeStr.substring(0, 5);
-}
 
 export default router;
