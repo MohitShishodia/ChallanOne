@@ -2,10 +2,16 @@ import { describe, it, expect } from 'vitest'
 import {
   FLOW_TYPES,
   getChallanDisplayType,
+  shouldExcludeChallan,
   shouldShowExternalChallan,
   transformExternalChallans,
   calculatePaymentTotal,
-  formatChallanDate
+  sumChallanFineAmounts,
+  formatChallanDate,
+  getNoticeId,
+  getOffenceDetails,
+  resolveChallanStatus,
+  mapChallanRecord
 } from './challanUtils'
 
 describe('challanUtils - FLOW_TYPES', () => {
@@ -16,18 +22,35 @@ describe('challanUtils - FLOW_TYPES', () => {
   })
 })
 
-describe('challanUtils - shouldShowExternalChallan', () => {
+describe('challanUtils - shouldExcludeChallan', () => {
   it('hides virtual court challans', () => {
-    expect(shouldShowExternalChallan({ sentToVirtualCourt: true, challanStatus: 'pending' })).toBe(false)
+    expect(shouldExcludeChallan({ sentToVirtualCourt: true, challanStatus: 'pending' })).toBe(true)
   })
 
-  it('hides paid and disposed', () => {
-    expect(shouldShowExternalChallan({ challanStatus: 'paid' })).toBe(false)
-    expect(shouldShowExternalChallan({ challanStatus: 'disposed' })).toBe(false)
+  it('shows paid challans', () => {
+    expect(shouldExcludeChallan({ challanStatus: 'paid' })).toBe(false)
+    expect(shouldShowExternalChallan({ challanStatus: 'paid' })).toBe(true)
   })
 
   it('shows pending unpaid', () => {
-    expect(shouldShowExternalChallan({ challanStatus: 'pending' })).toBe(true)
+    expect(shouldExcludeChallan({ challanStatus: 'pending' })).toBe(false)
+  })
+})
+
+describe('challanUtils - notice and offence mapping', () => {
+  it('prefers notice fields over challan number', () => {
+    expect(getNoticeId({ noticeNumber: 'NT-99', challanNumber: 'CH-1' })).toBe('NT-99')
+  })
+
+  it('maps offence details from API fields', () => {
+    expect(getOffenceDetails({ offenceDetails: 'Red light jump' })).toBe('Red light jump')
+    expect(getOffenceDetails({ offenseDetails: 'Not using Seat-belt' })).toBe('Not using Seat-belt')
+    expect(getOffenceDetails({ violationType: 'Overspeed' })).toBe('Overspeed')
+  })
+
+  it('resolves PAID status', () => {
+    expect(resolveChallanStatus({ paymentStatus: 'PAID' })).toBe('PAID')
+    expect(resolveChallanStatus({ challanStatus: 'pending' })).toBe('PENDING')
   })
 })
 
@@ -53,12 +76,14 @@ describe('challanUtils - transformExternalChallans', () => {
     data: {
       pendingChallans: [
         {
+          noticeNumber: 'NT-001',
           challanNumber: 'CH-001',
           amount: 500,
           challanStatus: 'pending',
           challanType: 'ONLINE',
           challanPlace: 'Lucknow',
           challanDate: '2024-05-01T10:00:00',
+          offenceDetails: 'Signal violation',
           sentToVirtualCourt: false,
           courtChallan: false
         },
@@ -74,21 +99,27 @@ describe('challanUtils - transformExternalChallans', () => {
       ],
       paidChallans: [
         {
+          noticeNumber: 'NT-003',
           challanNumber: 'CH-003',
           amount: 200,
           challanStatus: 'paid',
-          challanType: 'ONLINE'
+          challanType: 'ONLINE',
+          offenceDetails: 'Parking violation'
         }
       ],
       disposedChallans: []
     }
   }
 
-  it('filters virtual court and paid challans', () => {
+  it('filters virtual court but includes paid challans', () => {
     const result = transformExternalChallans(apiResult)
-    expect(result.challans).toHaveLength(1)
-    expect(result.challans[0].id).toBe('CH-001')
+    expect(result.challans).toHaveLength(2)
+    expect(result.challans[0].noticeId).toBe('NT-001')
+    expect(result.challans[0].offenceDetails).toBe('Signal violation')
+    expect(result.challans[0].time).toBeTruthy()
     expect(result.pendingCount).toBe(1)
+    expect(result.paidCount).toBe(1)
+    expect(result.challans.find((c) => c.status === 'PAID')?.noticeId).toBe('NT-003')
   })
 
   it('sets vehicle from API response', () => {
@@ -102,16 +133,37 @@ describe('challanUtils - transformExternalChallans', () => {
   })
 })
 
+describe('challanUtils - mapChallanRecord', () => {
+  it('uses notice id as selection id', () => {
+    const mapped = mapChallanRecord({ noticeNumber: 'NT-55', amount: 100 }, 'DL01', 0)
+    expect(mapped.id).toBe('NT-55')
+    expect(mapped.noticeId).toBe('NT-55')
+  })
+})
+
+describe('challanUtils - sumChallanFineAmounts', () => {
+  it('sums fine amounts only', () => {
+    expect(sumChallanFineAmounts([{ amount: 500 }, { amount: 1000 }])).toBe(1500)
+  })
+})
+
 describe('challanUtils - calculatePaymentTotal', () => {
-  it('sums amount, court fees, and convenience fee', () => {
+  it('excludes court fees by default', () => {
     const challans = [
       { amount: 500, courtFee: 0 },
       { amount: 1000, courtFee: 50 }
     ]
     const totals = calculatePaymentTotal(challans, 20)
     expect(totals.subtotal).toBe(1500)
+    expect(totals.courtFeeTotal).toBe(0)
+    expect(totals.total).toBe(1520)
+  })
+
+  it('includes court fees when requested', () => {
+    const challans = [{ amount: 1000, courtFee: 50 }]
+    const totals = calculatePaymentTotal(challans, 20, { includeCourtFees: true })
     expect(totals.courtFeeTotal).toBe(50)
-    expect(totals.total).toBe(1570)
+    expect(totals.total).toBe(1070)
   })
 })
 

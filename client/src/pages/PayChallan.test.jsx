@@ -17,7 +17,9 @@ vi.mock('../components/DelhiOtpFlow', () => ({
         onClick={() => onChallansFound?.({
           vehicleNumber: 'DL05CX4567',
           challans: [{
-            id: 'DL-001',
+            id: 'NT-DL-001',
+            noticeId: 'NT-DL-001',
+            offenceDetails: 'Red light violation',
             amount: 500,
             status: 'PENDING',
             date: '01 Jan 2024',
@@ -96,9 +98,12 @@ describe('PayChallan page', () => {
       expect(screen.getByText('Challan Results')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('CH-001')).toBeInTheDocument()
+    expect(screen.getByText('NT-001')).toBeInTheDocument()
+    expect(screen.getByText('Signal violation')).toBeInTheDocument()
     expect(screen.getByText('E-Challan')).toBeInTheDocument()
-    expect(screen.getByText(/1 Pending Challan/i)).toBeInTheDocument()
+    expect(screen.getByText(/1 Challan/i)).toBeInTheDocument()
+    expect(screen.getByText(/Download All \(PDF\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Powered by/i)).toBeInTheDocument()
   })
 
   it('shows error when API returns no challans', async () => {
@@ -136,7 +141,7 @@ describe('PayChallan page', () => {
     })
 
     expect(screen.getByText('Delhi OTP Verified')).toBeInTheDocument()
-    expect(screen.getByText('DL-001')).toBeInTheDocument()
+    expect(screen.getByText('NT-DL-001')).toBeInTheDocument()
   })
 
   it('returns to flow selector from Delhi OTP back button', async () => {

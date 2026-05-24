@@ -11,23 +11,58 @@ export function getChallanDisplayType({ courtChallan, challanType }) {
   return 'E-Challan';
 }
 
+/** Exclude only virtual-court challans; paid challans are shown to the user. */
+export function shouldExcludeChallan(challan) {
+  return challan.sentToVirtualCourt === true;
+}
+
+/** @deprecated use shouldExcludeChallan */
 export function shouldShowExternalChallan(challan) {
-  if (challan.sentToVirtualCourt === true) return false;
-  const status = (challan.challanStatus || '').toLowerCase();
-  if (status === 'paid' || status === 'cash' || status === 'disposed' || status === 'compounded') {
-    return false;
+  return !shouldExcludeChallan(challan);
+}
+
+export function getNoticeId(raw) {
+  return (
+    raw.noticeId ||
+    raw.noticeNumber ||
+    raw.noticeNo ||
+    raw.notice_id ||
+    raw.challanNumber ||
+    raw.id ||
+    'N/A'
+  );
+}
+
+import { getOffenceDetails, getOffenceSection } from './challanFieldHelpers.js';
+
+export { getOffenceDetails, getOffenceSection };
+
+export function resolveChallanStatus(raw) {
+  const paymentStatus = (raw.paymentStatus || '').toUpperCase();
+  const challanStatus = (raw.challanStatus || '').toLowerCase();
+  if (
+    paymentStatus === 'PAID' ||
+    paymentStatus === 'DISPOSED' ||
+    challanStatus === 'paid' ||
+    challanStatus === 'cash' ||
+    challanStatus === 'disposed' ||
+    challanStatus === 'compounded'
+  ) {
+    return 'PAID';
   }
-  return true;
+  return 'PENDING';
 }
 
 export function formatChallanDate(dateStr) {
   if (!dateStr) return 'N/A';
   try {
     return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: '2-digit', month: 'short', year: 'numeric'
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
     });
   } catch {
-    return dateStr.split(' ')[0] || dateStr;
+    return String(dateStr).split(' ')[0] || dateStr;
   }
 }
 
@@ -38,7 +73,7 @@ export function formatChallanTime(dateStr) {
     if (!Number.isNaN(d.getTime())) {
       return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
-    const parts = dateStr.split(' ');
+    const parts = String(dateStr).split(' ');
     if (parts[1]) return parts[1].substring(0, 5);
     return '00:00';
   } catch {
@@ -46,37 +81,52 @@ export function formatChallanTime(dateStr) {
   }
 }
 
+export function mapChallanRecord(raw, vehicleNumber, idx = 0) {
+  const isCourtChallan = raw.courtChallan === true;
+  const challanType = (raw.challanType || '').toUpperCase();
+  const displayType = getChallanDisplayType({ courtChallan: isCourtChallan, challanType });
+  const noticeId = getNoticeId(raw);
+  const dateSource = raw.challanDate || raw.offenceDate || raw.dateTime;
+  const status = resolveChallanStatus(raw);
+
+  return {
+    id: noticeId !== 'N/A' ? noticeId : `CH${idx + 1}`,
+    noticeId,
+    challanNumber: raw.challanNumber || null,
+    dbId: raw.challanNumber || noticeId,
+    vehicleNumber: vehicleNumber || raw.vehicleNumber,
+    offenceDetails: getOffenceDetails(raw),
+    type: raw.violationType || raw.challanType || 'N/A',
+    description: raw.challanPlace || raw.location || 'N/A',
+    amount: parseFloat(raw.amount || raw.fineAmount || 0) || 0,
+    status,
+    date: formatChallanDate(dateSource),
+    time: formatChallanTime(dateSource),
+    location: raw.challanPlace || raw.courtAddress || raw.location || 'N/A',
+    displayType,
+    isCourtChallan,
+    courtFee: isCourtChallan ? (parseFloat(raw.courtFee) || 0) : 0,
+    section: getOffenceSection(raw),
+    accusedName: raw.accusedName || raw.ownerName || null,
+    paymentStatus: raw.paymentStatus || raw.challanStatus || null
+  };
+}
+
+export function collectRawChallans(result) {
+  const data = result.data || {};
+  return [
+    ...(data.pendingChallans || []),
+    ...(data.paidChallans || []),
+    ...(data.disposedChallans || [])
+  ];
+}
+
 export function transformExternalChallans(result) {
-  const pendingChallans = result.data?.pendingChallans || [];
-  const paidChallans = result.data?.paidChallans || [];
-  const disposedChallans = result.data?.disposedChallans || [];
-  const allChallans = [...pendingChallans, ...paidChallans, ...disposedChallans];
+  const allChallans = collectRawChallans(result);
 
   const challans = allChallans
-    .filter(shouldShowExternalChallan)
-    .map((c, idx) => {
-      const isCourtChallan = c.courtChallan === true;
-      const displayType = getChallanDisplayType({
-        courtChallan: isCourtChallan,
-        challanType: c.challanType
-      });
-
-      return {
-        id: c.challanNumber || `CH${idx + 1}`,
-        dbId: c.challanNumber,
-        vehicleNumber: result.vehicleNumber,
-        type: c.challanType || 'N/A',
-        description: c.challanPlace || 'N/A',
-        amount: parseFloat(c.amount) || 0,
-        status: 'PENDING',
-        date: formatChallanDate(c.challanDate),
-        time: formatChallanTime(c.challanDate),
-        location: c.challanPlace || c.courtAddress || 'N/A',
-        displayType,
-        isCourtChallan,
-        courtFee: isCourtChallan ? 50 : 0
-      };
-    });
+    .filter((c) => !shouldExcludeChallan(c))
+    .map((c, idx) => mapChallanRecord(c, result.vehicleNumber, idx));
 
   const firstChallan = allChallans[0];
   const vehicle = {
@@ -86,19 +136,28 @@ export function transformExternalChallans(result) {
     isVerified: true
   };
 
+  const pendingChallans = challans.filter((c) => c.status === 'PENDING');
+
   return {
     success: true,
     dataSource: result.source || 'EXTERNAL',
     vehicle,
     challans,
-    pendingCount: challans.length,
+    pendingCount: pendingChallans.length,
+    paidCount: challans.length - pendingChallans.length,
     hasRawChallans: allChallans.length > 0
   };
 }
 
-export function calculatePaymentTotal(challans, convenienceFee = 20) {
-  const subtotal = challans.reduce((s, c) => s + c.amount, 0);
-  const courtFeeTotal = challans.reduce((s, c) => s + (c.courtFee || 0), 0);
+export function sumChallanFineAmounts(challans) {
+  return challans.reduce((sum, c) => sum + (c.amount || 0), 0);
+}
+
+export function calculatePaymentTotal(challans, convenienceFee = 20, { includeCourtFees = false } = {}) {
+  const subtotal = sumChallanFineAmounts(challans);
+  const courtFeeTotal = includeCourtFees
+    ? challans.reduce((s, c) => s + (c.courtFee || 0), 0)
+    : 0;
   const total = subtotal + courtFeeTotal + convenienceFee;
   return { subtotal, courtFeeTotal, convenienceFee, total };
 }

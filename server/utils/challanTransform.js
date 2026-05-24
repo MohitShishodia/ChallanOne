@@ -1,3 +1,5 @@
+import { getOffenceDetails, getOffenceSection } from './challanFieldHelpers.js';
+
 export const TERMINAL_STATES = ['COMPLETED', 'FAILED', 'EXPIRED', 'CANCELLED'];
 
 export function isTerminalRunStatus(status) {
@@ -11,43 +13,96 @@ export function getChallanDisplayType({ courtChallan, challanType }) {
   return 'E-Challan';
 }
 
+export function shouldExcludeDelhiChallan(challan) {
+  return challan.sentToVirtualCourt === true;
+}
+
+/** @deprecated use shouldExcludeDelhiChallan */
 export function shouldIncludeDelhiChallan(challan) {
-  if (challan.sentToVirtualCourt === true) return false;
-  if (challan.paymentStatus && challan.paymentStatus.toUpperCase() !== 'UNPAID') return false;
-  return true;
+  return !shouldExcludeDelhiChallan(challan);
+}
+
+export function getNoticeId(raw) {
+  return (
+    raw.noticeId ||
+    raw.noticeNumber ||
+    raw.noticeNo ||
+    raw.notice_id ||
+    raw.challanNumber ||
+    raw.id ||
+    'N/A'
+  );
+}
+
+export function resolveChallanStatus(raw) {
+  const paymentStatus = (raw.paymentStatus || '').toUpperCase();
+  const challanStatus = (raw.challanStatus || '').toLowerCase();
+  if (
+    paymentStatus === 'PAID' ||
+    paymentStatus === 'DISPOSED' ||
+    challanStatus === 'paid' ||
+    challanStatus === 'cash' ||
+    challanStatus === 'disposed' ||
+    challanStatus === 'compounded'
+  ) {
+    return 'PAID';
+  }
+  return 'PENDING';
 }
 
 export function transformDelhiChallans(challans, vehicleNumber) {
   if (!Array.isArray(challans)) return [];
 
   return challans
-    .filter(shouldIncludeDelhiChallan)
-    .map(c => {
+    .filter((c) => !shouldExcludeDelhiChallan(c))
+    .map((c, idx) => {
       const isCourtChallan = c.courtChallan === true;
       const challanType = c.challanType?.toUpperCase();
       const displayType = getChallanDisplayType({ courtChallan: isCourtChallan, challanType });
+      const noticeId = getNoticeId(c);
+      const dateSource = c.challanDate || c.offenceDate;
+      const status = resolveChallanStatus(c);
 
       return {
-        id: c.challanNumber || c.id,
+        id: noticeId !== 'N/A' ? noticeId : `CH${idx + 1}`,
+        noticeId,
         challanNumber: c.challanNumber,
         vehicleNumber: vehicleNumber || c.vehicleNumber,
-        type: c.violationType || c.offenceDetails || 'Traffic Violation',
+        offenceDetails: getOffenceDetails(c),
+        type: c.violationType || c.challanType || 'Traffic Violation',
         description: c.challanPlace || c.offenceDetails || 'N/A',
         amount: parseFloat(c.amount || c.fineAmount || 0),
-        status: 'PENDING',
-        date: formatDelhiDate(c.challanDate || c.offenceDate),
-        time: formatDelhiTime(c.challanDate || c.offenceDate),
+        status,
+        date: formatDelhiDate(dateSource),
+        time: formatDelhiTime(dateSource),
         location: c.challanPlace || c.location || 'Delhi',
         displayType,
         isCourtChallan,
-        courtFee: isCourtChallan ? (parseFloat(c.courtFee) || 50) : 0,
+        courtFee: isCourtChallan ? (parseFloat(c.courtFee) || 0) : 0,
         challanType: challanType || 'ONLINE',
-        paymentStatus: 'UNPAID',
+        paymentStatus: c.paymentStatus || c.challanStatus || null,
         accusedName: c.accusedName || c.ownerName || null,
         dlNumber: c.dlNumber || null,
-        section: c.section || c.offenceSection || null
+        section: getOffenceSection(c)
       };
     });
+}
+
+function collectRunChallans(runData, responseBlock) {
+  const lists = [
+    ...(Array.isArray(runData?.challans) ? runData.challans : []),
+    ...(responseBlock?.pendingChallans || []),
+    ...(responseBlock?.paidChallans || []),
+    ...(responseBlock?.disposedChallans || [])
+  ];
+
+  const seen = new Set();
+  return lists.filter((c) => {
+    const key = getNoticeId(c) + '|' + (c.challanNumber || '');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function buildRunPollResult(runId, runData, message, envelope = null) {
@@ -65,11 +120,14 @@ export function buildRunPollResult(runId, runData, message, envelope = null) {
   };
 
   const responseBlock = envelope?.inner?.response || runData?.data?.response;
-  const rawChallans = runData?.challans || responseBlock?.pendingChallans;
+  const rawChallans = collectRunChallans(runData, responseBlock);
   const vehicleNumber = runData?.vehicleNumber || runData?.rcNumber || envelope?.rcNumber;
 
-  if (status === 'COMPLETED' && rawChallans) {
+  if (status === 'COMPLETED' && rawChallans.length > 0) {
     result.challans = transformDelhiChallans(rawChallans, vehicleNumber);
+    result.vehicleNumber = vehicleNumber;
+  } else if (status === 'COMPLETED') {
+    result.challans = [];
     result.vehicleNumber = vehicleNumber;
   }
 

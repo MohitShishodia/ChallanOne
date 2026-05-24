@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
 import { PoliceIllustration } from '../components/Illustrations'
 import DelhiOtpFlow from '../components/DelhiOtpFlow'
+import ChallanResults from '../components/ChallanResults'
 import {
   FLOW_TYPES,
   transformExternalChallans,
@@ -68,14 +69,16 @@ export default function PayChallan() {
         }
 
         if (transformed.challans.length === 0) {
-          setError('No pending challans found for this vehicle')
+          setError('No challans found for this vehicle (virtual court challans are hidden)')
           setData(null)
           setLoading(false)
           return
         }
 
         setData(transformed)
-        setSelectedChallans(transformed.challans.map(c => c.id))
+        setSelectedChallans(
+          transformed.challans.filter((c) => c.status !== 'PAID').map((c) => c.id)
+        )
       } else {
         setError(result.message || 'No challans found')
         setData(null)
@@ -97,14 +100,32 @@ export default function PayChallan() {
       isVerified: true,
     }
 
+    const pending = challans.filter((c) => c.status !== 'PAID')
+
     setData({
       success: true,
       dataSource: 'DELHI_OTP',
       vehicle: transformedVehicle,
       challans,
-      pendingCount: challans.length
+      pendingCount: pending.length,
+      paidCount: challans.length - pending.length
     })
-    setSelectedChallans(challans.map(c => c.id))
+    setSelectedChallans(pending.map((c) => c.id))
+  }
+
+  const toggleChallanSelection = (id) => {
+    setSelectedChallans((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const selectAllPending = () => {
+    if (!data) return
+    setSelectedChallans(data.challans.filter((c) => c.status !== 'PAID').map((c) => c.id))
+  }
+
+  const deselectAllChallans = () => {
+    setSelectedChallans([])
   }
 
   const handleSearch = (e) => {
@@ -362,117 +383,17 @@ export default function PayChallan() {
 
         {showResult && (
           <div className="container-narrow py-8">
-            <div className="space-y-5">
-              {/* Source badge */}
-              {data.dataSource === 'DELHI_OTP' && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-full">
-                  <div className="h-2 w-2 rounded-full bg-orange-400"></div>
-                  <span className="text-[12px] font-medium text-orange-700">Delhi OTP Verified</span>
-                </div>
-              )}
-
-              <div className="surface-card p-5 flex items-start gap-3 animate-fade-up bg-emerald-50/40 border-emerald-200">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[16px] font-bold text-slate-900">{data.pendingCount} Pending Challan{data.pendingCount !== 1 ? 's' : ''} Found</p>
-                  <p className="text-[14px] text-slate-600">
-                    Total Amount Due: <span className="font-semibold text-slate-900">
-                      ₹ {data.challans.filter(c => c.status !== 'PAID').reduce((s, c) => s + c.amount + (c.courtFee || 0), 0).toLocaleString()}
-                    </span>
-                    {data.challans.some(c => c.isCourtChallan) && (
-                      <span className="text-[12px] text-amber-600 ml-2">(includes court fees)</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {data.challans.map((challan) => {
-                  const isPaid = challan.status === 'PAID'
-                  return (
-                    <div key={challan.id} className="surface-card p-5 space-y-4 animate-fade-up">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-[11px] font-medium text-slate-500">Challan ID</p>
-                          <p className="text-[16px] font-bold text-slate-900">{challan.id}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {/* Challan type badge */}
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                            challan.isCourtChallan
-                              ? 'bg-amber-100 text-amber-700'
-                              : challan.displayType === 'Physical Challan'
-                                ? 'bg-purple-100 text-purple-700'
-                                : 'bg-sky-100 text-sky-700'
-                          }`}>
-                            {challan.displayType}
-                          </span>
-                          <span className={`pill ${isPaid ? 'pill-success' : 'pill-pending'}`}>
-                            {isPaid ? 'Paid' : 'Pending'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-[11px] font-medium text-slate-500">Date</p>
-                          <p className="text-[14px] font-semibold text-slate-900">{challan.date}</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-medium text-slate-500">Fine Amount</p>
-                          <p className="text-[14px] font-semibold text-slate-900">₹ {challan.amount.toLocaleString()}</p>
-                        </div>
-                        <div className="col-span-2 md:col-span-1">
-                          <p className="text-[11px] font-medium text-slate-500">Location</p>
-                          <p className="text-[14px] font-semibold text-slate-900">{challan.location}</p>
-                        </div>
-                      </div>
-
-                      {/* Court fee notice */}
-                      {challan.isCourtChallan && challan.courtFee > 0 && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                          <svg className="h-4 w-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                          </svg>
-                          <p className="text-[12px] text-amber-700">
-                            Court challan — additional court fee of <span className="font-semibold">₹{challan.courtFee}</span> applies
-                          </p>
-                        </div>
-                      )}
-
-                      {!isPaid && (
-                        <button
-                          onClick={() => handlePayment(challan.id)}
-                          disabled={paymentLoading}
-                          className="btn-primary w-full md:w-auto"
-                        >
-                          {paymentLoading ? 'Processing...' : `Pay ₹${(challan.amount + (challan.courtFee || 0)).toLocaleString()}`}
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button className="btn-secondary flex-1">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download Receipt
-                </button>
-                <button onClick={goBackToSelector} className="btn-ghost">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  New Search
-                </button>
-              </div>
-            </div>
+            <ChallanResults
+              data={data}
+              dataSource={data.dataSource}
+              selectedChallans={selectedChallans}
+              onToggleChallan={toggleChallanSelection}
+              onSelectAllPending={selectAllPending}
+              onDeselectAll={deselectAllChallans}
+              onPay={handlePayment}
+              onBack={goBackToSelector}
+              paymentLoading={paymentLoading}
+            />
           </div>
         )}
       </div>

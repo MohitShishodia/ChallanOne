@@ -20,7 +20,7 @@ const sampleChallans = [
     courtChallan: false,
     challanPlace: 'ITO, Delhi',
     challanDate: '2024-03-15T10:30:00',
-    violationType: 'Red Light Jump',
+    offenseDetails: 'Red Light Jump',
     accusedName: 'Rahul Sharma'
   },
   {
@@ -33,7 +33,7 @@ const sampleChallans = [
     courtFee: 75,
     challanPlace: 'Connaught Place, Delhi',
     challanDate: '2024-03-20T14:00:00',
-    violationType: 'Overspeeding'
+    offenseDetails: 'Overspeeding'
   },
   {
     challanNumber: 'DL-2024-003',
@@ -68,11 +68,21 @@ describe('Delhi OTP - Virtual Court Filtering', () => {
   });
 });
 
-describe('Delhi OTP - Unpaid Only Filtering', () => {
-  it('excludes PAID and DISPOSED', () => {
+describe('Delhi OTP - Paid challans included', () => {
+  it('includes PAID challans with PAID status', () => {
     const result = transformDelhiChallans(sampleChallans, 'DL05CX4567');
-    assert.equal(result.length, 2);
-    assert.ok(result.every(c => c.paymentStatus === 'UNPAID'));
+    const paid = result.find(c => c.id === 'DL-2024-003');
+    assert.ok(paid);
+    assert.equal(paid.status, 'PAID');
+    assert.equal(paid.noticeId, 'DL-2024-003');
+  });
+
+  it('shows DISPOSED as paid and excludes virtual court', () => {
+    const result = transformDelhiChallans(sampleChallans, 'DL05CX4567');
+    assert.equal(result.find(c => c.id === 'DL-2024-004'), undefined);
+    const disposed = result.find(c => c.id === 'DL-2024-005');
+    assert.ok(disposed);
+    assert.equal(disposed.status, 'PAID');
   });
 });
 
@@ -94,6 +104,13 @@ describe('Delhi OTP - Display Type Labeling', () => {
     const court = result.find(c => c.id === 'DL-2024-002');
     assert.equal(court.courtFee, 75);
     assert.equal(court.displayType, 'Court Challan');
+  });
+
+  it('maps offence details and time', () => {
+    const result = transformDelhiChallans(sampleChallans, 'DL05CX4567');
+    const first = result.find(c => c.id === 'DL-2024-001');
+    assert.equal(first.offenceDetails, 'Red Light Jump');
+    assert.ok(first.time);
   });
 });
 

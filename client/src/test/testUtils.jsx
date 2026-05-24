@@ -37,12 +37,14 @@ export const mockChallanApiResponse = {
   data: {
     pendingChallans: [
       {
+        noticeNumber: 'NT-001',
         challanNumber: 'CH-001',
         amount: 500,
         challanStatus: 'pending',
         challanType: 'ONLINE',
         challanPlace: 'Lucknow',
         challanDate: '2024-05-01T10:00:00',
+        offenseDetails: 'Signal violation',
         sentToVirtualCourt: false,
         courtChallan: false,
         accusedName: 'Test Owner'
