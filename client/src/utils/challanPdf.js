@@ -53,7 +53,12 @@ export function downloadChallansPdf(vehicle, challans) {
       `Date: ${c.date || 'N/A'}  |  Time: ${c.time || 'N/A'}`,
       `Fine: Rs. ${(c.amount || 0).toLocaleString('en-IN')}`,
       `Location: ${c.location || 'N/A'}`,
-      `Offence: ${c.offenceDetails || 'N/A'}`
+      `Offence: ${c.offenceDetails || 'N/A'}`,
+      ...(c.courtName || c.courtAddress
+        ? [
+            `Court: ${[c.courtName, c.courtAddress].filter(Boolean).join(' — ')}`
+          ]
+        : [])
     ];
 
     lines.forEach((line) => {

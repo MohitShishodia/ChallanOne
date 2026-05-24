@@ -78,6 +78,11 @@ export function transformDelhiChallans(challans, vehicleNumber) {
         location: c.challanPlace || c.location || 'Delhi',
         displayType,
         isCourtChallan,
+        courtName: c.courtName || null,
+        courtAddress: c.courtAddress || null,
+        sentToRegCourt:
+          c.sentToRegCourt === true ||
+          String(c.sentToRegCourt || '').toLowerCase() === 'yes',
         courtFee: isCourtChallan ? (parseFloat(c.courtFee) || 0) : 0,
         challanType: challanType || 'ONLINE',
         paymentStatus: c.paymentStatus || c.challanStatus || null,

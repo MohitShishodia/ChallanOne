@@ -190,6 +190,27 @@ export default function ChallanResults({
                     )}
                   </div>
 
+                  {(challan.isCourtChallan || challan.courtName || challan.courtAddress) && (
+                    <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <p className="text-[11px] font-semibold text-amber-800 mb-2">Court Details</p>
+                      {challan.courtName && (
+                        <div className="mb-2">
+                          <p className="text-[11px] font-medium text-amber-700/80">Court Name</p>
+                          <p className="text-[14px] text-amber-900">{challan.courtName}</p>
+                        </div>
+                      )}
+                      {challan.courtAddress && (
+                        <div>
+                          <p className="text-[11px] font-medium text-amber-700/80">Court Address</p>
+                          <p className="text-[14px] text-amber-900 leading-snug">{challan.courtAddress}</p>
+                        </div>
+                      )}
+                      {challan.sentToRegCourt && (
+                        <p className="text-[12px] text-amber-700 mt-2">Registered with court</p>
+                      )}
+                    </div>
+                  )}
+
                   {!isPaid && (
                     <button
                       type="button"

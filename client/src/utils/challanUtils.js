@@ -102,9 +102,14 @@ export function mapChallanRecord(raw, vehicleNumber, idx = 0) {
     status,
     date: formatChallanDate(dateSource),
     time: formatChallanTime(dateSource),
-    location: raw.challanPlace || raw.courtAddress || raw.location || 'N/A',
+    location: raw.challanPlace || raw.location || 'N/A',
     displayType,
     isCourtChallan,
+    courtName: raw.courtName || null,
+    courtAddress: raw.courtAddress || null,
+    sentToRegCourt:
+      raw.sentToRegCourt === true ||
+      String(raw.sentToRegCourt || '').toLowerCase() === 'yes',
     courtFee: isCourtChallan ? (parseFloat(raw.courtFee) || 0) : 0,
     section: getOffenceSection(raw),
     accusedName: raw.accusedName || raw.ownerName || null,

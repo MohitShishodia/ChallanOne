@@ -33,7 +33,10 @@ const sampleChallans = [
     courtFee: 75,
     challanPlace: 'Connaught Place, Delhi',
     challanDate: '2024-03-20T14:00:00',
-    offenseDetails: 'Overspeeding'
+    offenseDetails: 'Overspeeding',
+    courtName: 'Rohini Court',
+    courtAddress: 'Rohini Courts, Delhi',
+    sentToRegCourt: true
   },
   {
     challanNumber: 'DL-2024-003',
@@ -111,6 +114,14 @@ describe('Delhi OTP - Display Type Labeling', () => {
     const first = result.find(c => c.id === 'DL-2024-001');
     assert.equal(first.offenceDetails, 'Red Light Jump');
     assert.ok(first.time);
+  });
+
+  it('maps court name and address for court challans', () => {
+    const result = transformDelhiChallans(sampleChallans, 'DL05CX4567');
+    const court = result.find(c => c.id === 'DL-2024-002');
+    assert.equal(court.courtName, 'Rohini Court');
+    assert.equal(court.courtAddress, 'Rohini Courts, Delhi');
+    assert.equal(court.sentToRegCourt, true);
   });
 });
 

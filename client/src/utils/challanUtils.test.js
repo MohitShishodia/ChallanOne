@@ -139,6 +139,26 @@ describe('challanUtils - mapChallanRecord', () => {
     expect(mapped.id).toBe('NT-55')
     expect(mapped.noticeId).toBe('NT-55')
   })
+
+  it('maps court details from API', () => {
+    const mapped = mapChallanRecord(
+      {
+        noticeNumber: 'NT-1',
+        amount: 1000,
+        courtChallan: true,
+        courtName: 'Rohini Court',
+        courtAddress: 'Rohini Courts, Delhi',
+        sentToRegCourt: true,
+        challanPlace: 'ROAD NO.28'
+      },
+      'DL01',
+      0
+    )
+    expect(mapped.courtName).toBe('Rohini Court')
+    expect(mapped.courtAddress).toBe('Rohini Courts, Delhi')
+    expect(mapped.location).toBe('ROAD NO.28')
+    expect(mapped.sentToRegCourt).toBe(true)
+  })
 })
 
 describe('challanUtils - sumChallanFineAmounts', () => {

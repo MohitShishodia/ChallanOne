@@ -47,6 +47,8 @@ export const mockChallanApiResponse = {
         offenseDetails: 'Signal violation',
         sentToVirtualCourt: false,
         courtChallan: false,
+        courtName: null,
+        courtAddress: null,
         accusedName: 'Test Owner'
       }
     ],
