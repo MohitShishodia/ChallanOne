@@ -20,6 +20,7 @@ import {
   isOtpSubmitAction,
   resolveActionsFromChallenge
 } from '../utils/delhiOtpApi.js';
+import { logChallanSearch } from '../utils/searchLogger.js';
 
 const router = express.Router();
 
@@ -108,6 +109,14 @@ router.post('/runs', async (req, res) => {
     const actions = resolveActionsFromChallenge(envelope.interactiveChallenge);
     console.log(`[DelhiOTP] Run created: ${envelope.runId}`);
 
+    logChallanSearch(req, {
+      vehicleNumber: normalizedVehicle,
+      searchType: 'DELHI_OTP',
+      status: 'success',
+      challansFound: 0,
+      metadata: { runId: envelope.runId, stage: 'run_created' }
+    });
+
     return res.json({
       success: true,
       runId: envelope.runId,
@@ -122,6 +131,12 @@ router.post('/runs', async (req, res) => {
 
   } catch (error) {
     console.error('[DelhiOTP] Run creation error:', error);
+    logChallanSearch(req, {
+      vehicleNumber: req.body?.vehicleNumber || 'UNKNOWN',
+      searchType: 'DELHI_OTP',
+      status: 'failed',
+      errorMessage: error.message
+    });
     return res.status(500).json({
       success: false,
       message: 'Internal server error while creating Delhi OTP run',

@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
 import { RcDocIllustration } from '../components/Illustrations'
+import { useFeatures } from '../context/FeatureContext'
 
 export default function VehicleInfo() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isFeatureEnabled } = useFeatures()
   const [vehicleNumber, setVehicleNumber] = useState(searchParams.get('vehicle') || '')
   const [vehicle, setVehicle] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -149,7 +151,16 @@ export default function VehicleInfo() {
           </div>
         </div>
 
-        {showSearch && (
+        {!isFeatureEnabled('rc_details') && showSearch && (
+          <div className="container-main py-8">
+            <div className="surface-card p-6 text-center animate-fade-up">
+              <p className="text-[15px] font-semibold text-red-600">This service is temporarily unavailable</p>
+              <p className="text-[13px] text-slate-500 mt-1">RC Details lookup has been disabled. Please check back later.</p>
+            </div>
+          </div>
+        )}
+
+        {isFeatureEnabled('rc_details') && showSearch && (
           <div className="container-main py-8 md:py-12">
             <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
               {/* Left - Search */}

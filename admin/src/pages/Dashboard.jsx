@@ -84,6 +84,9 @@ export default function Dashboard() {
   const [period, setPeriod] = useState('monthly')
   const [loading, setLoading] = useState(true)
 
+  const [searchStats, setSearchStats] = useState(null)
+  const [recentSearches, setRecentSearches] = useState([])
+
   useEffect(() => {
     loadAll()
   }, [period])
@@ -91,15 +94,17 @@ export default function Dashboard() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [statsRes, chartRes, challanRes, activityRes] = await Promise.all([
+      const [statsRes, chartRes, challanRes, activityRes, searchStatsRes, searchesRes] = await Promise.all([
         fetch(apiUrl('/api/admin/dashboard/stats'), { headers: authHeaders() }),
         fetch(apiUrl(`/api/admin/dashboard/revenue-chart?period=${period}`), { headers: authHeaders() }),
         fetch(apiUrl('/api/admin/dashboard/challan-stats'), { headers: authHeaders() }),
-        fetch(apiUrl('/api/admin/dashboard/recent-activity?limit=10'), { headers: authHeaders() })
+        fetch(apiUrl('/api/admin/dashboard/recent-activity?limit=10'), { headers: authHeaders() }),
+        fetch(apiUrl('/api/admin/challan-searches/stats'), { headers: authHeaders() }),
+        fetch(apiUrl('/api/admin/challan-searches?limit=5'), { headers: authHeaders() })
       ])
 
-      const [statsData, chartData, challanData, activityData] = await Promise.all([
-        statsRes.json(), chartRes.json(), challanRes.json(), activityRes.json()
+      const [statsData, chartData, challanData, activityData, searchStatsData, searchesData] = await Promise.all([
+        statsRes.json(), chartRes.json(), challanRes.json(), activityRes.json(), searchStatsRes.json(), searchesRes.json()
       ])
 
       if (statsData.success) setStats(statsData.stats)
@@ -113,6 +118,8 @@ export default function Dashboard() {
         ])
       }
       if (activityData.success) setActivity(activityData.activity)
+      if (searchStatsData.success) setSearchStats(searchStatsData.stats)
+      if (searchesData.success) setRecentSearches(searchesData.searches || [])
     } catch (err) {
       console.error('Dashboard load error:', err)
     } finally {
@@ -423,6 +430,69 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* User Challan Searches */}
+      {searchStats && (
+        <div className="card" style={{ marginTop: 24 }}>
+          <div className="card-header" style={{ marginBottom: 4 }}>
+            <span className="card-title">User Challan Searches</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/challan-searches')}>
+              <Eye size={13} /> View All
+            </button>
+          </div>
+          <div className="card-body">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-text-primary)' }}>{formatNumber(searchStats.totalSearches)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Total Searches</div>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#2563eb' }}>{formatNumber(searchStats.todaySearches)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Today</div>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b' }}>{formatNumber(searchStats.byType?.DELHI_OTP || 0)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Delhi OTP</div>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981' }}>{formatNumber(searchStats.byType?.ALL_CHALLANS || 0)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>All Challans</div>
+              </div>
+            </div>
+
+            {recentSearches.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>Recent Searches</div>
+                {recentSearches.map((s, i) => (
+                  <div key={s.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    paddingBottom: 10,
+                    borderBottom: i < recentSearches.length - 1 ? '1px solid var(--color-border)' : 'none',
+                    marginBottom: i < recentSearches.length - 1 ? 10 : 0
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8,
+                      background: s.status === 'success' ? '#10b98115' : s.status === 'failed' ? '#ef444415' : '#f59e0b15',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0
+                    }}>
+                      {s.status === 'success' ? '✅' : s.status === 'failed' ? '❌' : '⚠️'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{s.vehicleNumber}</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        {s.searchType.replace(/_/g, ' ')} — {s.challansFound} found
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                      {formatRelativeTime(s.createdAt)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Secondary stats row */}
       {stats && (

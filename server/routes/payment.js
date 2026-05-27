@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import PaymentModel from '../models/Payment.js';
 import ReceiptModel from '../models/Receipt.js';
 import ChallanModel from '../models/Challan.js';
+import { emitPaymentEvent } from '../utils/searchLogger.js';
 
 const router = express.Router();
 
@@ -115,6 +116,13 @@ router.post('/verify', async (req, res) => {
     }
 
     console.log('✅ Payment and receipt stored successfully in MongoDB');
+
+    emitPaymentEvent(req, {
+      vehicleNumber,
+      amount: totalAmount,
+      challansCount: challans.length,
+      paymentId: razorpay_payment_id
+    });
 
     const receipt = {
       id: receiptNumber,

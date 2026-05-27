@@ -12,6 +12,7 @@ import vehicleRoutes from './routes/vehicle.js';
 import paymentRoutes from './routes/payment.js';
 import externalApiRoutes from './routes/externalApi.js';
 import delhiOtpChallanRoutes from './routes/delhiOtpChallan.js';
+import publicConfigRoutes from './routes/publicConfig.js';
 
 // Admin routes
 import adminAuthRoutes from './routes/admin/auth.js';
@@ -26,6 +27,7 @@ import adminSettingsRoutes from './routes/admin/settings.js';
 import adminNotificationRoutes from './routes/admin/notifications.js';
 import adminCmsRoutes from './routes/admin/cms.js';
 import adminTicketRoutes from './routes/admin/tickets.js';
+import adminChallanSearchRoutes from './routes/admin/challanSearches.js';
 
 // Middleware
 import { apiLimiter } from './middleware/rateLimiter.js';
@@ -99,6 +101,7 @@ app.use('/api/vehicle', vehicleRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/external', externalApiRoutes);
 app.use('/api/delhi-otp', delhiOtpChallanRoutes);
+app.use('/api/config', publicConfigRoutes);
 
 // Admin routes (with rate limiting)
 app.use('/api/admin/auth', adminAuthRoutes);
@@ -113,6 +116,7 @@ app.use('/api/admin/settings', apiLimiter, adminSettingsRoutes);
 app.use('/api/admin/notifications', apiLimiter, adminNotificationRoutes);
 app.use('/api/admin/cms', apiLimiter, adminCmsRoutes);
 app.use('/api/admin/tickets', apiLimiter, adminTicketRoutes);
+app.use('/api/admin/challan-searches', apiLimiter, adminChallanSearchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

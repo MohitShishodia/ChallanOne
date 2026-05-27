@@ -1,4 +1,5 @@
 import express from 'express';
+import { logChallanSearch } from '../utils/searchLogger.js';
 
 const router = express.Router();
 
@@ -89,6 +90,7 @@ router.post('/challan', async (req, res) => {
 
         console.log(`[ChallanWala] Fetching challan info for: ${normalizedVehicleNumber}`);
 
+        const startTime = Date.now();
         const response = await fetch(CHALLANWALA_API_URL, {
             method: 'POST',
             headers: {
@@ -99,16 +101,36 @@ router.post('/challan', async (req, res) => {
         });
 
         const data = await response.json();
+        const responseTimeMs = Date.now() - startTime;
 
         if (!data.success) {
             console.error('[ChallanWala] API error:', data.message);
+            logChallanSearch(req, {
+                vehicleNumber: normalizedVehicleNumber,
+                searchType: 'ALL_CHALLANS',
+                status: 'failed',
+                responseTimeMs,
+                errorMessage: data.message
+            });
             return res.status(data.statusCode || 502).json({
                 success: false,
                 message: data.message || 'Failed to fetch challan information'
             });
         }
 
+        const pending = data.data?.pendingChallans || [];
+        const paid = data.data?.paidChallans || [];
+        const challansFound = pending.length + paid.length;
+
         console.log(`[ChallanWala] Challan info fetched successfully for: ${normalizedVehicleNumber}`);
+
+        logChallanSearch(req, {
+            vehicleNumber: normalizedVehicleNumber,
+            searchType: 'ALL_CHALLANS',
+            status: challansFound > 0 ? 'success' : 'no_results',
+            challansFound,
+            responseTimeMs
+        });
 
         return res.json({
             success: true,
@@ -120,6 +142,12 @@ router.post('/challan', async (req, res) => {
 
     } catch (error) {
         console.error('[ChallanWala] Challan info error:', error);
+        logChallanSearch(req, {
+            vehicleNumber: req.body?.vehicleNumber || 'UNKNOWN',
+            searchType: 'ALL_CHALLANS',
+            status: 'failed',
+            errorMessage: error.message
+        });
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch challan information from external API',

@@ -21,5 +21,10 @@ export const API = {
     createRun: `${API_BASE_URL}/api/delhi-otp/runs`,
     getRun: (runId) => `${API_BASE_URL}/api/delhi-otp/runs/${runId}`,
     submitAction: (runId) => `${API_BASE_URL}/api/delhi-otp/runs/${runId}/actions`,
+  },
+  config: {
+    features: `${API_BASE_URL}/api/config/features`,
+    settings: `${API_BASE_URL}/api/config/settings`,
+    services: `${API_BASE_URL}/api/config/services`,
   }
 }

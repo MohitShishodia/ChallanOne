@@ -119,6 +119,20 @@ router.patch('/:id/featured', adminAuth, requirePermission(PERMISSIONS.MANAGE_SE
 router.patch('/:id/status', adminAuth, requirePermission(PERMISSIONS.MANAGE_SERVICES), async (req, res) => {
   try {
     const result = await toggleServiceStatus(req.params.id);
+    if (result.success) {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('service-status-changed', {
+          serviceId: req.params.id,
+          name: result.service.name,
+          status: result.service.status
+        });
+      }
+      await logActivity(req.admin.id, 'service_status_toggled', 'service', req.params.id, {
+        name: result.service.name,
+        newStatus: result.service.status
+      });
+    }
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Internal server error' });

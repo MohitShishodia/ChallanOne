@@ -17,6 +17,7 @@ import TicketList from './pages/tickets/TicketList'
 import Notifications from './pages/notifications/Notifications'
 import RoleList from './pages/roles/RoleList'
 import Settings from './pages/settings/Settings'
+import ChallanSearches from './pages/challanSearches/ChallanSearches'
 
 // Protected route guard
 function RequireAuth({ children }) {
@@ -88,6 +89,7 @@ function AppRoutes() {
       <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
       <Route path="/roles" element={<RequireAuth><RoleList /></RequireAuth>} />
       <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+      <Route path="/challan-searches" element={<RequireAuth><ChallanSearches /></RequireAuth>} />
 
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -55,6 +55,9 @@ router.put('/', adminAuth, requirePermission(PERMISSIONS.MANAGE_SETTINGS), async
 
     await logActivity(req.admin.id, 'settings_updated', 'settings', null, { updated, errors });
 
+    const io = req.app.get('io');
+    if (io) io.emit('settings-updated', { updated });
+
     return res.json({
       success: errors.length === 0,
       message: errors.length === 0 ? 'All settings updated successfully' : 'Some settings failed to update',

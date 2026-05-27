@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../config/api'
 import { PoliceIllustration } from '../components/Illustrations'
 import DelhiOtpFlow from '../components/DelhiOtpFlow'
 import ChallanResults from '../components/ChallanResults'
+import { useFeatures } from '../context/FeatureContext'
 import {
   FLOW_TYPES,
   transformExternalChallans,
@@ -13,6 +14,7 @@ import {
 export default function PayChallan() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isFeatureEnabled } = useFeatures()
   const [flowType, setFlowType] = useState(FLOW_TYPES.SELECT)
   const [vehicleNumber, setVehicleNumber] = useState(searchParams.get('vehicle') || '')
   const [loading, setLoading] = useState(false)
@@ -269,8 +271,9 @@ export default function PayChallan() {
 
                 {/* Delhi State Challan Option */}
                 <button
-                  onClick={() => setFlowType(FLOW_TYPES.DELHI_OTP)}
-                  className="w-full surface-card p-5 text-left hover:border-orange-300 hover:bg-orange-50/30 transition-all group"
+                  onClick={() => isFeatureEnabled('delhi_otp_challan') && setFlowType(FLOW_TYPES.DELHI_OTP)}
+                  disabled={!isFeatureEnabled('delhi_otp_challan')}
+                  className={`w-full surface-card p-5 text-left transition-all group ${isFeatureEnabled('delhi_otp_challan') ? 'hover:border-orange-300 hover:bg-orange-50/30' : 'opacity-50 cursor-not-allowed'}`}
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 group-hover:bg-orange-200 transition">
@@ -281,18 +284,25 @@ export default function PayChallan() {
                     <div>
                       <h3 className="text-[16px] font-bold text-slate-900">Delhi State Challan</h3>
                       <p className="text-[13px] text-slate-500 mt-1">OTP-based verification for Delhi traffic challans. Requires mobile number registered with Delhi Traffic Police.</p>
-                      <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-                        OTP Required
-                      </span>
+                      {!isFeatureEnabled('delhi_otp_challan') ? (
+                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                          Service Temporarily Unavailable
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                          OTP Required
+                        </span>
+                      )}
                     </div>
                   </div>
                 </button>
 
                 {/* Fetch All Challans Option */}
                 <button
-                  onClick={() => setFlowType(FLOW_TYPES.ALL_CHALLANS)}
-                  className="w-full surface-card p-5 text-left hover:border-blue-300 hover:bg-blue-50/30 transition-all group"
+                  onClick={() => isFeatureEnabled('fetch_all_challans') && setFlowType(FLOW_TYPES.ALL_CHALLANS)}
+                  disabled={!isFeatureEnabled('fetch_all_challans')}
+                  className={`w-full surface-card p-5 text-left transition-all group ${isFeatureEnabled('fetch_all_challans') ? 'hover:border-blue-300 hover:bg-blue-50/30' : 'opacity-50 cursor-not-allowed'}`}
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-200 transition">
@@ -303,10 +313,16 @@ export default function PayChallan() {
                     <div>
                       <h3 className="text-[16px] font-bold text-slate-900">Fetch All Challans</h3>
                       <p className="text-[13px] text-slate-500 mt-1">Quick vehicle number lookup across all states. No OTP needed — instant results.</p>
-                      <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                        All States
-                      </span>
+                      {!isFeatureEnabled('fetch_all_challans') ? (
+                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                          Service Temporarily Unavailable
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                          All States
+                        </span>
+                      )}
                     </div>
                   </div>
                 </button>

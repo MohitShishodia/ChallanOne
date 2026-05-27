@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { FeatureProvider } from './context/FeatureContext'
 import AppShell from './components/AppShell'
 import ProtectedRoute from './components/ProtectedRoute'
 import WhatsAppButton from './components/ui/WhatsAppButton'
@@ -16,6 +17,7 @@ import './App.css'
 function App() {
   return (
     <AuthProvider>
+      <FeatureProvider>
       <Router>
         <AppShell>
           <Routes>
@@ -43,6 +45,7 @@ function App() {
           <WhatsAppButton />
         </AppShell>
       </Router>
+      </FeatureProvider>
     </AuthProvider>
   )
 }

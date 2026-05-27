@@ -2,6 +2,7 @@ import express from 'express';
 import VehicleModel from '../models/Vehicle.js';
 import ChallanModel from '../models/Challan.js';
 import { maskName, formatChallanDate, formatChallanTime, normalizeVehicleParam } from '../utils/challanHelpers.js';
+import { logChallanSearch } from '../utils/searchLogger.js';
 
 const router = express.Router();
 
@@ -54,6 +55,13 @@ router.get('/:vehicleNumber', async (req, res) => {
       proofImage: c.proof_image_url || 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&h=300&fit=crop'
     }));
 
+    logChallanSearch(req, {
+      vehicleNumber: normalizedNumber,
+      searchType: 'DB_LOOKUP',
+      status: challansResponse.length > 0 ? 'success' : 'no_results',
+      challansFound: challansResponse.length
+    });
+
     res.json({
       success: true,
       dataSource: 'MONGODB',
@@ -64,6 +72,12 @@ router.get('/:vehicleNumber', async (req, res) => {
 
   } catch (error) {
     console.error('Fetch challans error:', error);
+    logChallanSearch(req, {
+      vehicleNumber: normalizedNumber || vehicleNumber,
+      searchType: 'DB_LOOKUP',
+      status: 'failed',
+      errorMessage: error.message
+    });
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
