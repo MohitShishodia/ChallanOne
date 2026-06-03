@@ -12,6 +12,7 @@ const challanSchema = new mongoose.Schema({
   location:        { type: String },
   proof_image_url: { type: String },
   issued_by:       { type: String },
+  source:          { type: String, enum: ['demo', 'external', 'delhi_otp'], default: 'external' },
   created_at:      { type: Date, default: Date.now }
 });
 

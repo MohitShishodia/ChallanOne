@@ -5,6 +5,8 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:50
 export const API = {
   auth: {
     login: `${API_BASE_URL}/api/auth/login`,
+    me: `${API_BASE_URL}/api/auth/me`,
+    profile: `${API_BASE_URL}/api/auth/profile`,
     sendOtp: `${API_BASE_URL}/api/auth/send-otp`,
     verifyOtp: `${API_BASE_URL}/api/auth/verify-otp`,
     forgotPassword: `${API_BASE_URL}/api/auth/forgot-password`,
@@ -16,6 +18,7 @@ export const API = {
     createOrder: `${API_BASE_URL}/api/payment/create-order`,
     verify: `${API_BASE_URL}/api/payment/verify`,
     receipt: (receiptId) => `${API_BASE_URL}/api/payment/receipt/${receiptId}`,
+    userReceipts: `${API_BASE_URL}/api/payment/user-receipts`,
   },
   delhiOtp: {
     createRun: `${API_BASE_URL}/api/delhi-otp/runs`,

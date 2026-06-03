@@ -3,7 +3,8 @@ import jwt from 'jsonwebtoken';
 import { jwtConfig, otpConfig } from '../config.js';
 import { generateOtp, storeOtp, verifyOtp } from '../utils/otpStore.js';
 import { sendEmailOtp } from '../utils/sendOtp.js';
-import { createUser, verifyUserCredentials, updateUserLogin, getUser, userExists } from '../data/users.js';
+import { createUser, verifyUserCredentials, updateUserLogin, getUser, userExists, updateUserProfile } from '../data/users.js';
+import { userAuth } from '../middleware/userAuth.js';
 
 const router = express.Router();
 
@@ -329,6 +330,23 @@ router.post('/verify-otp', async (req, res) => {
       success: false,
       message: 'Internal server error'
     });
+  }
+});
+
+// Update profile (name & email only — phone cannot be changed)
+router.patch('/profile', userAuth, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const result = await updateUserProfile(req.user.email, { name, email });
+
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.message });
+    }
+
+    return res.json({ success: true, message: 'Profile updated', user: result.user });
+  } catch (error) {
+    console.error('Patch profile error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

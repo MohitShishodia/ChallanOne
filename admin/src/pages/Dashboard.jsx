@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 import {
   Users, CreditCard, FileText, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Wrench, LifeBuoy,
+  ArrowUpRight, Wrench, LifeBuoy,
   RefreshCw, Plus, Eye
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -22,7 +22,6 @@ const STAT_CARDS = [
     accent: '#2563eb',
     bg: 'rgba(37,99,235,0.1)',
     format: formatNumber,
-    trend: '+12%'
   },
   {
     key: 'totalPayments',
@@ -31,7 +30,6 @@ const STAT_CARDS = [
     accent: '#10b981',
     bg: 'rgba(16,185,129,0.1)',
     format: formatNumber,
-    trend: '+8%'
   },
   {
     key: 'pendingChallans',
@@ -40,8 +38,6 @@ const STAT_CARDS = [
     accent: '#f59e0b',
     bg: 'rgba(245,158,11,0.1)',
     format: formatNumber,
-    trend: '-3%',
-    trendDown: true
   },
   {
     key: 'totalRevenue',
@@ -50,7 +46,6 @@ const STAT_CARDS = [
     accent: '#7c3aed',
     bg: 'rgba(124,58,237,0.1)',
     format: formatCurrency,
-    trend: '+18%'
   }
 ]
 
@@ -192,10 +187,6 @@ export default function Dashboard() {
                   </div>
                   <div className="stat-card-value">{card.format(value)}</div>
                   <div className="stat-card-label">{card.label}</div>
-                  <div className={`stat-card-trend ${card.trendDown ? 'down' : 'up'}`}>
-                    {card.trendDown ? <ArrowDownRight size={13} /> : <ArrowUpRight size={13} />}
-                    {card.trend} this month
-                  </div>
                 </div>
               )
             })

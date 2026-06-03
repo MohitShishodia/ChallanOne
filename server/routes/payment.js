@@ -5,6 +5,7 @@ import PaymentModel from '../models/Payment.js';
 import ReceiptModel from '../models/Receipt.js';
 import ChallanModel from '../models/Challan.js';
 import { emitPaymentEvent } from '../utils/searchLogger.js';
+import { syncMappedChallans, markChallansPaidByNumbers } from '../utils/challanSync.js';
 
 const router = express.Router();
 
@@ -65,6 +66,17 @@ router.post('/verify', async (req, res) => {
     }
 
     console.log('💳 Payment verified, storing in MongoDB...');
+
+    // Sync external challans into DB and mark as paid
+    try {
+      await syncMappedChallans(vehicleNumber, challans, 'external');
+      const challanNumbers = challans
+        .map(c => c.noticeId || c.id || c.dbId)
+        .filter(Boolean);
+      await markChallansPaidByNumbers(challanNumbers);
+    } catch (syncErr) {
+      console.error('Challan sync on payment error:', syncErr.message);
+    }
 
     const receiptNumber = `RCPT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     const challanDbIds = challans.map(c => c.dbId).filter(Boolean);

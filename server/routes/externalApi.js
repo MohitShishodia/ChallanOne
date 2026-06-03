@@ -1,5 +1,6 @@
 import express from 'express';
 import { logChallanSearch } from '../utils/searchLogger.js';
+import { syncRawChallans } from '../utils/challanSync.js';
 
 const router = express.Router();
 
@@ -120,7 +121,16 @@ router.post('/challan', async (req, res) => {
 
         const pending = data.data?.pendingChallans || [];
         const paid = data.data?.paidChallans || [];
-        const challansFound = pending.length + paid.length;
+        const disposed = data.data?.disposedChallans || [];
+        const allRaw = [...pending, ...paid, ...disposed];
+        const challansFound = allRaw.length;
+
+        // Persist real challans to database for admin panel
+        try {
+            await syncRawChallans(normalizedVehicleNumber, allRaw, 'external');
+        } catch (syncErr) {
+            console.error('[ChallanWala] Sync to DB failed:', syncErr.message);
+        }
 
         console.log(`[ChallanWala] Challan info fetched successfully for: ${normalizedVehicleNumber}`);
 

@@ -4,13 +4,14 @@ import { adminAuth } from '../../middleware/adminAuth.js';
 import { requirePermission, PERMISSIONS } from '../../middleware/rbac.js';
 import { logActivity } from '../../data/activityLog.js';
 import ChallanModel from '../../models/Challan.js';
+import { DEMO_FILTER } from '../../utils/challanSync.js';
 
 const router = express.Router();
 
 // GET /api/admin/challans/stats  (must come before /:id)
 router.get('/stats', adminAuth, requirePermission(PERMISSIONS.VIEW_CHALLANS), async (req, res) => {
   try {
-    const challans = await ChallanModel.find({}, 'status amount');
+    const challans = await ChallanModel.find(DEMO_FILTER, 'status amount');
     const stats = { total: 0, pending: 0, overdue: 0, paid: 0, totalFineAmount: 0, collectedAmount: 0 };
 
     (challans || []).forEach(c => {
@@ -34,11 +35,11 @@ router.get('/stats', adminAuth, requirePermission(PERMISSIONS.VIEW_CHALLANS), as
 // GET /api/admin/challans
 router.get('/', adminAuth, requirePermission(PERMISSIONS.VIEW_CHALLANS), async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, search, dateFrom, dateTo, sort = 'fine_date', order = 'desc' } = req.query;
+    const { page = 1, limit = 20, status, search, dateFrom, dateTo, sort = 'fine_date', order = 'desc', includeDemo } = req.query;
     const pageNum = parseInt(page);
     const limitNum = Math.min(parseInt(limit), 100);
 
-    const filter = {};
+    const filter = includeDemo === 'true' ? {} : { ...DEMO_FILTER };
     if (status) filter.status = status;
     if (search) filter.$or = [
       { challan_number: { $regex: search, $options: 'i' } },
@@ -73,7 +74,8 @@ router.get('/', adminAuth, requirePermission(PERMISSIONS.VIEW_CHALLANS), async (
         fineDate: c.fine_date,
         fineTime: c.fine_time,
         location: c.location,
-        issuedBy: c.issued_by
+        issuedBy: c.issued_by,
+        source: c.source || 'external'
       })),
       pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) }
     });

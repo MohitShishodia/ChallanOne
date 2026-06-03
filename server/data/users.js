@@ -110,6 +110,48 @@ export async function updatePassword(email, newPassword) {
   }
 }
 
+export async function updateUserProfile(email, { name, email: newEmail }) {
+  try {
+    const user = await UserModel.findOne({ email: email.toLowerCase() });
+    if (!user) return { success: false, message: 'User not found' };
+
+    const updates = {};
+    if (name !== undefined && name.trim().length >= 2) {
+      updates.name = name.trim();
+    }
+    if (newEmail && newEmail.toLowerCase() !== email.toLowerCase()) {
+      const taken = await UserModel.findOne({ email: newEmail.toLowerCase() });
+      if (taken) return { success: false, message: 'Email is already in use' };
+      updates.email = newEmail.toLowerCase();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return { success: false, message: 'No valid fields to update' };
+    }
+
+    await UserModel.updateOne({ email: email.toLowerCase() }, updates);
+
+    const updated = await UserModel.findOne({
+      email: (updates.email || email).toLowerCase()
+    }).select('-password_hash');
+
+    return {
+      success: true,
+      user: {
+        id: updated._id.toString(),
+        email: updated.email,
+        name: updated.name,
+        phone: updated.phone,
+        createdAt: updated.created_at,
+        lastLogin: updated.last_login
+      }
+    };
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return { success: false, message: 'Failed to update profile' };
+  }
+}
+
 export async function getAllUsers() {
   try {
     const users = await UserModel.find().select('-password_hash').sort({ created_at: -1 });

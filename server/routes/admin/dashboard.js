@@ -8,6 +8,7 @@ import PaymentModel from '../../models/Payment.js';
 import ChallanModel from '../../models/Challan.js';
 import ServiceModel from '../../models/Service.js';
 import SupportTicketModel from '../../models/SupportTicket.js';
+import { DEMO_FILTER } from '../../utils/challanSync.js';
 
 const router = express.Router();
 
@@ -19,11 +20,11 @@ router.get('/stats', adminAuth, requirePermission(PERMISSIONS.VIEW_DASHBOARD), a
 
     const [totalUsers, payments, pendingChallans, activeServices, openTickets, todayPayments] = await Promise.all([
       UserModel.countDocuments(),
-      PaymentModel.find({}, 'total_amount status'),
-      ChallanModel.countDocuments({ status: { $ne: 'PAID' } }),
+      PaymentModel.find({ status: 'SUCCESS' }, 'total_amount status'),
+      ChallanModel.countDocuments({ ...DEMO_FILTER, status: { $ne: 'PAID' } }),
       ServiceModel.countDocuments({ status: 'active' }),
       SupportTicketModel.countDocuments({ status: { $in: ['open', 'in_progress'] } }),
-      PaymentModel.find({ paid_at: { $gte: today } }, 'total_amount')
+      PaymentModel.find({ status: 'SUCCESS', paid_at: { $gte: today } }, 'total_amount')
     ]);
 
     const totalPayments = payments.length;
@@ -90,7 +91,7 @@ router.get('/recent-activity', adminAuth, requirePermission(PERMISSIONS.VIEW_DAS
 // GET /api/admin/dashboard/challan-stats
 router.get('/challan-stats', adminAuth, requirePermission(PERMISSIONS.VIEW_DASHBOARD), async (req, res) => {
   try {
-    const challans = await ChallanModel.find({}, 'status');
+    const challans = await ChallanModel.find(DEMO_FILTER, 'status');
     const stats = { PENDING: 0, OVERDUE: 0, PAID: 0 };
     (challans || []).forEach(c => { stats[c.status] = (stats[c.status] || 0) + 1; });
     return res.json({ success: true, stats });

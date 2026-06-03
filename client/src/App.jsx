@@ -12,6 +12,8 @@ import Profile from './pages/Profile'
 import PaymentSuccess from './pages/PaymentSuccess'
 import VehicleInfo from './pages/VehicleInfo'
 import History from './pages/History'
+import About from './pages/About'
+import ServiceHistory from './pages/ServiceHistory'
 import './App.css'
 
 function App() {
@@ -40,6 +42,8 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/history" element={<History />} />
+            <Route path="/service-history" element={<ServiceHistory />} />
+            <Route path="/about" element={<About />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
           </Routes>
           <WhatsAppButton />

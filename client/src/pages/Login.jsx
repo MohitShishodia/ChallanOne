@@ -141,10 +141,8 @@ export default function Login() {
       <div className="screen-content">
         <div className="container-narrow py-8 md:py-12 space-y-5">
         <div className="text-center pt-2 animate-fade-up">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/30">
-            <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden border-2 border-red-100 shadow-lg">
+            <img src="/challanone-logo.png" alt="Challan One" className="h-full w-full object-cover" />
           </div>
           <h1 className="h-display">
             {showForgot
@@ -267,7 +265,7 @@ export default function Login() {
 
             <p className="text-center text-[12.5px] text-slate-500">
               {activeTab === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <button onClick={() => setActiveTab(activeTab === 'login' ? 'signup' : 'login')} className="font-semibold text-blue-600">
+              <button onClick={() => setActiveTab(activeTab === 'login' ? 'signup' : 'login')} className="font-semibold text-brand-red">
                 {activeTab === 'login' ? 'Sign up' : 'Login'}
               </button>
             </p>

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { connectDB } from './config/mongodb.js';
+import { migrateDemoChallans } from './utils/challanSync.js';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -149,6 +150,7 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
 
   // Connect to MongoDB
   await connectDB();
+  await migrateDemoChallans();
 
   // Verify email connection
   const emailReady = await verifyEmailConnection();

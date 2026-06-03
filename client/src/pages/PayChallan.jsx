@@ -10,6 +10,7 @@ import {
   transformExternalChallans,
   calculatePaymentTotal
 } from '../utils/challanUtils'
+import { savePendingChallans } from '../utils/userStorage'
 
 export default function PayChallan() {
   const [searchParams] = useSearchParams()
@@ -113,7 +114,18 @@ export default function PayChallan() {
       paidCount: challans.length - pending.length
     })
     setSelectedChallans(pending.map((c) => c.id))
+    if (pending.length > 0) {
+      savePendingChallans(vNum, pending)
+    }
   }
+
+  useEffect(() => {
+    if (!data?.vehicle?.number || !data?.challans) return
+    const pending = data.challans.filter((c) => c.status !== 'PAID')
+    if (pending.length > 0) {
+      savePendingChallans(data.vehicle.number, pending)
+    }
+  }, [data])
 
   const toggleChallanSelection = (id) => {
     setSelectedChallans((prev) =>
@@ -205,7 +217,7 @@ export default function PayChallan() {
           }
         },
         prefill: { name: user.name || '', email: user.email || '', contact: user.phone || '' },
-        theme: { color: '#2563eb' },
+        theme: { color: '#dc2626' },
         modal: { ondismiss: () => setPaymentLoading(false) }
       }
 

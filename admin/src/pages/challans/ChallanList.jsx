@@ -136,9 +136,8 @@ export default function ChallanList() {
 
       <DataTable columns={columns} data={challans} loading={loading}
         pagination={pagination} onPageChange={setPage}
-        emptyMessage="No challans found" emptyIcon="📋" />
-
-      {/* Challan Detail Modal */}
+        emptyMessage="No real challans yet. They appear here when users search vehicles or complete payments."
+        emptyIcon="📋" />
       <Modal
         open={!!selectedChallan}
         onClose={() => setSelectedChallan(null)}

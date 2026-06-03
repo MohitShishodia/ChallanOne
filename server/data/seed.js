@@ -110,7 +110,7 @@ async function seed() {
     for (const vc of challansData) {
       const vehicleId = vehicleMap[vc.vehicleNumber];
       if (!vehicleId) { console.log(`⚠️  No vehicle found for ${vc.vehicleNumber}`); continue; }
-      const challansWithVehicleId = vc.challans.map(c => ({ ...c, vehicle_id: vehicleId }));
+      const challansWithVehicleId = vc.challans.map(c => ({ ...c, vehicle_id: vehicleId, source: 'demo' }));
       await ChallanModel.insertMany(challansWithVehicleId);
       totalChallans += challansWithVehicleId.length;
     }

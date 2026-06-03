@@ -21,6 +21,7 @@ import {
   resolveActionsFromChallenge
 } from '../utils/delhiOtpApi.js';
 import { logChallanSearch } from '../utils/searchLogger.js';
+import { syncRawChallans } from '../utils/challanSync.js';
 
 const router = express.Router();
 
@@ -28,6 +29,24 @@ const CHALLANWALA_BASE_URL = 'https://api.challanwala.com/api/v1/corporate-api/c
 const CHALLANWALA_TOKEN = process.env.CHALLANWALA_TOKEN || '';
 
 const OTP_SOURCE_CODE = 'DELHI_OTP';
+
+async function syncCompletedRunChallans(runData, envelope) {
+  const responseBlock = envelope?.inner?.response || runData?.data?.response;
+  const rawLists = [
+    ...(Array.isArray(runData?.challans) ? runData.challans : []),
+    ...(responseBlock?.pendingChallans || []),
+    ...(responseBlock?.paidChallans || []),
+    ...(responseBlock?.disposedChallans || [])
+  ];
+  const vehicleNumber = runData?.vehicleNumber || runData?.rcNumber || envelope?.rcNumber;
+  if (!vehicleNumber || rawLists.length === 0) return;
+
+  try {
+    await syncRawChallans(vehicleNumber, rawLists, 'delhi_otp');
+  } catch (err) {
+    console.error('[DelhiOTP] Sync to DB failed:', err.message);
+  }
+}
 
 function attachChallengeActions(result, envelope) {
   const actions = resolveActionsFromChallenge(envelope.interactiveChallenge);
@@ -175,7 +194,13 @@ router.get('/runs/:runId', async (req, res) => {
     }
 
     const envelope = extractRunEnvelope(data.data);
-    return res.json(attachChallengeActions(buildRunPollResult(runId, data.data || {}, data.message, envelope), envelope));
+    const pollResult = attachChallengeActions(buildRunPollResult(runId, data.data || {}, data.message, envelope), envelope);
+
+    if (pollResult.status === 'COMPLETED') {
+      await syncCompletedRunChallans(data.data || {}, envelope);
+    }
+
+    return res.json(pollResult);
 
   } catch (error) {
     console.error('[DelhiOTP] Run poll error:', error);
@@ -248,10 +273,16 @@ router.post('/runs/:runId/actions', async (req, res) => {
     }
 
     const envelope = extractRunEnvelope(data.data);
-    return res.json(attachChallengeActions(
+    const pollResult = attachChallengeActions(
       buildRunPollResult(runId, data.data || {}, data.message || 'Action submitted successfully', envelope),
       envelope
-    ));
+    );
+
+    if (pollResult.status === 'COMPLETED') {
+      await syncCompletedRunChallans(data.data || {}, envelope);
+    }
+
+    return res.json(pollResult);
 
   } catch (error) {
     console.error('[DelhiOTP] Action submission error:', error);

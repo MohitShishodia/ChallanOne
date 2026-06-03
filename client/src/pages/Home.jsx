@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HeroHomeIllustration, SupportIllustration } from '../components/Illustrations'
+import { HeroHomeIllustration } from '../components/Illustrations'
+import BrandLogo from '../components/BrandLogo'
+import { whatsappUrl, WHATSAPP } from '../constants/brand'
 
 export default function Home() {
   return (
     <div className="screen">
       <div className="screen-content">
         {/* ── HERO SECTION ── */}
-        <section className="bg-gradient-to-br from-blue-50 via-sky-50 to-white">
+        <section className="bg-gradient-to-br from-red-50/60 via-white to-white">
           <div className="container-main py-5 md:py-20">
             <div className="grid md:grid-cols-2 gap-4 md:gap-12 items-center">
               {/* Left - Text */}
@@ -20,7 +22,7 @@ export default function Home() {
                 </div>
                 <h1 className="h-display">
                   Check Vehicle Challan & RC Details{' '}
-                  <span className="text-blue-600">in Seconds</span>
+                  <span className="text-brand-red">in Seconds</span>
                 </h1>
                 <p className="text-[13px] md:text-[18px] leading-relaxed text-slate-500 max-w-lg">
                   Fast, secure and reliable platform for checking traffic challans and vehicle registration details across India.
@@ -70,6 +72,45 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ── CONNECT WITH EXPERT ── */}
+        <section className="bg-white border-y border-slate-100">
+          <div className="container-main py-10 md:py-14">
+            <div className="expert-cta grid md:grid-cols-2 gap-6 items-center">
+              <div>
+                <p className="text-[12px] font-bold uppercase tracking-widest text-brand-red mb-2">Need help?</p>
+                <h2 className="text-[22px] md:text-[28px] font-bold text-slate-900 leading-tight">
+                  Connect with an Expert
+                </h2>
+                <p className="mt-3 text-[14px] md:text-[15px] text-slate-600 leading-relaxed">
+                  Talk to our challan clearance experts on WhatsApp for payment help, OTP verification, and vehicle queries.
+                </p>
+                <a
+                  href={whatsappUrl('Hi! I would like to connect with a Challan One expert.')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary mt-5 inline-flex"
+                >
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                  Chat on WhatsApp
+                </a>
+                <p className="mt-2 text-[12px] text-slate-500">{WHATSAPP.display}</p>
+              </div>
+              <div className="hidden md:flex justify-center">
+                <div className="surface-card p-6 max-w-sm w-full">
+                  <ul className="space-y-3 text-[14px] text-slate-600">
+                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> Challan payment guidance</li>
+                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> Parivahan OTP support</li>
+                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> RC & vehicle queries</li>
+                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> Available 10 AM – 8 PM</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── STATS ── */}
         <section className="bg-white border-b border-slate-100">
           <div className="container-main py-6 md:py-8">
@@ -91,7 +132,7 @@ export default function Home() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <FeatureCard
-                tone="blue"
+                tone="red"
                 title="Instant Challan Check"
                 desc="Check pending or paid challans by vehicle number instantly."
                 to="/pay-challan"
@@ -137,10 +178,10 @@ export default function Home() {
             <div className="grid sm:grid-cols-3 gap-6 md:gap-12 max-w-4xl mx-auto">
               {howItWorksSteps.map((step, idx) => (
                 <div key={step.num} className="text-center animate-fade-up">
-                  <div className="mx-auto flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-[0_2px_8px_-2px_rgba(37,99,235,0.25)] mb-3 md:mb-5">
+                  <div className="mx-auto flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-red-50 text-brand-red shadow-[0_2px_8px_-2px_rgba(220,38,38,0.25)] mb-3 md:mb-5">
                     {step.icon}
                   </div>
-                  <p className="text-[11px] font-bold tracking-widest text-blue-600 mb-1">{step.num}</p>
+                  <p className="text-[11px] font-bold tracking-widest text-brand-red mb-1">{step.num}</p>
                   <p className="text-[16px] md:text-[17px] font-bold text-slate-900">{step.title}</p>
                   <p className="text-[13px] md:text-[14px] text-slate-500 mt-1.5 md:mt-2 leading-relaxed">{step.desc}</p>
                 </div>
@@ -148,7 +189,7 @@ export default function Home() {
             </div>
             <div className="mt-8 md:mt-12 max-w-2xl mx-auto">
               <div className="trust-card">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-brand-red">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c-1.66 0-3 1.34-3 3 0 1.31.84 2.41 2 2.83V19a1 1 0 002 0v-2.17c1.16-.42 2-1.52 2-2.83 0-1.66-1.34-3-3-3zm6-2V7a6 6 0 10-12 0v2a3 3 0 00-3 3v7a3 3 0 003 3h12a3 3 0 003-3v-7a3 3 0 00-3-3zM8 7a4 4 0 118 0v2H8V7z" />
                   </svg>
@@ -170,15 +211,8 @@ export default function Home() {
           <div className="container-main">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-10">
               <div>
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-                    <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </div>
-                  <span className="text-[16px] font-bold text-white">
-                    Challan<span className="text-blue-400">One</span>
-                  </span>
+                <div className="mb-4">
+                  <BrandLogo linkTo="/" size="sm" variant="light" />
                 </div>
                 <p className="text-[13px] text-slate-400 leading-relaxed">India's most trusted platform for checking traffic challans and vehicle registration details.</p>
               </div>
@@ -187,7 +221,8 @@ export default function Home() {
                 <div className="space-y-2.5">
                   <Link to="/pay-challan" className="block text-[14px]">Check Challan</Link>
                   <Link to="/vehicle-info" className="block text-[14px]">RC Details</Link>
-                  <Link to="/history" className="block text-[14px]">History</Link>
+                  <Link to="/service-history" className="block text-[14px]">Service History</Link>
+                  <Link to="/about" className="block text-[14px]">About Us</Link>
                 </div>
               </div>
               <div>
@@ -195,7 +230,7 @@ export default function Home() {
                 <div className="space-y-2.5">
                   <Link to="/support" className="block text-[14px]">Help Center</Link>
                   <a href="mailto:support@challanone.com" className="block text-[14px]">support@challanone.com</a>
-                  <a href="tel:+911234567890" className="block text-[14px]">+91 12345 67890</a>
+                  <a href={`tel:+${WHATSAPP.number}`} className="block text-[14px]">{WHATSAPP.display}</a>
                 </div>
               </div>
               <div>
@@ -322,7 +357,7 @@ function ContactUsSection() {
 function ContactRow({ label, value, icon }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">{icon}</div>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-brand-red">{icon}</div>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-medium text-slate-500">{label}</p>
         <p className="text-[14px] font-semibold text-slate-900 break-words">{value}</p>
@@ -371,9 +406,9 @@ function Stat({ title, subtitle }) {
   )
 }
 
-function FeatureCard({ icon, title, desc, to, tone = 'blue' }) {
+function FeatureCard({ icon, title, desc, to, tone = 'red' }) {
   const tones = {
-    blue: 'bg-blue-50 text-blue-600',
+    red: 'bg-red-50 text-brand-red',
     emerald: 'bg-emerald-50 text-emerald-600',
     amber: 'bg-amber-50 text-amber-600',
   }
@@ -384,7 +419,7 @@ function FeatureCard({ icon, title, desc, to, tone = 'blue' }) {
         <p className="text-[16px] font-semibold text-slate-900">{title}</p>
         <p className="text-[14px] text-slate-500 leading-relaxed mt-1">{desc}</p>
       </div>
-      <span className="text-[13px] font-semibold text-blue-600 inline-flex items-center gap-1 mt-auto">
+      <span className="text-[13px] font-semibold text-brand-red inline-flex items-center gap-1 mt-auto">
         Learn more
         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

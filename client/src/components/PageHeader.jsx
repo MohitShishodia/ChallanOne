@@ -8,7 +8,7 @@ export default function PageHeader({ title, onBack, right = null }) {
   }
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-sky-50 border-b border-slate-100">
+    <div className="bg-gradient-to-r from-red-50/80 to-white border-b border-slate-100">
       <div className="container-main py-6 md:py-10">
         <div className="flex items-center gap-3">
           <button onClick={handleBack} className="icon-btn" aria-label="Go back">
