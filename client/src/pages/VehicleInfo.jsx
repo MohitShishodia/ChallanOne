@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
 import { RcDocIllustration } from '../components/Illustrations'
+import PageTitleBar from '../components/PageTitleBar'
 import { useFeatures } from '../context/FeatureContext'
 
 export default function VehicleInfo() {
@@ -132,24 +133,11 @@ export default function VehicleInfo() {
   return (
     <div className="screen">
       <div className="screen-content">
-        {/* Page title */}
-        <div className="bg-gradient-to-r from-blue-50 to-sky-50 border-b border-slate-100">
-          <div className="container-main py-6 md:py-10">
-            <div className="flex items-center gap-3 mb-2">
-              {vehicle && (
-                <button onClick={() => setVehicle(null)} className="icon-btn">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-              )}
-              <h1 className="h-section">RC Details</h1>
-            </div>
-            <p className="text-[14px] md:text-[15px] text-slate-500">
-              {vehicle ? `Registration details for ${vehicle.number}` : 'Look up any vehicle registration details instantly'}
-            </p>
-          </div>
-        </div>
+        <PageTitleBar
+          title="RC Details"
+          subtitle={vehicle ? `Registration details for ${vehicle.number}` : 'Look up any vehicle registration details instantly'}
+          onBack={vehicle ? () => setVehicle(null) : undefined}
+        />
 
         {!isFeatureEnabled('rc_details') && showSearch && (
           <div className="container-main py-8">
@@ -161,11 +149,10 @@ export default function VehicleInfo() {
         )}
 
         {isFeatureEnabled('rc_details') && showSearch && (
-          <div className="container-main py-8 md:py-12">
-            <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
-              {/* Left - Search */}
-              <div className="space-y-6">
-                <form onSubmit={handleSearch} className="surface-card p-6 space-y-4 animate-fade-up">
+          <div className="container-main page-section">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-12 items-start">
+              <div className="space-y-4">
+                <form onSubmit={handleSearch} className="surface-card p-4 md:p-6 space-y-3 md:space-y-4 animate-fade-up">
                   <div>
                     <label className="field-label">Vehicle Number</label>
                     <input
@@ -199,11 +186,8 @@ export default function VehicleInfo() {
                 </div>
               </div>
 
-              {/* Illustration */}
-              <div className="order-first md:order-last animate-fade-up">
-                <div className="hero-illu">
-                  <RcDocIllustration className="w-full" />
-                </div>
+              <div className="page-hero-banner animate-fade-up">
+                <RcDocIllustration />
               </div>
             </div>
           </div>

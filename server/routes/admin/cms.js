@@ -15,7 +15,16 @@ const router = express.Router();
 router.get('/pages', adminAuth, requirePermission(PERMISSIONS.VIEW_CMS), async (req, res) => {
   try {
     const pages = await getPages();
-    return res.json({ success: true, pages });
+    const formatted = pages.map(p => ({
+      id: p._id.toString(),
+      slug: p.slug,
+      title: p.title,
+      content: p.content,
+      meta_title: p.meta_title,
+      meta_description: p.meta_description,
+      updated_at: p.updated_at
+    }));
+    return res.json({ success: true, pages: formatted });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }

@@ -34,7 +34,7 @@ const NAV_SECTIONS = [
     label: 'Content & Support',
     items: [
       { to: '/cms', icon: BookOpen, label: 'CMS', permission: 'view_cms' },
-      { to: '/tickets', icon: LifeBuoy, label: 'Support Tickets', permission: 'view_tickets' },
+      { to: '/tickets', icon: LifeBuoy, label: 'Messages', permission: 'view_tickets' },
       { to: '/notifications', icon: Bell, label: 'Notifications', permission: 'view_notifications' }
     ]
   },

@@ -6,6 +6,9 @@ function formatTicket(ticket) {
     id: ticket._id.toString(),
     subject: ticket.subject,
     description: ticket.description,
+    guestName: ticket.guest_name || null,
+    guestEmail: ticket.guest_email || null,
+    source: ticket.source || 'website',
     priority: ticket.priority,
     status: ticket.status,
     user: ticket.user_id ? {
@@ -32,7 +35,9 @@ export async function getTickets({ status, priority, assignedTo, search, page = 
     if (assignedTo) filter.assigned_to = assignedTo;
     if (search) filter.$or = [
       { subject: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } }
+      { description: { $regex: search, $options: 'i' } },
+      { guest_name: { $regex: search, $options: 'i' } },
+      { guest_email: { $regex: search, $options: 'i' } }
     ];
 
     const skip = (page - 1) * limit;
@@ -89,6 +94,9 @@ export async function createTicket(ticketData) {
   try {
     const ticket = await SupportTicketModel.create({
       user_id: ticketData.user_id || null,
+      guest_name: ticketData.guest_name || null,
+      guest_email: ticketData.guest_email || null,
+      source: ticketData.source || 'website',
       subject: ticketData.subject,
       description: ticketData.description,
       priority: ticketData.priority || 'medium',

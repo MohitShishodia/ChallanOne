@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
 import { PoliceIllustration } from '../components/Illustrations'
+import PageTitleBar from '../components/PageTitleBar'
 import DelhiOtpFlow from '../components/DelhiOtpFlow'
 import ChallanResults from '../components/ChallanResults'
 import { useFeatures } from '../context/FeatureContext'
@@ -79,9 +80,7 @@ export default function PayChallan() {
         }
 
         setData(transformed)
-        setSelectedChallans(
-          transformed.challans.filter((c) => c.status !== 'PAID').map((c) => c.id)
-        )
+        setSelectedChallans([])
       } else {
         setError(result.message || 'No challans found')
         setData(null)
@@ -113,7 +112,7 @@ export default function PayChallan() {
       pendingCount: pending.length,
       paidCount: challans.length - pending.length
     })
-    setSelectedChallans(pending.map((c) => c.id))
+    setSelectedChallans([])
     if (pending.length > 0) {
       savePendingChallans(vNum, pending)
     }
@@ -247,45 +246,34 @@ export default function PayChallan() {
   return (
     <div className="screen">
       <div className="screen-content">
-        {/* Page title bar */}
-        <div className="bg-gradient-to-r from-blue-50 to-sky-50 border-b border-slate-100">
-          <div className="container-main py-6 md:py-10">
-            <div className="flex items-center gap-3 mb-2">
-              {(showResult || flowType !== FLOW_TYPES.SELECT) && (
-                <button onClick={goBackToSelector} className="icon-btn">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-              )}
-              <h1 className="h-section">
-                {showResult ? 'Challan Results' : flowType === FLOW_TYPES.DELHI_OTP ? 'Delhi State Challan' : flowType === FLOW_TYPES.ALL_CHALLANS ? 'Fetch All Challans' : 'Check Challan'}
-              </h1>
-            </div>
-            <p className="text-[14px] md:text-[15px] text-slate-500">
-              {showResult
-                ? `Showing results for ${data?.vehicle?.number}`
-                : flowType === FLOW_TYPES.DELHI_OTP
-                  ? 'Verify via OTP to fetch Delhi state challans'
-                  : flowType === FLOW_TYPES.ALL_CHALLANS
-                    ? 'Enter vehicle number to fetch challans from all states'
-                    : 'Choose how you want to check your challans'}
-            </p>
-          </div>
-        </div>
+        <PageTitleBar
+          title={
+            showResult ? 'Challan Results' : flowType === FLOW_TYPES.DELHI_OTP ? 'Delhi State Challan' : flowType === FLOW_TYPES.ALL_CHALLANS ? 'Fetch All Challans' : 'Check Challan'
+          }
+          subtitle={
+            showResult
+              ? `Showing results for ${data?.vehicle?.number}`
+              : flowType === FLOW_TYPES.DELHI_OTP
+                ? 'Verify via OTP to fetch Delhi state challans'
+                : flowType === FLOW_TYPES.ALL_CHALLANS
+                  ? 'Enter vehicle number to fetch challans from all states'
+                  : 'Choose how you want to check your challans'
+          }
+          onBack={showResult || flowType !== FLOW_TYPES.SELECT ? goBackToSelector : undefined}
+        />
 
         {/* Flow Selector */}
         {flowType === FLOW_TYPES.SELECT && (
-          <div className="container-main py-8 md:py-12">
-            <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-start">
-              <div className="space-y-4 animate-fade-up">
-                <h2 className="text-[17px] font-bold text-slate-900 mb-4">Select Challan Check Type</h2>
+          <div className="container-main page-section">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-8 items-start">
+              <div className="space-y-3 animate-fade-up">
+                <h2 className="text-[15px] md:text-[17px] font-bold text-slate-900 mb-2">Select Challan Check Type</h2>
 
                 {/* Delhi State Challan Option */}
                 <button
                   onClick={() => isFeatureEnabled('delhi_otp_challan') && setFlowType(FLOW_TYPES.DELHI_OTP)}
                   disabled={!isFeatureEnabled('delhi_otp_challan')}
-                  className={`w-full surface-card p-5 text-left transition-all group ${isFeatureEnabled('delhi_otp_challan') ? 'hover:border-orange-300 hover:bg-orange-50/30' : 'opacity-50 cursor-not-allowed'}`}
+                  className={`w-full surface-card p-4 md:p-5 text-left transition-all group ${isFeatureEnabled('delhi_otp_challan') ? 'hover:border-orange-300 hover:bg-orange-50/30' : 'opacity-50 cursor-not-allowed'}`}
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 group-hover:bg-orange-200 transition">
@@ -314,7 +302,7 @@ export default function PayChallan() {
                 <button
                   onClick={() => isFeatureEnabled('fetch_all_challans') && setFlowType(FLOW_TYPES.ALL_CHALLANS)}
                   disabled={!isFeatureEnabled('fetch_all_challans')}
-                  className={`w-full surface-card p-5 text-left transition-all group ${isFeatureEnabled('fetch_all_challans') ? 'hover:border-blue-300 hover:bg-blue-50/30' : 'opacity-50 cursor-not-allowed'}`}
+                  className={`w-full surface-card p-4 md:p-5 text-left transition-all group ${isFeatureEnabled('fetch_all_challans') ? 'hover:border-red-200 hover:bg-red-50/30' : 'opacity-50 cursor-not-allowed'}`}
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-200 transition">
@@ -340,11 +328,8 @@ export default function PayChallan() {
                 </button>
               </div>
 
-              {/* Illustration */}
-              <div className="order-first md:order-last animate-fade-up">
-                <div className="hero-illu">
-                  <PoliceIllustration className="w-full" />
-                </div>
+              <div className="page-hero-banner animate-fade-up">
+                <PoliceIllustration />
               </div>
             </div>
           </div>
@@ -352,7 +337,7 @@ export default function PayChallan() {
 
         {/* Delhi OTP Flow */}
         {flowType === FLOW_TYPES.DELHI_OTP && !showResult && (
-          <div className="container-narrow py-8">
+          <div className="container-narrow page-section">
             <DelhiOtpFlow
               onChallansFound={handleDelhiChallansFound}
               onBack={goBackToSelector}
@@ -362,10 +347,10 @@ export default function PayChallan() {
 
         {/* All Challans Search Form */}
         {showAllChallansSearch && (
-          <div className="container-main py-8 md:py-12">
-            <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
-              <div className="space-y-6">
-                <form onSubmit={handleSearch} className="surface-card p-6 space-y-4 animate-fade-up">
+          <div className="container-main page-section">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-12 items-start">
+              <div className="space-y-4">
+                <form onSubmit={handleSearch} className="surface-card p-4 md:p-6 space-y-3 md:space-y-4 animate-fade-up">
                   <h2 className="text-[17px] font-bold text-slate-900">Vehicle Details</h2>
                   <div>
                     <label className="field-label">Vehicle Number</label>
@@ -388,10 +373,8 @@ export default function PayChallan() {
                 </form>
               </div>
 
-              <div className="order-first md:order-last animate-fade-up">
-                <div className="hero-illu">
-                  <PoliceIllustration className="w-full" />
-                </div>
+              <div className="page-hero-banner animate-fade-up">
+                <PoliceIllustration />
               </div>
             </div>
           </div>
@@ -399,7 +382,7 @@ export default function PayChallan() {
 
         {loading && (
           <div className="container-narrow">
-            <div className="flex flex-col items-center justify-center py-24">
+            <div className="flex flex-col items-center justify-center py-12 md:py-24">
               <div className="relative">
                 <div className="h-14 w-14 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
               </div>
@@ -410,7 +393,7 @@ export default function PayChallan() {
         )}
 
         {showResult && (
-          <div className="container-narrow py-8">
+          <div className="container-narrow page-section">
             <ChallanResults
               data={data}
               dataSource={data.dataSource}

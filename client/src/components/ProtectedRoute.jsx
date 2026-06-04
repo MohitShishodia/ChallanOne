@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children }) {
         <PageHeader title="Login Required" />
         <div className="screen-content flex flex-col items-center justify-center text-center pt-12">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden border-2 border-red-100 shadow-md">
-            <img src="/challanone-logo.png" alt="Challan One" className="h-full w-full object-cover" />
+            <img src="/logo.png" alt="Challan One" className="h-full w-full object-contain" />
           </div>
           <h2 className="h-display">Sign in to continue</h2>
           <p className="mt-2 max-w-xs text-[14px] text-slate-500">

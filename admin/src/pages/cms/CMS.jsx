@@ -100,7 +100,9 @@ export default function CMS() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Content Management</h1>
-          <p className="page-subtitle">Manage static pages, FAQs, and blog posts</p>
+          <p className="page-subtitle">
+            Edit About Us (<code>about-us</code>), Terms, Privacy and more — changes appear on the live website
+          </p>
         </div>
         {tab === 'faqs' && (
           <button className="btn btn-primary" onClick={() => { setEditFaq(null); setFaqForm({ question: '', answer: '', category: 'general' }); setFaqModal(true) }}>
@@ -130,17 +132,28 @@ export default function CMS() {
             ? Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="card"><div className="card-body"><div className="skeleton" style={{ height: 60, borderRadius: 6 }} /></div></div>
               ))
-            : pages.map(page => (
-                <div key={page.id} className="card" style={{ display: 'flex', alignItems: 'center', padding: '16px 20px' }}>
+            : pages.map(page => {
+                const id = page.id || page._id
+                const livePath = page.slug === 'about-us' ? '/about' : null
+                return (
+                <div key={id} className="card" style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600 }}>{page.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>/{page.slug}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Slug: <code>{page.slug}</code>
+                      {livePath && <span> · Live at {livePath}</span>}
+                    </div>
+                    {page.slug === 'about-us' && (
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                        Use HTML: &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;&lt;li&gt; for the About page body
+                      </div>
+                    )}
                   </div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => openEditPage(page)}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => openEditPage({ ...page, id })}>
                     <Edit size={13} /> Edit
                   </button>
                 </div>
-              ))
+              )})
           }
         </div>
       )}
@@ -210,7 +223,13 @@ export default function CMS() {
         {editPage && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="form-group"><label className="form-label">Title</label><input className="form-input" value={pageForm.title} onChange={e => setPageForm(f => ({ ...f, title: e.target.value }))} /></div>
-            <div className="form-group"><label className="form-label">Content (HTML)</label><textarea className="form-textarea" style={{ minHeight: 200, fontFamily: 'monospace', fontSize: 12 }} value={pageForm.content} onChange={e => setPageForm(f => ({ ...f, content: e.target.value }))} /></div>
+            <div className="form-group">
+              <label className="form-label">Content (HTML)</label>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                Shown on the website. For About Us, this appears below the hero section.
+              </p>
+              <textarea className="form-textarea" style={{ minHeight: 220, fontFamily: 'monospace', fontSize: 12 }} value={pageForm.content} onChange={e => setPageForm(f => ({ ...f, content: e.target.value }))} />
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group"><label className="form-label">Meta Title</label><input className="form-input" value={pageForm.meta_title} onChange={e => setPageForm(f => ({ ...f, meta_title: e.target.value }))} /></div>
               <div className="form-group"><label className="form-label">Meta Description</label><input className="form-input" value={pageForm.meta_description} onChange={e => setPageForm(f => ({ ...f, meta_description: e.target.value }))} /></div>

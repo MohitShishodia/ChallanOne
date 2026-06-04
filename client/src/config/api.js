@@ -29,5 +29,9 @@ export const API = {
     features: `${API_BASE_URL}/api/config/features`,
     settings: `${API_BASE_URL}/api/config/settings`,
     services: `${API_BASE_URL}/api/config/services`,
+    page: (slug) => `${API_BASE_URL}/api/config/pages/${encodeURIComponent(slug)}`,
+  },
+  support: {
+    contact: `${API_BASE_URL}/api/support/contact`,
   }
 }

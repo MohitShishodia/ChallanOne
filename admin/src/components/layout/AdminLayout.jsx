@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
-import { Toaster } from 'react-hot-toast'
+import { Toaster, toast } from 'react-hot-toast'
+import { useSocket } from '../../hooks/useSocket'
 
 // Map routes to page titles
 const PAGE_TITLES = {
@@ -14,7 +15,7 @@ const PAGE_TITLES = {
   '/services': 'Service Management',
   '/reports': 'Reports & Insights',
   '/cms': 'Content Management',
-  '/tickets': 'Support Tickets',
+  '/tickets': 'Customer Messages',
   '/notifications': 'Notification Center',
   '/roles': 'Roles & Permissions',
   '/settings': 'Settings'
@@ -24,6 +25,16 @@ export default function AdminLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
+  const socket = useSocket()
+
+  useEffect(() => {
+    if (!socket) return
+    const onMessage = (payload) => {
+      toast.success(`New message from ${payload.guestName || 'customer'}`, { duration: 5000 })
+    }
+    socket.on('new-support-message', onMessage)
+    return () => socket.off('new-support-message', onMessage)
+  }, [socket])
 
   // Close mobile menu on route change
   useEffect(() => {

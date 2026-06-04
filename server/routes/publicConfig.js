@@ -1,6 +1,7 @@
 import express from 'express';
 import ServiceModel from '../models/Service.js';
 import SiteSettingModel from '../models/SiteSetting.js';
+import { getPageBySlug } from '../data/cms.js';
 
 const router = express.Router();
 
@@ -101,6 +102,34 @@ router.get('/features', async (req, res) => {
         online_payment: true
       }
     });
+  }
+});
+
+/**
+ * GET /api/config/pages/:slug
+ * Public CMS page content (About Us, Terms, etc.)
+ */
+router.get('/pages/:slug', async (req, res) => {
+  try {
+    const page = await getPageBySlug(req.params.slug);
+    if (!page) {
+      return res.status(404).json({ success: false, message: 'Page not found' });
+    }
+
+    return res.json({
+      success: true,
+      page: {
+        slug: page.slug,
+        title: page.title,
+        content: page.content,
+        metaTitle: page.meta_title,
+        metaDescription: page.meta_description,
+        updatedAt: page.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('[PublicConfig] CMS page error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load page' });
   }
 });
 

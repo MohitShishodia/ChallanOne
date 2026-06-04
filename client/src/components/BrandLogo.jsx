@@ -1,38 +1,35 @@
 import { Link } from 'react-router-dom'
 import { BRAND } from '../constants/brand'
 
-export default function BrandLogo({ className = '', size = 'md', linkTo = '/', variant = 'default' }) {
+export default function BrandLogo({ className = '', size = 'md', linkTo = '/', variant = 'default', showText = true }) {
   const sizes = {
-    sm: 'h-9 w-9',
-    md: 'h-11 w-11',
-    lg: 'h-14 w-14',
+    sm: 'h-8 max-w-[110px]',
+    md: 'h-10 max-w-[140px]',
+    lg: 'h-14 max-w-[180px]',
   }
 
   const img = (
     <img
       src={BRAND.logoSrc}
       alt={BRAND.name}
-      className={`${sizes[size]} rounded-full object-cover border border-slate-200/80 bg-white shadow-sm ${className}`}
+      className={`${sizes[size]} w-auto object-contain ${className}`}
     />
   )
 
   if (!linkTo) return img
 
   return (
-    <Link to={linkTo} className="flex items-center gap-2.5 shrink-0 group">
+    <Link to={linkTo} className="flex items-center gap-2 shrink-0 group min-w-0">
       {img}
-      <span className={`hidden sm:flex flex-col leading-tight ${variant === 'light' ? 'text-white' : ''}`}>
-        <span className={`text-[15px] font-bold tracking-tight transition-colors ${
-          variant === 'light' ? 'text-white group-hover:text-red-200' : 'text-slate-900 group-hover:text-brand-red'
-        }`}>
-          Challan<span className={variant === 'light' ? 'text-red-400' : 'text-brand-red'}>One</span>
+      {showText && (
+        <span className={`hidden sm:flex flex-col leading-tight min-w-0 ${variant === 'light' ? 'text-white' : ''}`}>
+          <span className={`text-[14px] font-bold tracking-tight transition-colors truncate ${
+            variant === 'light' ? 'text-white group-hover:text-red-200' : 'text-slate-900 group-hover:text-brand-red'
+          }`}>
+            Challan<span className={variant === 'light' ? 'text-red-400' : 'text-brand-red'}>One</span>
+          </span>
         </span>
-        <span className={`text-[9px] font-medium uppercase tracking-wider max-w-[140px] truncate ${
-          variant === 'light' ? 'text-slate-400' : 'text-slate-500'
-        }`}>
-          Challan Clearance
-        </span>
-      </span>
+      )}
     </Link>
   )
 }

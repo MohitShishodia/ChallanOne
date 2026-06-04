@@ -1,7 +1,7 @@
 export const BRAND = {
   name: 'Challan One',
   tagline: 'Your trusted partner for challan clearance',
-  logoSrc: '/challanone-logo.png',
+  logoSrc: '/logo.png',
   colors: {
     red: '#DC2626',
     redDark: '#B91C1C',

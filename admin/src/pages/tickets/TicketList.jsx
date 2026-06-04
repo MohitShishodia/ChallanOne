@@ -1,8 +1,9 @@
-// Support Tickets Page
-import { useState } from 'react'
-import { Search, MessageSquare, UserCheck } from 'lucide-react'
+// Customer messages from website support / contact forms
+import { useState, useEffect } from 'react'
+import { Search, MessageSquare, UserCheck, Mail } from 'lucide-react'
 import { useFetch, useApi } from '../../hooks/useFetch'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useSocket } from '../../hooks/useSocket'
 import DataTable from '../../components/ui/DataTable'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
@@ -29,9 +30,19 @@ export default function TicketList() {
   if (statusFilter) params.set('status', statusFilter)
   if (priorityFilter) params.set('priority', priorityFilter)
 
+  const socket = useSocket()
   const { data, loading, refetch } = useFetch(`/api/admin/tickets?${params}`)
   const tickets = data?.tickets || []
-  const pagination = data?.pagination
+  const pagination = data
+    ? { page: data.page, limit: 20, total: data.total, totalPages: data.totalPages }
+    : null
+
+  useEffect(() => {
+    if (!socket) return
+    const handler = () => refetch()
+    socket.on('new-support-message', handler)
+    return () => socket.off('new-support-message', handler)
+  }, [socket, refetch])
 
   const openTicket = async (row) => {
     setSelectedTicket(row)
@@ -89,7 +100,10 @@ export default function TicketList() {
       render: (v, row) => (
         <div>
           <div style={{ fontWeight: 600, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{row.user?.email || 'Anonymous'}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+            {row.guestEmail || row.user?.email || 'No email'}
+            {row.source && ` · ${row.source}`}
+          </div>
         </div>
       )
     },
@@ -121,15 +135,15 @@ export default function TicketList() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Support Tickets</h1>
-          <p className="page-subtitle">Manage and respond to customer support requests</p>
+          <h1 className="page-title">Customer Messages</h1>
+          <p className="page-subtitle">Messages sent from Support page and website contact forms</p>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-          <input className="form-input" style={{ paddingLeft: 36 }} placeholder="Search tickets…"
+          <input className="form-input" style={{ paddingLeft: 36 }} placeholder="Search messages…"
             value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
         </div>
         <select className="form-select" style={{ width: 150 }} value={statusFilter}
@@ -146,7 +160,7 @@ export default function TicketList() {
 
       <DataTable columns={columns} data={tickets} loading={loading}
         pagination={pagination} onPageChange={setPage}
-        emptyMessage="No tickets found" emptyIcon="🎫" />
+        emptyMessage="No messages yet" emptyIcon="💬" />
 
       {/* Ticket Detail Modal */}
       <Modal
@@ -172,11 +186,26 @@ export default function TicketList() {
             </div>
 
             {/* Description */}
+            {(ticketDetail.guestName || ticketDetail.guestEmail) && (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
+                {ticketDetail.guestName && (
+                  <span><strong>Name:</strong> {ticketDetail.guestName}</span>
+                )}
+                {ticketDetail.guestEmail && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Mail size={13} />
+                    <a href={`mailto:${ticketDetail.guestEmail}`}>{ticketDetail.guestEmail}</a>
+                  </span>
+                )}
+                {ticketDetail.source && <span><strong>Source:</strong> {ticketDetail.source}</span>}
+              </div>
+            )}
+
             <div style={{ background: 'var(--color-surface-2)', borderRadius: 8, padding: '12px 14px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-                {ticketDetail.user?.email || 'User'} · {formatDateTime(ticketDetail.createdAt)}
+                {ticketDetail.guestEmail || ticketDetail.user?.email || 'Customer'} · {formatDateTime(ticketDetail.createdAt)}
               </div>
-              <p style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{ticketDetail.description}</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap' }}>{ticketDetail.description}</p>
             </div>
 
             {/* Responses */}

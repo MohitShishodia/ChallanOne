@@ -142,7 +142,7 @@ export default function Login() {
         <div className="container-narrow py-8 md:py-12 space-y-5">
         <div className="text-center pt-2 animate-fade-up">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden border-2 border-red-100 shadow-lg">
-            <img src="/challanone-logo.png" alt="Challan One" className="h-full w-full object-cover" />
+            <img src="/logo.png" alt="Challan One" className="h-full w-full object-contain" />
           </div>
           <h1 className="h-display">
             {showForgot

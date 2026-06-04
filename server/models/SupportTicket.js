@@ -8,6 +8,9 @@ const ticketResponseSchema = new mongoose.Schema({
 
 const supportTicketSchema = new mongoose.Schema({
   user_id:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  guest_name:  { type: String, default: null },
+  guest_email: { type: String, default: null },
+  source:      { type: String, default: 'website' },
   subject:     { type: String, required: true },
   description: { type: String, required: true },
   priority:    { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },

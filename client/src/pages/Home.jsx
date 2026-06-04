@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { HeroHomeIllustration } from '../components/Illustrations'
 import BrandLogo from '../components/BrandLogo'
 import { whatsappUrl, WHATSAPP } from '../constants/brand'
+import { submitSupportMessage } from '../utils/supportApi'
 
 export default function Home() {
   return (
@@ -288,10 +289,26 @@ const howItWorksSteps = [
 function ContactUsSection() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setSubmitted(true)
+    setLoading(true)
+    setError('')
+    try {
+      await submitSupportMessage({
+        name: formData.name,
+        email: formData.email,
+        message: formData.message,
+        source: 'home-contact',
+      })
+      setSubmitted(true)
+    } catch (err) {
+      setError(err.message || 'Failed to send message')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -319,7 +336,8 @@ function ContactUsSection() {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="surface-card p-6 space-y-4">
+              <form onSubmit={handleSubmit} className="surface-card p-4 md:p-6 space-y-3 md:space-y-4">
+                {error && <p className="text-[13px] text-rose-600">{error}</p>}
                 <div>
                   <label className="field-label">Full Name</label>
                   <input type="text" required placeholder="Enter your full name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-field" />
@@ -332,7 +350,9 @@ function ContactUsSection() {
                   <label className="field-label">Message</label>
                   <textarea required rows={4} placeholder="Type your message..." value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} className="input-field resize-none" />
                 </div>
-                <button type="submit" className="btn-primary w-full">Send Message</button>
+                <button type="submit" className="btn-primary w-full" disabled={loading}>
+                  {loading ? 'Sending…' : 'Send Message'}
+                </button>
               </form>
             )}
           </div>

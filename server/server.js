@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { connectDB } from './config/mongodb.js';
 import { migrateDemoChallans } from './utils/challanSync.js';
+import { ensureDefaultCmsPages } from './utils/ensureCms.js';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -14,6 +15,7 @@ import paymentRoutes from './routes/payment.js';
 import externalApiRoutes from './routes/externalApi.js';
 import delhiOtpChallanRoutes from './routes/delhiOtpChallan.js';
 import publicConfigRoutes from './routes/publicConfig.js';
+import supportRoutes from './routes/support.js';
 
 // Admin routes
 import adminAuthRoutes from './routes/admin/auth.js';
@@ -103,6 +105,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/external', externalApiRoutes);
 app.use('/api/delhi-otp', delhiOtpChallanRoutes);
 app.use('/api/config', publicConfigRoutes);
+app.use('/api/support', supportRoutes);
 
 // Admin routes (with rate limiting)
 app.use('/api/admin/auth', adminAuthRoutes);
@@ -151,6 +154,7 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
   // Connect to MongoDB
   await connectDB();
   await migrateDemoChallans();
+  await ensureDefaultCmsPages();
 
   // Verify email connection
   const emailReady = await verifyEmailConnection();

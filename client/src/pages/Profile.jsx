@@ -111,10 +111,21 @@ export default function Profile() {
       <PageHeader title="My Profile" />
 
       <div className="screen-content">
-        <div className="container-main py-8 md:py-12">
-          <div className="grid lg:grid-cols-[240px_1fr] gap-6 md:gap-8">
-            <aside className="space-y-4">
-              <div className="surface-card p-5 text-center bg-gradient-to-br from-brand-black to-red-900 border-0 text-white">
+        <div className="container-main page-section">
+          <div className="grid lg:grid-cols-[240px_1fr] gap-4 md:gap-8">
+            <aside className="space-y-3">
+              <div className="profile-card-mobile lg:hidden">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-brand-red text-lg font-bold">
+                  {initial}
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <h2 className="text-[15px] font-bold truncate">{user.name || 'User'}</h2>
+                  <p className="text-[11px] text-white/70 truncate">{user.email}</p>
+                  <p className="text-[10px] text-white/50">+91 {user.phone || '—'}</p>
+                </div>
+              </div>
+
+              <div className="hidden lg:block surface-card p-5 text-center bg-gradient-to-br from-brand-black to-red-900 border-0 text-white">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-brand-red text-2xl font-bold">
                   {initial}
                 </div>
@@ -137,12 +148,12 @@ export default function Profile() {
                 ))}
               </nav>
 
-              <div className="lg:hidden flex gap-1 overflow-x-auto no-scrollbar pb-1">
+              <div className="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5 -mx-1 px-1">
                 {TABS.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setTab(tab.id)}
-                    className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition ${
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition ${
                       activeTab === tab.id ? 'bg-brand-red text-white' : 'bg-slate-100 text-slate-600'
                     }`}
                   >
@@ -152,10 +163,10 @@ export default function Profile() {
               </div>
             </aside>
 
-            <div className="min-w-0 space-y-6">
+            <div className="min-w-0 space-y-4">
               {activeTab === 'account' && (
-                <div className="surface-card p-5 md:p-6 animate-fade-up">
-                  <h3 className="h-section">Edit Profile</h3>
+                <div className="surface-card p-4 md:p-6 animate-fade-up">
+                  <h3 className="text-[16px] md:text-[20px] font-bold text-slate-900">Edit Profile</h3>
                   <p className="text-[13px] text-slate-500 mt-1">Update your details. Phone number cannot be changed.</p>
                   <form onSubmit={handleSave} className="mt-5 space-y-4 max-w-md">
                     <div>

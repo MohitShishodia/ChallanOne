@@ -296,7 +296,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
   if (step === STEPS.INPUT) {
     return (
       <div className="space-y-6 animate-fade-up">
-        <form onSubmit={handleCreateRun} className="surface-card p-6 space-y-4">
+        <form onSubmit={handleCreateRun} className="surface-card p-4 md:p-6 space-y-3 md:space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -381,7 +381,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
   if (step === STEPS.OTP) {
     return (
       <div className="space-y-6 animate-fade-up">
-        <div className="surface-card p-6 space-y-4">
+        <div className="surface-card p-4 md:p-6 space-y-3 md:space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -453,7 +453,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
   if (step === STEPS.ERROR) {
     return (
       <div className="space-y-6 animate-fade-up">
-        <div className="surface-card p-6 text-center space-y-4">
+        <div className="surface-card p-4 md:p-6 text-center space-y-3 md:space-y-4">
           <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-full bg-rose-100 text-rose-600">
             <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -474,7 +474,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     if (challans.length === 0) {
       return (
         <div className="space-y-6 animate-fade-up">
-          <div className="surface-card p-6 text-center space-y-4">
+          <div className="surface-card p-4 md:p-6 text-center space-y-3 md:space-y-4">
             <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
               <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

@@ -35,35 +35,33 @@ export default function ChallanResults({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 md:space-y-5">
       {dataSource === 'DELHI_OTP' && (
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-full">
-          <div className="h-2 w-2 rounded-full bg-orange-400" />
-          <span className="text-[12px] font-medium text-orange-700">Delhi OTP Verified</span>
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full">
+          <div className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+          <span className="text-[11px] font-medium text-orange-700">Delhi OTP Verified</span>
         </div>
       )}
 
-      {/* Summary + actions */}
-      <div className="surface-card p-5 space-y-4 animate-fade-up">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+      <div className="surface-card p-3 md:p-5 space-y-3 animate-fade-up">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className="flex h-8 w-8 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <div>
-              <p className="text-[16px] font-bold text-slate-900">
+            <div className="min-w-0">
+              <p className="text-[14px] md:text-[16px] font-bold text-slate-900">
                 {data.challans.length} Challan{data.challans.length !== 1 ? 's' : ''} Found
               </p>
-              <p className="text-[13px] text-slate-600 mt-0.5">
+              <p className="text-[12px] md:text-[13px] text-slate-600 mt-0.5">
                 {pendingChallans.length} pending
                 {paidChallans.length > 0 && ` · ${paidChallans.length} paid`}
               </p>
               {pendingChallans.length > 0 && (
-                <p className="text-[14px] text-slate-600 mt-1">
-                  Total Amount Due:{' '}
-                  <span className="font-semibold text-slate-900">₹ {totalDue.toLocaleString()}</span>
+                <p className="text-[12px] md:text-[14px] text-slate-600 mt-0.5">
+                  Due: <span className="font-semibold text-slate-900">₹ {totalDue.toLocaleString()}</span>
                 </p>
               )}
             </div>
@@ -72,7 +70,7 @@ export default function ChallanResults({
           <button
             type="button"
             onClick={handleDownloadPdf}
-            className="btn-secondary shrink-0 w-full sm:w-auto"
+            className="btn-secondary shrink-0 w-full sm:w-auto text-[13px] py-2 md:py-2.5"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -110,7 +108,7 @@ export default function ChallanResults({
       </div>
 
       {/* Challan cards */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {data.challans.map((challan) => {
           const isPaid = challan.status === 'PAID';
           const isSelected = selectedChallans.includes(challan.id);
@@ -118,7 +116,7 @@ export default function ChallanResults({
           return (
             <div
               key={`${challan.id}-${challan.challanNumber || ''}`}
-              className={`surface-card p-5 space-y-4 animate-fade-up transition-colors ${
+              className={`surface-card p-3 md:p-5 space-y-3 md:space-y-4 animate-fade-up transition-colors ${
                 !isPaid && isSelected ? 'ring-2 ring-blue-200 border-blue-200' : ''
               } ${isPaid ? 'opacity-90' : ''}`}
             >
