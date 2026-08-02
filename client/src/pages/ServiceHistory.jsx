@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
 import { getServiceHistory } from '../utils/userStorage'
@@ -7,8 +7,19 @@ import { whatsappUrl } from '../constants/brand'
 
 export default function ServiceHistory() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [vehicle, setVehicle] = useState('')
   const [searched, setSearched] = useState('')
+
+  // Auto-search if vehicle query param is present
+  useEffect(() => {
+    const v = searchParams.get('vehicle')
+    if (v) {
+      const normalized = v.trim().toUpperCase()
+      setVehicle(normalized)
+      setSearched(normalized)
+    }
+  }, [searchParams])
 
   const records = searched ? getServiceHistory(searched) : getServiceHistory()
 
@@ -29,7 +40,7 @@ export default function ServiceHistory() {
       <PageHeader title="Service History" />
 
       <div className="screen-content">
-        <div className="container-narrow py-8 md:py-12 space-y-6">
+        <div className="container-main py-8 md:py-12 space-y-6 max-w-3xl">
           <div>
             <h1 className="h-section">Your Car Service History</h1>
             <p className="mt-1 text-[14px] text-slate-500">

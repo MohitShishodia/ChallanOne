@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
-import { PoliceIllustration } from '../components/Illustrations'
-import PageTitleBar from '../components/PageTitleBar'
 import DelhiOtpFlow from '../components/DelhiOtpFlow'
-import ChallanResults from '../components/ChallanResults'
+import ChallanResults, { ChallanResultsSkeleton } from '../components/ChallanResults'
+import PaymentSummaryPanel from '../components/PaymentSummaryPanel'
 import { useFeatures } from '../context/FeatureContext'
 import {
   FLOW_TYPES,
@@ -12,18 +11,49 @@ import {
   calculatePaymentTotal
 } from '../utils/challanUtils'
 import { savePendingChallans } from '../utils/userStorage'
+import {
+  loadChallanSearchState,
+  saveChallanSearchState,
+  clearChallanSearchState,
+  getDefaultFilters,
+} from '../utils/challanSearchCache'
+
+function EmptyResultsPanel() {
+  return (
+    <div className="surface-card flex flex-col items-center justify-center text-center px-6 py-16 md:py-24 min-h-[420px]">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-brand-red mb-4">
+        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <h3 className="text-[17px] font-bold text-slate-900">Challan Details</h3>
+      <p className="mt-2 text-[13px] md:text-[14px] text-slate-500 max-w-sm leading-relaxed">
+        Enter your vehicle number in the sidebar and search to fetch challans from official sources.
+      </p>
+    </div>
+  )
+}
 
 export default function PayChallan() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isFeatureEnabled } = useFeatures()
-  const [flowType, setFlowType] = useState(FLOW_TYPES.SELECT)
-  const [vehicleNumber, setVehicleNumber] = useState(searchParams.get('vehicle') || '')
+  const cachedRef = useRef(loadChallanSearchState())
+  const cached = cachedRef.current
+  const autoFetchDone = useRef(false)
+  const allChallansSnapshot = useRef(null)
+
+  const [flowType, setFlowType] = useState(cached?.flowType || FLOW_TYPES.ALL_CHALLANS)
+  const [vehicleNumber, setVehicleNumber] = useState(
+    searchParams.get('vehicle') || cached?.vehicleNumber || ''
+  )
   const [loading, setLoading] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [data, setData] = useState(null)
+  const [data, setData] = useState(cached?.data || null)
   const [error, setError] = useState(null)
-  const [selectedChallans, setSelectedChallans] = useState([])
+  const [selectedChallans, setSelectedChallans] = useState(cached?.selectedChallans || [])
+  const [filters, setFilters] = useState(cached?.filters || getDefaultFilters())
+  const [fetchedAt, setFetchedAt] = useState(cached?.fetchedAt || null)
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -43,23 +73,52 @@ export default function PayChallan() {
     })
   }
 
+  // Persist search state so navigating away and back restores results
   useEffect(() => {
-    const vehicle = searchParams.get('vehicle')
-    if (vehicle) {
-      setVehicleNumber(vehicle)
-      setFlowType(FLOW_TYPES.ALL_CHALLANS)
-      fetchChallans(vehicle)
+    if (!data) {
+      // Keep Fetch All cache while Delhi OTP flow is open
+      if (flowType === FLOW_TYPES.DELHI_OTP && allChallansSnapshot.current) return
+      clearChallanSearchState()
+      return
     }
-  }, [searchParams])
+    if (data.dataSource === 'DELHI_OTP') {
+      // Don't overwrite Fetch All session cache with Delhi results
+      return
+    }
+    saveChallanSearchState({
+      data,
+      vehicleNumber: data.vehicle?.number || vehicleNumber,
+      flowType: FLOW_TYPES.ALL_CHALLANS,
+      selectedChallans,
+      filters,
+      fetchedAt: fetchedAt || Date.now(),
+    })
+  }, [data, vehicleNumber, flowType, selectedChallans, filters, fetchedAt])
 
-  const fetchChallans = async (number) => {
+  const fetchChallans = async (number, { force = false, forceRefresh = false } = {}) => {
+    const trimmed = String(number || '').trim().toUpperCase()
+    if (!trimmed) {
+      setError('Please enter a vehicle number')
+      return
+    }
+
+    // Reuse cache when returning to same vehicle unless force refresh
+    if (
+      !force &&
+      data?.vehicle?.number === trimmed &&
+      data?.challans?.length &&
+      fetchedAt
+    ) {
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
       const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleNumber: number })
+        body: JSON.stringify({ vehicleNumber: trimmed, forceRefresh })
       })
       const result = await response.json()
       if (result.success) {
@@ -68,29 +127,54 @@ export default function PayChallan() {
         if (!transformed.hasRawChallans) {
           setError(result.message || 'No challans found')
           setData(null)
-          setLoading(false)
-          return
-        }
-
-        if (transformed.challans.length === 0) {
-          setError('No challans found for this vehicle (virtual court challans are hidden)')
-          setData(null)
+          setFetchedAt(null)
+          clearChallanSearchState()
           setLoading(false)
           return
         }
 
         setData(transformed)
         setSelectedChallans([])
+        setFilters(getDefaultFilters())
+        setFetchedAt(Date.now())
+        setVehicleNumber(trimmed)
+        allChallansSnapshot.current = {
+          data: transformed,
+          selectedChallans: [],
+          filters: getDefaultFilters(),
+          fetchedAt: Date.now(),
+          vehicleNumber: trimmed,
+        }
       } else {
         setError(result.message || 'No challans found')
         setData(null)
+        setFetchedAt(null)
+        clearChallanSearchState()
       }
     } catch (err) {
       setError(err?.message || 'Failed to fetch challans. Please try again.')
       setData(null)
+      setFetchedAt(null)
+      clearChallanSearchState()
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    const vehicle = searchParams.get('vehicle')
+    if (!vehicle || autoFetchDone.current) return
+    autoFetchDone.current = true
+    setVehicleNumber(vehicle)
+    setFlowType(FLOW_TYPES.ALL_CHALLANS)
+
+    const cachedSame =
+      data?.vehicle?.number?.toUpperCase() === vehicle.toUpperCase() &&
+      data?.challans?.length
+    if (cachedSame) return
+
+    fetchChallans(vehicle, { force: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const handleDelhiChallansFound = ({ challans, vehicleNumber: vNum }) => {
     if (challans.length === 0) return
@@ -113,6 +197,9 @@ export default function PayChallan() {
       paidCount: challans.length - pending.length
     })
     setSelectedChallans([])
+    setFilters(getDefaultFilters())
+    setFetchedAt(Date.now())
+    setVehicleNumber(vNum)
     if (pending.length > 0) {
       savePendingChallans(vNum, pending)
     }
@@ -141,13 +228,26 @@ export default function PayChallan() {
     setSelectedChallans([])
   }
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (vehicleNumber.trim()) fetchChallans(vehicleNumber.trim())
+  const handleCheckNow = (e) => {
+    e?.preventDefault?.()
+    if (flowType === FLOW_TYPES.DELHI_OTP) return
+    if (!vehicleNumber.trim()) {
+      setError('Please enter a vehicle number')
+      return
+    }
+    if (!isFeatureEnabled('fetch_all_challans')) {
+      setError('Fetch All Challans is temporarily unavailable')
+      return
+    }
+    fetchChallans(vehicleNumber.trim(), { force: true })
   }
 
-  const handlePayment = async (singleId) => {
-    const idsToPay = singleId ? [singleId] : selectedChallans
+  const handlePayment = async (idsOrSingle) => {
+    const idsToPay = Array.isArray(idsOrSingle)
+      ? idsOrSingle
+      : idsOrSingle
+        ? [idsOrSingle]
+        : selectedChallans
     if (idsToPay.length === 0) return
 
     setPaymentLoading(true)
@@ -204,6 +304,7 @@ export default function PayChallan() {
             })
             const verifyData = await verifyResponse.json()
             if (verifyData.success) {
+              clearChallanSearchState()
               navigate('/payment-success', {
                 state: { receipt: verifyData.receipt, vehicleNumber: data.vehicle.number }
               })
@@ -234,179 +335,246 @@ export default function PayChallan() {
   }
 
   const goBackToSelector = () => {
-    setFlowType(FLOW_TYPES.SELECT)
     setData(null)
     setError(null)
     setSelectedChallans([])
+    setFilters(getDefaultFilters())
+    setFetchedAt(null)
+    setLoading(false)
+    allChallansSnapshot.current = null
+    clearChallanSearchState()
+  }
+
+  const handleRefresh = () => {
+    if (!data?.vehicle?.number) return
+    fetchChallans(data.vehicle.number, { force: true, forceRefresh: true })
   }
 
   const showResult = data && !loading
-  const showAllChallansSearch = flowType === FLOW_TYPES.ALL_CHALLANS && !data && !loading
+  const allEnabled = isFeatureEnabled('fetch_all_challans')
+  const delhiEnabled = isFeatureEnabled('delhi_otp_challan')
+
+  const selectedPendingChallans = useMemo(() => {
+    if (!data?.challans) return []
+    return data.challans.filter((c) => selectedChallans.includes(c.id) && c.status !== 'PAID')
+  }, [data, selectedChallans])
 
   return (
-    <div className="screen">
-      <div className="screen-content">
-        <PageTitleBar
-          title={
-            showResult ? 'Challan Results' : flowType === FLOW_TYPES.DELHI_OTP ? 'Delhi State Challan' : flowType === FLOW_TYPES.ALL_CHALLANS ? 'Fetch All Challans' : 'Check Challan'
-          }
-          subtitle={
-            showResult
-              ? `Showing results for ${data?.vehicle?.number}`
-              : flowType === FLOW_TYPES.DELHI_OTP
-                ? 'Verify via OTP to fetch Delhi state challans'
-                : flowType === FLOW_TYPES.ALL_CHALLANS
-                  ? 'Enter vehicle number to fetch challans from all states'
-                  : 'Choose how you want to check your challans'
-          }
-          onBack={showResult || flowType !== FLOW_TYPES.SELECT ? goBackToSelector : undefined}
-        />
-
-        {/* Flow Selector */}
-        {flowType === FLOW_TYPES.SELECT && (
-          <div className="container-main page-section">
-            <div className="grid md:grid-cols-2 gap-4 md:gap-8 items-start">
-              <div className="space-y-3 animate-fade-up">
-                <h2 className="text-[15px] md:text-[17px] font-bold text-slate-900 mb-2">Select Challan Check Type</h2>
-
-                {/* Delhi State Challan Option */}
-                <button
-                  onClick={() => isFeatureEnabled('delhi_otp_challan') && setFlowType(FLOW_TYPES.DELHI_OTP)}
-                  disabled={!isFeatureEnabled('delhi_otp_challan')}
-                  className={`w-full surface-card p-4 md:p-5 text-left transition-all group ${isFeatureEnabled('delhi_otp_challan') ? 'hover:border-orange-300 hover:bg-orange-50/30' : 'opacity-50 cursor-not-allowed'}`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 group-hover:bg-orange-200 transition">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-[16px] font-bold text-slate-900">Delhi State Challan</h3>
-                      <p className="text-[13px] text-slate-500 mt-1">OTP-based verification for Delhi traffic challans. Requires mobile number registered with Delhi Traffic Police.</p>
-                      {!isFeatureEnabled('delhi_otp_challan') ? (
-                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                          Service Temporarily Unavailable
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-                          OTP Required
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-
-                {/* Fetch All Challans Option */}
-                <button
-                  onClick={() => isFeatureEnabled('fetch_all_challans') && setFlowType(FLOW_TYPES.ALL_CHALLANS)}
-                  disabled={!isFeatureEnabled('fetch_all_challans')}
-                  className={`w-full surface-card p-4 md:p-5 text-left transition-all group ${isFeatureEnabled('fetch_all_challans') ? 'hover:border-red-200 hover:bg-red-50/30' : 'opacity-50 cursor-not-allowed'}`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-200 transition">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-[16px] font-bold text-slate-900">Fetch All Challans</h3>
-                      <p className="text-[13px] text-slate-500 mt-1">Quick vehicle number lookup across all states. No OTP needed — instant results.</p>
-                      {!isFeatureEnabled('fetch_all_challans') ? (
-                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                          Service Temporarily Unavailable
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                          All States
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
+    <div className="relative flex min-h-screen flex-col bg-slate-50">
+      <div className="flex-1 pt-0 pb-6 md:pt-2 md:pb-12">
+        <div className="mx-auto w-full px-3 md:px-4 xl:px-5 py-4 md:py-6 space-y-5">
+          <div
+            className={`grid grid-cols-1 gap-3 md:gap-4 items-start ${
+              showResult
+                ? 'lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[210px_minmax(0,1fr)_250px] 2xl:grid-cols-[220px_minmax(0,1fr)_270px]'
+                : 'lg:grid-cols-[210px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]'
+            }`}
+          >
+            {/* Left sidebar — search & source */}
+            <aside className="surface-card overflow-hidden border-slate-200/80 lg:sticky lg:top-[84px]">
+              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                  Vehicle Search
+                </p>
               </div>
 
-              <div className="page-hero-banner animate-fade-up">
-                <PoliceIllustration />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Delhi OTP Flow */}
-        {flowType === FLOW_TYPES.DELHI_OTP && !showResult && (
-          <div className="container-narrow page-section">
-            <DelhiOtpFlow
-              onChallansFound={handleDelhiChallansFound}
-              onBack={goBackToSelector}
-            />
-          </div>
-        )}
-
-        {/* All Challans Search Form */}
-        {showAllChallansSearch && (
-          <div className="container-main page-section">
-            <div className="grid md:grid-cols-2 gap-4 md:gap-12 items-start">
-              <div className="space-y-4">
-                <form onSubmit={handleSearch} className="surface-card p-4 md:p-6 space-y-3 md:space-y-4 animate-fade-up">
-                  <h2 className="text-[17px] font-bold text-slate-900">Vehicle Details</h2>
-                  <div>
-                    <label className="field-label">Vehicle Number</label>
+              <div className="space-y-3.5 p-3.5">
+                {/* Always-visible vehicle search */}
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="mb-1 block text-[12px] font-medium text-slate-600">Vehicle Number</span>
                     <input
                       type="text"
-                      placeholder="Enter vehicle number (e.g. UP32AB1234)"
+                      placeholder="DL8CAF1234"
                       value={vehicleNumber}
-                      onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                      className="input-field"
+                      onChange={(e) => {
+                        setVehicleNumber(e.target.value.toUpperCase())
+                        setError(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && flowType === FLOW_TYPES.ALL_CHALLANS) {
+                          handleCheckNow(e)
+                        }
+                      }}
+                      disabled={flowType === FLOW_TYPES.DELHI_OTP}
+                      className="input-field !py-2.5 text-[14px] font-bold tracking-wide uppercase disabled:opacity-60"
                     />
-                  </div>
-                  <button type="submit" className="btn-primary w-full">Check Challan</button>
-                  {error && <p className="text-sm text-rose-500">{error}</p>}
-                  <button type="button" onClick={goBackToSelector} className="btn-ghost w-full">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to Options
+                  </label>
+                  {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                    <button
+                      type="button"
+                      onClick={handleCheckNow}
+                      disabled={loading || !vehicleNumber.trim() || !allEnabled}
+                      className="btn-primary w-full !py-2.5 text-[13px]"
+                    >
+                      {loading ? 'Searching...' : 'Search Vehicle'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Challan source — nav style */}
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                    Challan Source
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!allEnabled) return
+                      setFlowType(FLOW_TYPES.ALL_CHALLANS)
+                      setError(null)
+                      // Restore previous Fetch All results if available
+                      if (!data && allChallansSnapshot.current) {
+                        setData(allChallansSnapshot.current.data)
+                        setSelectedChallans(allChallansSnapshot.current.selectedChallans || [])
+                        setFilters(allChallansSnapshot.current.filters || getDefaultFilters())
+                        setFetchedAt(allChallansSnapshot.current.fetchedAt || Date.now())
+                        setVehicleNumber(allChallansSnapshot.current.vehicleNumber || vehicleNumber)
+                      }
+                    }}
+                    disabled={!allEnabled}
+                    aria-pressed={flowType === FLOW_TYPES.ALL_CHALLANS}
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
+                      flowType === FLOW_TYPES.ALL_CHALLANS
+                        ? 'bg-red-50 text-brand-red ring-1 ring-red-100'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    } ${!allEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                        flowType === FLOW_TYPES.ALL_CHALLANS
+                          ? 'border-brand-red'
+                          : 'border-slate-300'
+                      }`}
+                    >
+                      {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                        <span className="h-2 w-2 rounded-full bg-brand-red" />
+                      )}
+                    </span>
+                    Fetch All Challans
                   </button>
-                </form>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!delhiEnabled) return
+                      // Snapshot Fetch All results so switching back restores them
+                      if (data && data.dataSource !== 'DELHI_OTP') {
+                        allChallansSnapshot.current = {
+                          data,
+                          selectedChallans,
+                          filters,
+                          fetchedAt,
+                          vehicleNumber: data.vehicle?.number || vehicleNumber,
+                        }
+                      }
+                      setFlowType(FLOW_TYPES.DELHI_OTP)
+                      setError(null)
+                      setSelectedChallans([])
+                      setData(null)
+                      setLoading(false)
+                    }}
+                    disabled={!delhiEnabled}
+                    aria-pressed={flowType === FLOW_TYPES.DELHI_OTP}
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
+                      flowType === FLOW_TYPES.DELHI_OTP
+                        ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-100'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    } ${!delhiEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                        flowType === FLOW_TYPES.DELHI_OTP
+                          ? 'border-orange-500'
+                          : 'border-slate-300'
+                      }`}
+                    >
+                      {flowType === FLOW_TYPES.DELHI_OTP && (
+                        <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      )}
+                    </span>
+                    Delhi Challan (OTP Required)
+                  </button>
+                </div>
 
-              <div className="page-hero-banner animate-fade-up">
-                <PoliceIllustration />
+                {error && flowType === FLOW_TYPES.ALL_CHALLANS && (
+                  <p className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[12px] text-rose-600">
+                    {error}
+                  </p>
+                )}
               </div>
+            </aside>
+
+            {/* Main content */}
+            <main className="min-w-0">
+              {flowType === FLOW_TYPES.DELHI_OTP && !showResult && (
+                <div className="surface-card p-4 md:p-6">
+                  <DelhiOtpFlow
+                    onChallansFound={handleDelhiChallansFound}
+                    onBack={() => {
+                      setFlowType(FLOW_TYPES.ALL_CHALLANS)
+                      setError(null)
+                      if (allChallansSnapshot.current) {
+                        const snap = allChallansSnapshot.current
+                        setData(snap.data)
+                        setSelectedChallans(snap.selectedChallans || [])
+                        setFilters(snap.filters || getDefaultFilters())
+                        setFetchedAt(snap.fetchedAt || Date.now())
+                        setVehicleNumber(snap.vehicleNumber || vehicleNumber)
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {flowType === FLOW_TYPES.ALL_CHALLANS && loading && (
+                <ChallanResultsSkeleton />
+              )}
+
+              {showResult && (
+                <ChallanResults
+                  data={data}
+                  dataSource={data.dataSource}
+                  selectedChallans={selectedChallans}
+                  onToggleChallan={toggleChallanSelection}
+                  onSelectAllPending={selectAllPending}
+                  onDeselectAll={deselectAllChallans}
+                  onPay={handlePayment}
+                  onBack={goBackToSelector}
+                  onRefresh={data.dataSource !== 'DELHI_OTP' ? handleRefresh : undefined}
+                  paymentLoading={paymentLoading}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                />
+              )}
+
+              {flowType === FLOW_TYPES.ALL_CHALLANS && !loading && !showResult && (
+                <EmptyResultsPanel />
+              )}
+            </main>
+
+            {/* Sticky payment summary — desktop */}
+            {showResult && (
+              <div className="hidden xl:block">
+                <PaymentSummaryPanel
+                  selectedChallans={selectedPendingChallans}
+                  paymentLoading={paymentLoading}
+                  onPay={handlePayment}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Payment summary — below xl where 3-col grid is not active */}
+          {showResult && (
+            <div className="xl:hidden">
+              <PaymentSummaryPanel
+                selectedChallans={selectedPendingChallans}
+                paymentLoading={paymentLoading}
+                onPay={handlePayment}
+              />
             </div>
-          </div>
-        )}
-
-        {loading && (
-          <div className="container-narrow">
-            <div className="flex flex-col items-center justify-center py-12 md:py-24">
-              <div className="relative">
-                <div className="h-14 w-14 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
-              </div>
-              <p className="mt-5 text-[14px] font-medium text-slate-700">Fetching challan details...</p>
-              <p className="mt-1 text-[12px] text-slate-400">This may take a few seconds</p>
-            </div>
-          </div>
-        )}
-
-        {showResult && (
-          <div className="container-narrow page-section">
-            <ChallanResults
-              data={data}
-              dataSource={data.dataSource}
-              selectedChallans={selectedChallans}
-              onToggleChallan={toggleChallanSelection}
-              onSelectAllPending={selectAllPending}
-              onDeselectAll={deselectAllChallans}
-              onPay={handlePayment}
-              onBack={goBackToSelector}
-              paymentLoading={paymentLoading}
-            />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

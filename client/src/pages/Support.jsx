@@ -43,7 +43,7 @@ export default function Support() {
         />
 
         <div className="container-main page-section">
-          <div className="grid md:grid-cols-2 gap-4 md:gap-10 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-10 lg:gap-14">
             <div>
               {submitted ? (
                 <div className="surface-card p-6 md:p-8 text-center animate-fade-up">

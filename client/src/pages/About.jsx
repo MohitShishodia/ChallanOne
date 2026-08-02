@@ -32,7 +32,6 @@ export default function About() {
                 />
               </div>
               <div className="text-center md:text-left max-w-2xl">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-brand-red mb-1">About Us</p>
                 <h1 className="text-[20px] md:text-[36px] font-bold text-slate-900 leading-tight">
                   {heroTitle}
                 </h1>
@@ -51,7 +50,7 @@ export default function About() {
         </section>
 
         <section className="section-spacing bg-white">
-          <div className="container-main max-w-3xl">
+          <div className="container-main">
             {loading ? (
               <div className="animate-pulse space-y-3">
                 <div className="h-4 bg-slate-100 rounded w-full" />
@@ -85,7 +84,7 @@ export default function About() {
 
         <section className="section-spacing bg-slate-50">
           <div className="container-main">
-            <div className="expert-cta max-w-3xl mx-auto text-center">
+            <div className="expert-cta text-center">
               <BrandLogo linkTo={null} size="md" className="mx-auto mb-3" />
               <h2 className="text-[18px] md:text-[24px] font-bold text-slate-900">Questions? We&apos;re here.</h2>
               <p className="mt-2 text-[13px] md:text-[14px] text-slate-600">

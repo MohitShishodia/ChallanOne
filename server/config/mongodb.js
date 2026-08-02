@@ -14,6 +14,10 @@ if (!MONGODB_URI) {
 
 let isConnected = false;
 
+export function isDbConnected() {
+  return isConnected && mongoose.connection.readyState === 1;
+}
+
 export async function connectDB() {
   if (!MONGODB_URI) {
     console.error('❌ Cannot connect to MongoDB: MONGODB_URI is not set.');

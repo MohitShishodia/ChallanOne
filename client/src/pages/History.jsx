@@ -14,7 +14,7 @@ export default function History() {
       <PageHeader title="History" />
 
       <div className="screen-content">
-        <div className="container-narrow py-8 md:py-12 space-y-6">
+        <div className="container-main py-8 md:py-12 space-y-6 max-w-3xl">
           <div>
             <h1 className="h-section">Your Searches</h1>
             <p className="mt-1 text-[14px] text-slate-500">Recent challan and RC lookups in one place.</p>
@@ -44,7 +44,7 @@ export default function History() {
           </div>
 
           <div className="trust-card animate-fade-up">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-brand-red">
               <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>

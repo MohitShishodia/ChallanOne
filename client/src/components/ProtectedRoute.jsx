@@ -19,14 +19,14 @@ export default function ProtectedRoute({ children }) {
           <p className="mt-2 max-w-xs text-[14px] text-slate-500">
             Login or create an account to check challans, view RC details and pay securely.
           </p>
-          <div className="mt-6 w-full space-y-3">
+          <div className="mt-6 w-full max-w-xs space-y-3">
             <button
               onClick={() => navigate('/login', { state: { from: location.pathname } })}
-              className="btn-primary"
+              className="btn-primary w-full"
             >
               Login / Sign Up
             </button>
-            <button onClick={() => navigate('/')} className="btn-secondary">
+            <button onClick={() => navigate('/')} className="btn-secondary w-full">
               Go to Home
             </button>
           </div>

@@ -11,9 +11,9 @@ export function getChallanDisplayType({ courtChallan, challanType }) {
   return 'E-Challan';
 }
 
-/** Exclude only virtual-court challans; paid challans are shown to the user. */
-export function shouldExcludeChallan(challan) {
-  return challan.sentToVirtualCourt === true;
+/** No challans are excluded; all challans are shown to the user. */
+export function shouldExcludeChallan(_challan) {
+  return false;
 }
 
 /** @deprecated use shouldExcludeChallan */
@@ -34,6 +34,7 @@ export function getNoticeId(raw) {
 }
 
 import { getOffenceDetails, getOffenceSection } from './challanFieldHelpers.js';
+import { resolveChallanAmount } from './challanPricing.js';
 
 export { getOffenceDetails, getOffenceSection };
 
@@ -88,6 +89,7 @@ export function mapChallanRecord(raw, vehicleNumber, idx = 0) {
   const noticeId = getNoticeId(raw);
   const dateSource = raw.challanDate || raw.offenceDate || raw.dateTime;
   const status = resolveChallanStatus(raw);
+  const offenceDetails = getOffenceDetails(raw);
 
   return {
     id: noticeId !== 'N/A' ? noticeId : `CH${idx + 1}`,
@@ -95,10 +97,10 @@ export function mapChallanRecord(raw, vehicleNumber, idx = 0) {
     challanNumber: raw.challanNumber || null,
     dbId: raw.challanNumber || noticeId,
     vehicleNumber: vehicleNumber || raw.vehicleNumber,
-    offenceDetails: getOffenceDetails(raw),
+    offenceDetails,
     type: raw.violationType || raw.challanType || 'N/A',
     description: raw.challanPlace || raw.location || 'N/A',
-    amount: parseFloat(raw.amount || raw.fineAmount || 0) || 0,
+    amount: resolveChallanAmount(raw, offenceDetails),
     status,
     date: formatChallanDate(dateSource),
     time: formatChallanTime(dateSource),
@@ -130,7 +132,6 @@ export function transformExternalChallans(result) {
   const allChallans = collectRawChallans(result);
 
   const challans = allChallans
-    .filter((c) => !shouldExcludeChallan(c))
     .map((c, idx) => mapChallanRecord(c, result.vehicleNumber, idx));
 
   const firstChallan = allChallans[0];

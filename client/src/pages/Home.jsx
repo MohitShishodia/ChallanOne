@@ -1,288 +1,288 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HeroHomeIllustration } from '../components/Illustrations'
-import BrandLogo from '../components/BrandLogo'
-import { whatsappUrl, WHATSAPP } from '../constants/brand'
+import { whatsappUrl } from '../constants/brand'
 import { submitSupportMessage } from '../utils/supportApi'
+import HeroSearchWidget from '../components/HeroSearchWidget'
+import './Home.css'
 
 export default function Home() {
+  const [heroSlide, setHeroSlide] = useState(0)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setHeroSlide((current) => (current + 1) % heroImages.length)
+    }, 4500)
+
+    return () => window.clearInterval(timer)
+  }, [])
+
   return (
     <div className="screen">
-      <div className="screen-content">
-        {/* ── HERO SECTION ── */}
-        <section className="bg-gradient-to-br from-red-50/60 via-white to-white">
-          <div className="container-main py-5 md:py-20">
-            <div className="grid md:grid-cols-2 gap-4 md:gap-12 items-center">
-              {/* Left - Text */}
-              <div className="space-y-3 md:space-y-6 animate-fade-up">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] md:text-[12px] font-semibold text-emerald-700 border border-emerald-100">
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.7-9.3a1 1 0 00-1.4-1.4L9 10.6 7.7 9.3a1 1 0 00-1.4 1.4l2 2a1 1 0 001.4 0l4-4z" />
-                  </svg>
-                  India's Most Trusted Platform
-                </div>
-                <h1 className="h-display">
-                  Check Vehicle Challan & RC Details{' '}
-                  <span className="text-brand-red">in Seconds</span>
-                </h1>
-                <p className="text-[13px] md:text-[18px] leading-relaxed text-slate-500 max-w-lg">
-                  Fast, secure and reliable platform for checking traffic challans and vehicle registration details across India.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2.5 md:gap-3 pt-1 md:pt-2">
-                  <Link to="/pay-challan" className="btn-primary">
-                    Check Challan
-                  </Link>
-                  <Link to="/vehicle-info" className="btn-secondary">
-                    Check RC Details
-                  </Link>
-                </div>
+      <div className="screen-content home-wrap">
+        {/* ══════════════ HERO ══════════════ */}
+        <section className="hero">
+          <div className="container-main hero-inner">
+            {/* Left */}
+            <div className="animate-fade-up">
+              <div className="hero-badge">
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.7-9.3a1 1 0 00-1.4-1.4L9 10.6 7.7 9.3a1 1 0 00-1.4 1.4l2 2a1 1 0 001.4 0l4-4z" />
+                </svg>
+                India's Most Trusted Vehicle Verification Platform
               </div>
 
-              {/* Right - Illustration */}
-              <div className="animate-fade-up relative mt-2 md:mt-0">
-                <div className="hero-illu h-[40vh] md:h-auto md:max-h-none">
-                  <HeroHomeIllustration className="w-full h-full object-cover" />
-                </div>
-                {/* Floating status card */}
-                <div className="absolute bottom-2 left-2 md:left-auto md:-right-4 md:-bottom-6 w-[170px] md:w-[240px] surface-card animate-float p-2.5 md:p-4 z-10">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-slate-500">Challan Status</p>
-                    <span className="pill pill-pending text-[9px]">Pending</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">Amount</p>
-                  <p className="text-[16px] md:text-[20px] font-bold text-slate-900 leading-tight">₹ 2,500</p>
-                  <div className="mt-1 grid grid-cols-2 text-[10px]">
-                    <div>
-                      <p className="text-slate-500">Due Date</p>
-                      <p className="font-semibold text-slate-900">12 May 2024</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 border-t border-slate-100 pt-1.5 mt-1.5 text-[10px]">
-                    <div>
-                      <p className="text-slate-500">RC Details</p>
-                      <p className="font-semibold text-slate-900 truncate">UP32AB1234</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">Owner</p>
-                      <p className="font-semibold text-slate-900 truncate">Amit Sharma</p>
-                    </div>
-                  </div>
-                </div>
+              <h1 className="hero-title">
+                Check Vehicle Challan, RC Details &amp; Service History{' '}
+                <span className="accent">in Seconds</span>
+              </h1>
+
+              <p className="hero-sub">
+                Fast, secure and reliable platform for checking traffic challans and vehicle registration details across India.
+              </p>
+
+              <div className="hero-pills">
+                <span className="hero-pill hero-pill--red">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z" /></svg>
+                  Instant Results
+                </span>
+                <span className="hero-pill hero-pill--green">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.6 2A9 9 0 11 5.6 7" /></svg>
+                  100% Secure
+                </span>
+                <span className="hero-pill hero-pill--blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-7-5.686-7-11a7 7 0 1114 0c0 5.314-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                  PAN India Coverage
+                </span>
+              </div>
+
+              <div className="hero-search">
+                <HeroSearchWidget />
+              </div>
+            </div>
+
+            {/* Right - automatic image slider */}
+            <div className="hero-visual hero-slider animate-fade-up">
+              <div className="hero-slides">
+                {heroImages.map((image, index) => (
+                  <img
+                    key={image.src}
+                    src={image.src}
+                    alt={image.alt}
+                    className={`hero-slide${index === heroSlide ? ' hero-slide--active' : ''}`}
+                    aria-hidden={index !== heroSlide}
+                  />
+                ))}
+              </div>
+              <div className="hero-slider-dots" aria-label="Choose home page image">
+                {heroImages.map((image, index) => (
+                  <button
+                    key={image.src}
+                    type="button"
+                    className={`hero-slider-dot${index === heroSlide ? ' hero-slider-dot--active' : ''}`}
+                    aria-label={`Show image ${index + 1}`}
+                    aria-current={index === heroSlide ? 'true' : undefined}
+                    onClick={() => setHeroSlide(index)}
+                  />
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── CONNECT WITH EXPERT ── */}
-        <section className="bg-white border-y border-slate-100">
-          <div className="container-main py-10 md:py-14">
-            <div className="expert-cta grid md:grid-cols-2 gap-6 items-center">
-              <div>
-                <p className="text-[12px] font-bold uppercase tracking-widest text-brand-red mb-2">Need help?</p>
-                <h2 className="text-[22px] md:text-[28px] font-bold text-slate-900 leading-tight">
-                  Connect with an Expert
-                </h2>
-                <p className="mt-3 text-[14px] md:text-[15px] text-slate-600 leading-relaxed">
-                  Talk to our challan clearance experts on WhatsApp for payment help, OTP verification, and vehicle queries.
-                </p>
-                <a
-                  href={whatsappUrl('Hi! I would like to connect with a Challan One expert.')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-primary mt-5 inline-flex"
-                >
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                  Chat on WhatsApp
-                </a>
-                <p className="mt-2 text-[12px] text-slate-500">{WHATSAPP.display}</p>
-              </div>
-              <div className="hidden md:flex justify-center">
-                <div className="surface-card p-6 max-w-sm w-full">
-                  <ul className="space-y-3 text-[14px] text-slate-600">
-                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> Challan payment guidance</li>
-                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> Parivahan OTP support</li>
-                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> RC & vehicle queries</li>
-                    <li className="flex gap-2"><span className="text-brand-red font-bold">✓</span> Available 10 AM – 8 PM</li>
-                  </ul>
-                </div>
-              </div>
+        {/* ══════════════ PARTNERS / TRUST BAR ══════════════ */}
+        <section className="partners">
+          <div className="container-main partners-inner">
+            <div className="partners-lead">
+              <p className="partners-lead-title">
+                Trusted by <span>1,20,000+</span> Vehicle Owners
+              </p>
+              <p className="partners-stars">★★★★★</p>
+            </div>
+            <div className="partners-logos">
+              {partners.map((p) => (
+                <span className="partner-logo" key={p.label}>
+                  <span className="dot">{p.icon}</span>
+                  {p.label}
+                </span>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ── STATS ── */}
-        <section className="bg-white border-b border-slate-100">
-          <div className="container-main py-6 md:py-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-              <Stat title="20K+" subtitle="Active Users" />
-              <Stat title="50K+" subtitle="Searches Done" />
-              <Stat title="99.9%" subtitle="Accuracy Rate" />
-              <Stat title="100%" subtitle="Secure & Encrypted" />
-            </div>
-          </div>
-        </section>
-
-        {/* ── FEATURES ── */}
-        <section className="section-spacing bg-slate-50">
+        {/* ══════════════ STATS ══════════════ */}
+        <section className="stats-band">
           <div className="container-main">
-            <div className="text-center max-w-2xl mx-auto mb-6 md:mb-14">
-              <h2 className="h-section">Everything You Need in One Place</h2>
-              <p className="mt-2 text-[14px] md:text-[16px] text-slate-500">Powerful features to help you stay compliant and avoid penalties</p>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              <FeatureCard
-                tone="red"
-                title="Instant Challan Check"
-                desc="Check pending or paid challans by vehicle number instantly."
-                to="/pay-challan"
-                icon={
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                  </svg>
-                }
-              />
-              <FeatureCard
-                tone="emerald"
-                title="RC Details Lookup"
-                desc="Get detailed registration and ownership information."
-                to="/vehicle-info"
-                icon={
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
-                  </svg>
-                }
-              />
-              <FeatureCard
-                tone="amber"
-                title="Secure & Private"
-                desc="Your data is encrypted, never stored or shared."
-                to="/support"
-                icon={
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c-1.66 0-3 1.34-3 3 0 1.31.84 2.41 2 2.83V19a1 1 0 002 0v-2.17c1.16-.42 2-1.52 2-2.83 0-1.66-1.34-3-3-3zm6-2V7a6 6 0 10-12 0v2a3 3 0 00-3 3v7a3 3 0 003 3h12a3 3 0 003-3v-7a3 3 0 00-3-3zM8 7a4 4 0 118 0v2H8V7z" />
-                  </svg>
-                }
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* ── HOW IT WORKS ── */}
-        <section className="section-spacing bg-white">
-          <div className="container-main">
-            <div className="text-center max-w-2xl mx-auto mb-6 md:mb-14">
-              <h2 className="h-section">How It Works</h2>
-              <p className="mt-2 text-[14px] md:text-[16px] text-slate-500">Get your vehicle information in 3 simple steps</p>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-6 md:gap-12 max-w-4xl mx-auto">
-              {howItWorksSteps.map((step, idx) => (
-                <div key={step.num} className="text-center animate-fade-up">
-                  <div className="mx-auto flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-red-50 text-brand-red shadow-[0_2px_8px_-2px_rgba(220,38,38,0.25)] mb-3 md:mb-5">
-                    {step.icon}
+            <div className="stats-grid">
+              {stats.map((s) => (
+                <div className="stat-card" key={s.label}>
+                  <span className={`stat-ic stat-ic--${s.tone}`}>{s.icon}</span>
+                  <div>
+                    <p className="stat-num">{s.num}</p>
+                    <p className="stat-label">{s.label}</p>
                   </div>
-                  <p className="text-[11px] font-bold tracking-widest text-brand-red mb-1">{step.num}</p>
-                  <p className="text-[16px] md:text-[17px] font-bold text-slate-900">{step.title}</p>
-                  <p className="text-[13px] md:text-[14px] text-slate-500 mt-1.5 md:mt-2 leading-relaxed">{step.desc}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-8 md:mt-12 max-w-2xl mx-auto">
-              <div className="trust-card">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-brand-red">
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c-1.66 0-3 1.34-3 3 0 1.31.84 2.41 2 2.83V19a1 1 0 002 0v-2.17c1.16-.42 2-1.52 2-2.83 0-1.66-1.34-3-3-3zm6-2V7a6 6 0 10-12 0v2a3 3 0 00-3 3v7a3 3 0 003 3h12a3 3 0 003-3v-7a3 3 0 00-3-3zM8 7a4 4 0 118 0v2H8V7z" />
-                  </svg>
-                </div>
-                <p>
-                  <span className="font-semibold text-slate-900">Your data is encrypted and secure.</span><br />
-                  We never store your personal information.
-                </p>
-              </div>
+          </div>
+        </section>
+
+        {/* ══════════════ FEATURES ══════════════ */}
+        <section className="sec">
+          <div className="container-main">
+            <div className="sec-head">
+              <h2 className="sec-title">Everything You Need, All in One Place</h2>
+              <p className="sec-sub">Powerful features to help you stay compliant and avoid penalties</p>
+            </div>
+            <div className="feat-grid">
+              {features.map((f) => (
+                <Link to={f.to} className="feat-card" key={f.title}>
+                  <span className={`feat-ic feat-ic--${f.tone}`}>{f.icon}</span>
+                  <p className="feat-title">{f.title}</p>
+                  <p className="feat-desc">{f.desc}</p>
+                </Link>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ── CONTACT US ── */}
-        <ContactUsSection />
-
-        {/* ── FOOTER ── */}
-        <footer className="site-footer">
+        {/* ══════════════ HOW IT WORKS ══════════════ */}
+        <section className="sec sec--gray">
           <div className="container-main">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-10">
-              <div>
-                <div className="mb-4">
-                  <BrandLogo linkTo="/" size="sm" variant="light" />
-                </div>
-                <p className="text-[13px] text-slate-400 leading-relaxed">India's most trusted platform for checking traffic challans and vehicle registration details.</p>
-              </div>
-              <div>
-                <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Quick Links</h4>
-                <div className="space-y-2.5">
-                  <Link to="/pay-challan" className="block text-[14px]">Check Challan</Link>
-                  <Link to="/vehicle-info" className="block text-[14px]">RC Details</Link>
-                  <Link to="/service-history" className="block text-[14px]">Service History</Link>
-                  <Link to="/about" className="block text-[14px]">About Us</Link>
-                </div>
-              </div>
-              <div>
-                <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Support</h4>
-                <div className="space-y-2.5">
-                  <Link to="/support" className="block text-[14px]">Help Center</Link>
-                  <a href="mailto:support@challanone.com" className="block text-[14px]">support@challanone.com</a>
-                  <a href={`tel:+${WHATSAPP.number}`} className="block text-[14px]">{WHATSAPP.display}</a>
-                </div>
-              </div>
-              <div>
-                <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Office</h4>
-                <p className="text-[14px] leading-relaxed">193, Tech Park, Sector 62,<br />Noida, UP - 201301</p>
-              </div>
+            <div className="sec-head">
+              <h2 className="sec-title">How It Works</h2>
+              <p className="sec-sub">Get your vehicle information in 4 simple steps</p>
             </div>
-            <div className="border-t border-slate-800 pt-6 text-center text-[13px]">
-              © {new Date().getFullYear()} ChallanOne. All rights reserved.
+            <div className="steps">
+              {howItWorks.map((step, i) => (
+                <div className="step" key={step.num}>
+                  <div className="step-ic">
+                    {step.icon}
+                    <span className="step-num">{step.num}</span>
+                  </div>
+                  <p className="step-title">{step.title}</p>
+                  <p className="step-desc">{step.desc}</p>
+                  {i < howItWorks.length - 1 && (
+                    <span className="step-arrow">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        </footer>
+        </section>
+
+        {/* ══════════════ TESTIMONIALS ══════════════ */}
+        <section className="sec">
+          <div className="container-main">
+            <div className="sec-head">
+              <h2 className="sec-title">What Our Users Say</h2>
+              <p className="sec-sub">Thousands of drivers trust us to keep their vehicles compliant</p>
+            </div>
+            <div className="tst-grid">
+              {testimonials.map((t) => (
+                <div className="tst-card" key={t.name}>
+                  <p className="tst-stars">★★★★★</p>
+                  <p className="tst-quote">“{t.quote}”</p>
+                  <div className="tst-person">
+                    <span className="tst-avatar" style={{ background: t.color }}>{t.name[0]}</span>
+                    <div>
+                      <p className="tst-name">{t.name}</p>
+                      <p className="tst-city">{t.city}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════ CONTACT ══════════════ */}
+        <ContactUsSection />
+
+        {/* ══════════════ BOTTOM CTA BAR ══════════════ */}
+        <section className="cta-bar">
+          <div className="container-main cta-inner">
+            <div className="cta-left">
+              <div>
+                <p className="cta-title">Have questions? We're here to help!</p>
+                <p className="cta-desc">Talk to our challan clearance experts any time.</p>
+              </div>
+            </div>
+            <a href={whatsappUrl('Hi! I would like to connect with a Challan One expert.')} target="_blank" rel="noopener noreferrer" className="cta-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 18, height: 18 }}>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884" />
+              </svg>
+              Contact Support
+            </a>
+            <div className="cta-badges">
+              <span className="cta-badge"><CheckIcon /> 24/7 Support</span>
+              <span className="cta-badge"><CheckIcon /> 100% Secure</span>
+              <span className="cta-badge"><CheckIcon /> Instant Refunds</span>
+              <span className="cta-badge"><CheckIcon /> Trusted Platform</span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )
 }
 
-/* ── How It Works data ── */
-const howItWorksSteps = [
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  )
+}
+
+/* ── Data ── */
+const heroImages = [
   {
-    num: '01',
-    title: 'Enter Vehicle Number',
-    desc: 'Enter your vehicle number in the search box.',
-    icon: (
-      <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
-        <rect x="3" y="6" width="18" height="12" rx="2" />
-        <path strokeLinecap="round" d="M7 12h7M7 9h4M7 15h2" />
-      </svg>
-    ),
+    src: '/car2.jpeg',
+    alt: 'Vehicle challan details displayed alongside a Maruti Suzuki Swift at India Gate',
   },
   {
-    num: '02',
-    title: 'Fetch Data Securely',
-    desc: 'Our system fetches data from official sources.',
-    icon: (
-      <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4l8 4v6c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V8l8-4z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 12.5l1.8 1.8L15 10.5" />
-      </svg>
-    ),
+    src: '/WhatsApp%20Image%202026-07-17%20at%2022.41.19.jpeg',
+    alt: 'Vehicle registration certificate details displayed alongside a Maruti Suzuki Swift',
   },
-  {
-    num: '03',
-    title: 'View Results Instantly',
-    desc: 'Get instant results with accurate information.',
-    icon: (
-      <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l3-3 3 3 3-5 3 8 3-3 3 3" />
-      </svg>
-    ),
-  },
+]
+
+const partners = [
+  { label: 'Ministry of Road Transport', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" /></svg> },
+  { label: 'VAHAN e-Services', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13l2-5a2 2 0 012-1.5h10A2 2 0 0119 8l2 5v5a1 1 0 01-1 1h-1a1 1 0 01-1-1v-1H6v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-5z" /><circle cx="7.5" cy="15.5" r="1" /><circle cx="16.5" cy="15.5" r="1" /></svg> },
+  { label: 'PARIVAHAN SARATHI', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M7 3h10a2 2 0 012 2v14l-7-3-7 3V5a2 2 0 012-2z" /></svg> },
+  { label: 'BHARAT BILLPAY', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="6" width="18" height="12" rx="2" /><path strokeLinecap="round" d="M3 10h18" /></svg> },
+  { label: 'PCI DSS', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9.5 12l1.8 1.8L15 10" /></svg> },
+]
+
+const stats = [
+  { num: '12,56,000+', label: 'Vehicles Checked', tone: 'red', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13l2-5a2 2 0 012-1.5h10A2 2 0 0119 8l2 5v5a1 1 0 01-1 1h-1a1 1 0 01-1-1v-1H6v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-5z" /><circle cx="7.5" cy="15.5" r="1.2" /><circle cx="16.5" cy="15.5" r="1.2" /></svg> },
+  { num: '9,80,000+', label: 'RC Records Fetched', tone: 'blue', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" /></svg> },
+  { num: '₹18+ Crore', label: 'Challans Paid', tone: 'green', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M6 4h9a3 3 0 010 6H6m0-6v16m0-10h9M6 8h11" /></svg> },
+  { num: '2.3 Seconds', label: 'Average Search Time', tone: 'amber', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="13" r="8" /><path strokeLinecap="round" d="M12 9v4l2.5 2M9 2h6" /></svg> },
+]
+
+const features = [
+  { title: 'Check Challan', desc: 'Get real-time traffic challan details and pay online securely.', to: '/pay-challan', tone: 'red', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> },
+  { title: 'RC Details', desc: 'Access owner name, registration details, vehicle info & more.', to: '/vehicle-info', tone: 'blue', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" /></svg> },
+  { title: 'Service History', desc: 'View complete service and maintenance history of your vehicle.', to: '/service-history', tone: 'amber', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+  { title: 'Insurance', desc: 'Check insurance validity and expiry date instantly.', to: '/vehicle-info', tone: 'green', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z" /></svg> },
+  { title: 'PUC Status', desc: 'Verify PUC certificate status and validity in one click.', to: '/vehicle-info', tone: 'amber', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3C7 3 4 8 4 12s3 9 8 9 8-5 8-9-3-9-8-9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 2" /></svg> },
+  { title: 'Fast Payments', desc: 'Pay challans securely using UPI, Cards, Net Banking & more.', to: '/pay-challan', tone: 'pink', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2" /><path strokeLinecap="round" d="M3 10h18" /></svg> },
+]
+
+const howItWorks = [
+  { num: 1, title: 'Enter Vehicle Number', desc: 'Enter your vehicle number and select state.', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4-4" /></svg> },
+  { num: 2, title: 'We Fetch Records', desc: 'We fetch data from official government sources.', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" /></svg> },
+  { num: 3, title: 'View Results Instantly', desc: 'Get challan, RC, insurance & more in seconds.', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg> },
+  { num: 4, title: 'Pay Securely Online', desc: 'Pay pending challans using multiple options.', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2" /><path strokeLinecap="round" d="M3 10h18M7 15h4" /></svg> },
+]
+
+const testimonials = [
+  { name: 'Rahul Sharma', city: 'Delhi', color: '#dc2626', quote: 'Checked my challan in less than 10 seconds. Super fast and reliable!' },
+  { name: 'Priya Kapoor', city: 'Bangalore', color: '#2563eb', quote: 'Very clean UI and accurate data. Highly recommended!' },
+  { name: 'Amit Verma', city: 'Lucknow', color: '#059669', quote: 'Best platform to check RC details and pay challans online.' },
 ]
 
 /* ── Contact Us section ── */
@@ -312,14 +312,14 @@ function ContactUsSection() {
   }
 
   return (
-    <section className="section-spacing bg-slate-50">
+    <section className="sec sec--gray">
       <div className="container-main">
-        <div className="text-center max-w-2xl mx-auto mb-6 md:mb-10">
-          <h2 className="h-section">Contact Us</h2>
-          <p className="mt-2 text-[14px] md:text-[15px] text-slate-500">We're here to help you</p>
+        <div className="sec-head">
+          <h2 className="sec-title">Contact Us</h2>
+          <p className="sec-sub">We're here to help you</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-6 md:gap-8 lg:gap-12">
           {/* Left - Form */}
           <div>
             {submitted ? (
@@ -414,37 +414,5 @@ function MapPreview() {
         Open in Maps
       </div>
     </div>
-  )
-}
-
-function Stat({ title, subtitle }) {
-  return (
-    <div className="text-center py-2">
-      <p className="text-[24px] md:text-[28px] font-bold text-slate-900 leading-tight">{title}</p>
-      <p className="text-[13px] font-medium text-slate-500 mt-1">{subtitle}</p>
-    </div>
-  )
-}
-
-function FeatureCard({ icon, title, desc, to, tone = 'red' }) {
-  const tones = {
-    red: 'bg-red-50 text-brand-red',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-  }
-  return (
-    <Link to={to} className="surface-card flex flex-col items-start gap-4 p-6 transition hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]">
-      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${tones[tone]}`}>{icon}</div>
-      <div>
-        <p className="text-[16px] font-semibold text-slate-900">{title}</p>
-        <p className="text-[14px] text-slate-500 leading-relaxed mt-1">{desc}</p>
-      </div>
-      <span className="text-[13px] font-semibold text-brand-red inline-flex items-center gap-1 mt-auto">
-        Learn more
-        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </span>
-    </Link>
   )
 }

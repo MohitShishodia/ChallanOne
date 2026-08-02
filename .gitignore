@@ -44,5 +44,12 @@ coverage/
 .temp/
 tmp/
 
+# Government challan receipt PDFs captured by Playwright
+server/uploads/receipts/
+
+# Large archives / IDE junk
+server/node_modules.zip
+*.code-workspace
+
 # Recovered sensitive data
 recovered_env.txt

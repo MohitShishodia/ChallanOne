@@ -69,7 +69,7 @@ export default function PaymentSuccess() {
         <div className="container-main py-8 md:py-12 space-y-8">
           <PostPaymentSteps orderId={orderId} />
 
-          <div className="surface-card p-5 md:p-6 max-w-2xl mx-auto animate-fade-up">
+          <div className="surface-card p-5 md:p-6 animate-fade-up">
             <h3 className="text-[16px] font-bold text-slate-900">Payment Summary</h3>
             <p className="text-[13px] text-slate-500 mt-0.5">
               {receipt.challans?.length || 0} challan(s) · {receipt.vehicleNumber}
@@ -82,7 +82,7 @@ export default function PaymentSuccess() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={handleDownload} className="btn-primary flex-1">
               Download Receipt
             </button>

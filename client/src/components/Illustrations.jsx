@@ -13,10 +13,10 @@ const imgStyle = {
 export function HeroHomeIllustration({ className = '' }) {
   return (
     <img
-      src="/indian_car_home.png"
-      alt="Indian car on city road"
+      src="/Gemini_Generated_Image_r9qvzir9qvzir9qv.png"
+      alt="ChallanOne vehicle challan checking app with Indian car and India Gate"
       className={className}
-      style={imgStyle}
+      style={{ width: '100%', height: 'auto', display: 'block' }}
     />
   )
 }

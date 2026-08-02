@@ -2,6 +2,7 @@ import VehicleModel from '../models/Vehicle.js';
 import ChallanModel from '../models/Challan.js';
 import { getNoticeId, resolveChallanStatus } from './challanTransform.js';
 import { getOffenceDetails } from './challanFieldHelpers.js';
+import { resolveChallanAmount } from './challanPricing.js';
 
 const DEMO_FILTER = { source: { $ne: 'demo' } };
 
@@ -23,7 +24,7 @@ function mapRawToChallanFields(raw, source) {
     challan_number: challanNumber,
     violation_type: raw.violationType || raw.challanType || raw.type || 'Traffic Violation',
     description: getOffenceDetails(raw),
-    amount: parseFloat(raw.amount || raw.fineAmount || 0) || 0,
+    amount: resolveChallanAmount(raw),
     status: status === 'PAID' ? 'PAID' : (raw.status === 'OVERDUE' ? 'OVERDUE' : 'PENDING'),
     fine_date: fineDate,
     fine_time: raw.fineTime || raw.fine_time || null,
@@ -82,16 +83,23 @@ export async function syncRawChallans(vehicleNumber, rawChallans, source = 'exte
   if (!vehicle) return [];
 
   const synced = [];
-  for (const raw of rawChallans) {
-    const fields = mapRawToChallanFields(raw, source);
-    if (!fields) continue;
-
-    const doc = await ChallanModel.findOneAndUpdate(
-      { challan_number: fields.challan_number },
-      { ...fields, vehicle_id: vehicle._id },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+  const BATCH = 15;
+  for (let i = 0; i < rawChallans.length; i += BATCH) {
+    const chunk = rawChallans.slice(i, i + BATCH);
+    const docs = await Promise.all(
+      chunk.map(async (raw) => {
+        const fields = mapRawToChallanFields(raw, source);
+        if (!fields) return null;
+        return ChallanModel.findOneAndUpdate(
+          { challan_number: fields.challan_number },
+          { ...fields, vehicle_id: vehicle._id },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      })
     );
-    synced.push(doc);
+    for (const doc of docs) {
+      if (doc) synced.push(doc);
+    }
   }
 
   return synced;

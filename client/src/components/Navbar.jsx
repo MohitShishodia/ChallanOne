@@ -62,7 +62,7 @@ export default function Navbar() {
     <>
       <nav className="site-navbar">
         <div className="site-navbar-inner">
-          <BrandLogo showText={false} />
+          <BrandLogo showText={false} size="navbar" />
 
           <div className="nav-links">
             {navLinks.map((link) => (
@@ -102,9 +102,14 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <Link to="/login" className="btn-primary">
-                Login
-              </Link>
+              <>
+                <Link to="/login" className="btn-secondary px-5 py-2 text-[14px]">
+                  Login
+                </Link>
+                <Link to="/login" className="btn-primary px-5 py-2 text-[14px]">
+                  Register
+                </Link>
+              </>
             )}
           </div>
 

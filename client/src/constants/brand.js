@@ -11,8 +11,8 @@ export const BRAND = {
 }
 
 export const WHATSAPP = {
-  number: '917409302432',
-  display: '+91 74093 02432',
+  number: '919220372007',
+  display: '+91 92203 72007',
   defaultMessage: 'Hi! I need help with challan clearance from Challan One.',
 }
 

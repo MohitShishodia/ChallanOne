@@ -1,4 +1,5 @@
 import { getOffenceDetails, getOffenceSection } from './challanFieldHelpers.js';
+import { resolveChallanAmount } from './challanPricing.js';
 
 export const TERMINAL_STATES = ['COMPLETED', 'FAILED', 'EXPIRED', 'CANCELLED'];
 
@@ -13,8 +14,8 @@ export function getChallanDisplayType({ courtChallan, challanType }) {
   return 'E-Challan';
 }
 
-export function shouldExcludeDelhiChallan(challan) {
-  return challan.sentToVirtualCourt === true;
+export function shouldExcludeDelhiChallan(_challan) {
+  return false;
 }
 
 /** @deprecated use shouldExcludeDelhiChallan */
@@ -54,7 +55,6 @@ export function transformDelhiChallans(challans, vehicleNumber) {
   if (!Array.isArray(challans)) return [];
 
   return challans
-    .filter((c) => !shouldExcludeDelhiChallan(c))
     .map((c, idx) => {
       const isCourtChallan = c.courtChallan === true;
       const challanType = c.challanType?.toUpperCase();
@@ -62,16 +62,17 @@ export function transformDelhiChallans(challans, vehicleNumber) {
       const noticeId = getNoticeId(c);
       const dateSource = c.challanDate || c.offenceDate;
       const status = resolveChallanStatus(c);
+      const offenceDetails = getOffenceDetails(c);
 
       return {
         id: noticeId !== 'N/A' ? noticeId : `CH${idx + 1}`,
         noticeId,
         challanNumber: c.challanNumber,
         vehicleNumber: vehicleNumber || c.vehicleNumber,
-        offenceDetails: getOffenceDetails(c),
+        offenceDetails,
         type: c.violationType || c.challanType || 'Traffic Violation',
         description: c.challanPlace || c.offenceDetails || 'N/A',
-        amount: parseFloat(c.amount || c.fineAmount || 0),
+        amount: resolveChallanAmount(c, offenceDetails),
         status,
         date: formatDelhiDate(dateSource),
         time: formatDelhiTime(dateSource),

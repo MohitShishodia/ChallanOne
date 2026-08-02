@@ -1,14 +1,17 @@
 import { render } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
+import { FeatureProvider } from '../context/FeatureContext'
 
 export function renderWithRouter(ui, { route = '/', path = '/' } = {}) {
   return render(
     <MemoryRouter initialEntries={[route]}>
       <AuthProvider>
-        <Routes>
-          <Route path={path} element={ui} />
-        </Routes>
+        <FeatureProvider>
+          <Routes>
+            <Route path={path} element={ui} />
+          </Routes>
+        </FeatureProvider>
       </AuthProvider>
     </MemoryRouter>
   )

@@ -13,8 +13,6 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
   const [step, setStep] = useState(STEPS.INPUT)
   const [vehicleNumber, setVehicleNumber] = useState('')
   const [mobileNumber, setMobileNumber] = useState('')
-  const [chassisNumber, setChassisNumber] = useState('')
-  const [engineNumber, setEngineNumber] = useState('')
   const [otp, setOtp] = useState('')
   const [runId, setRunId] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -70,8 +68,6 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
         body: JSON.stringify({
           vehicleNumber: vehicleNumber.trim(),
           mobileNumber: mobileNumber.trim(),
-          chassisNumber: chassisNumber.trim() || undefined,
-          engineNumber: engineNumber.trim() || undefined
         })
       })
 
@@ -109,8 +105,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
           action: 'SUBMIT_MOBILE',
           payload: {
             mobileNumber: mobileNumber.trim(),
-            chassisNumber: chassisNumber.trim() || undefined,
-            engineNumber: engineNumber.trim() || undefined
+            vehicleNumber: vehicleNumber.trim(),
           }
         })
       })
@@ -332,35 +327,6 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">Chassis Number</label>
-              <input
-                type="text"
-                placeholder="Last 4 digits"
-                value={chassisNumber}
-                onChange={(e) => setChassisNumber(e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 4))}
-                className="input-field"
-                maxLength={4}
-                inputMode="text"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label className="field-label">Engine Number</label>
-              <input
-                type="text"
-                placeholder="Last 4 digits"
-                value={engineNumber}
-                onChange={(e) => setEngineNumber(e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 4))}
-                className="input-field"
-                maxLength={4}
-                inputMode="text"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? 'Initiating...' : 'Send OTP & Check Challan'}
           </button>
@@ -383,7 +349,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
       <div className="space-y-6 animate-fade-up">
         <div className="surface-card p-4 md:p-6 space-y-3 md:space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
@@ -421,7 +387,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
               type="button"
               onClick={handleResendOtp}
               disabled={resendCooldown > 0 || loading}
-              className="text-[13px] font-medium text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+              className="text-[13px] font-medium text-brand-red hover:text-brand-red-dark disabled:text-slate-400 disabled:cursor-not-allowed"
             >
               {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
             </button>
@@ -442,7 +408,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     return (
       <div className="flex flex-col items-center justify-center py-24 animate-fade-up">
         <div className="relative">
-          <div className="h-14 w-14 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <div className="h-14 w-14 animate-spin rounded-full border-4 border-red-100 border-t-brand-red" />
         </div>
         <p className="mt-5 text-[14px] font-medium text-slate-700">Verifying & fetching challans...</p>
         <p className="mt-1 text-[12px] text-slate-400">Please wait while we fetch your Delhi challans</p>

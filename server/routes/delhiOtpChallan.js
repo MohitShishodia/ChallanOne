@@ -28,7 +28,72 @@ const router = express.Router();
 const CHALLANWALA_BASE_URL = 'https://api.challanwala.com/api/v1/corporate-api/challan-otp';
 const CHALLANWALA_TOKEN = process.env.CHALLANWALA_TOKEN || '';
 
+// APIClub — used for auto-fetching chassis/engine numbers from RC info
+const APICLUB_BASE_URL = 'https://prod.apiclub.in/api/v1';
+const APICLUB_API_KEY = process.env.APICLUB_API_KEY || '';
+
 const OTP_SOURCE_CODE = 'DELHI_OTP';
+
+// In-memory cache: runId -> { chassisLast4, engineLast4, vehicleNumber }
+// Stores RC details fetched during run creation so the SUBMIT_MOBILE action can reuse them.
+const runRcCache = new Map();
+
+/**
+ * Fetch chassis and engine last-4 digits from RC API.
+ * Returns { chassisLast4, engineLast4 } or undefined values on failure.
+ */
+async function fetchRcDetails(vehicleNumber) {
+  try {
+    console.log(`[DelhiOTP] Fetching RC info for chassis/engine: ${vehicleNumber}`);
+    const response = await fetch(`${APICLUB_BASE_URL}/rc_info`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': APICLUB_API_KEY
+      },
+      body: JSON.stringify({ vehicleId: vehicleNumber })
+    });
+
+    const data = await response.json();
+
+    if (!data || data.error || data.status === 'error') {
+      console.warn('[DelhiOTP] RC API returned error, proceeding without chassis/engine:', data?.message || 'Unknown');
+      return { chassisLast4: undefined, engineLast4: undefined };
+    }
+
+    // Log raw response keys for debugging
+    console.log('[DelhiOTP] RC API raw response keys:', JSON.stringify(Object.keys(data)));
+
+    // APIClub nests vehicle record in response; older shapes may use data/result
+    const record = data.response || data.data || data.result || data;
+
+    if (typeof record === 'object' && record !== null) {
+      console.log('[DelhiOTP] RC record keys:', JSON.stringify(Object.keys(record)));
+    }
+
+    // Try all known key patterns for chassis and engine across top-level and nested
+    const chassis =
+      record.vehicle_chasi_no || record.chassis_number || record.chassisNumber ||
+      record.chasi_no || record.chasiNo || record.chassis_no || record.chassisNo ||
+      data.vehicle_chasi_no || data.chassis_number || data.chassisNumber || '';
+
+    const engine =
+      record.vehicle_engine_no || record.engine_number || record.engineNumber ||
+      record.engine_no || record.engineNo ||
+      data.vehicle_engine_no || data.engine_number || data.engineNumber || '';
+
+    console.log(`[DelhiOTP] Extracted — chassis: "${chassis}", engine: "${engine}"`);
+
+    const chassisLast4 = normalizeLastFourDigits(chassis);
+    const engineLast4 = normalizeLastFourDigits(engine);
+
+    console.log(`[DelhiOTP] RC lookup result — chassis last 4: ${chassisLast4 || 'N/A'}, engine last 4: ${engineLast4 || 'N/A'}`);
+    return { chassisLast4, engineLast4 };
+  } catch (err) {
+    console.warn('[DelhiOTP] RC API call failed, proceeding without chassis/engine:', err.message);
+    return { chassisLast4: undefined, engineLast4: undefined };
+  }
+}
 
 async function syncCompletedRunChallans(runData, envelope) {
   const responseBlock = envelope?.inner?.response || runData?.data?.response;
@@ -62,7 +127,7 @@ function getAuthHeaders() {
 
 router.post('/runs', async (req, res) => {
   try {
-    const { vehicleNumber, chassisNumber, engineNumber, mobileNumber } = req.body;
+    const { vehicleNumber, mobileNumber } = req.body;
 
     if (!vehicleNumber || !mobileNumber) {
       return res.status(400).json({
@@ -81,30 +146,16 @@ router.post('/runs', async (req, res) => {
       });
     }
 
-    if (chassisNumber && !isValidLastFourDigits(chassisNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Chassis number must be exactly 4 characters (last 4 digits of chassis).'
-      });
-    }
-
-    if (engineNumber && !isValidLastFourDigits(engineNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Engine number must be exactly 4 characters (last 4 digits of engine).'
-      });
-    }
-
     console.log(`[DelhiOTP] Creating run for vehicle: ${normalizedVehicle}, mobile: ${normalizedMobile}`);
 
-    const normalizedChassis = normalizeLastFourDigits(chassisNumber);
-    const normalizedEngine = normalizeLastFourDigits(engineNumber);
+    // Auto-fetch chassis and engine last 4 digits from RC API
+    const { chassisLast4, engineLast4 } = await fetchRcDetails(normalizedVehicle);
 
     const payload = buildCreateRunPayload({
       vehicleNumber: normalizedVehicle,
       mobileNumber: normalizedMobile,
-      chassisNumber: normalizedChassis,
-      engineNumber: normalizedEngine
+      chassisNumber: chassisLast4,
+      engineNumber: engineLast4
     });
 
     const response = await fetch(`${CHALLANWALA_BASE_URL}/runs`, {
@@ -127,6 +178,13 @@ router.post('/runs', async (req, res) => {
     const envelope = extractRunEnvelope(data.data);
     const actions = resolveActionsFromChallenge(envelope.interactiveChallenge);
     console.log(`[DelhiOTP] Run created: ${envelope.runId}`);
+
+    // Cache RC details for this run so SUBMIT_MOBILE can reuse them
+    if (envelope.runId) {
+      runRcCache.set(envelope.runId, { chassisLast4, engineLast4, vehicleNumber: normalizedVehicle });
+      // Auto-cleanup after 10 minutes
+      setTimeout(() => runRcCache.delete(envelope.runId), 10 * 60 * 1000);
+    }
 
     logChallanSearch(req, {
       vehicleNumber: normalizedVehicle,
@@ -247,7 +305,37 @@ router.post('/runs/:runId/actions', async (req, res) => {
 
     console.log(`[DelhiOTP] Submitting action: ${action} for run: ${runId}`);
 
-    const requestBody = buildActionRequestBody(action, payload);
+    // For SUBMIT_MOBILE, auto-inject cached RC details (chassis/engine last 4)
+    let enrichedPayload = payload || {};
+    if (action === 'SUBMIT_MOBILE') {
+      const cached = runRcCache.get(runId);
+      if (cached) {
+        console.log(`[DelhiOTP] Injecting cached RC details for run ${runId}: chassis=${cached.chassisLast4}, engine=${cached.engineLast4}`);
+        enrichedPayload = {
+          ...enrichedPayload,
+          chassisLast4: cached.chassisLast4,
+          engineLast4: cached.engineLast4
+        };
+      } else if (enrichedPayload.vehicleNumber) {
+        // Fallback: re-fetch from RC API if client sent vehicleNumber
+        console.log(`[DelhiOTP] Cache miss for run ${runId}, re-fetching RC details`);
+        const rcDetails = await fetchRcDetails(normalizeVehicleNumber(enrichedPayload.vehicleNumber));
+        enrichedPayload = {
+          ...enrichedPayload,
+          chassisLast4: rcDetails.chassisLast4,
+          engineLast4: rcDetails.engineLast4
+        };
+      }
+
+      if (!enrichedPayload.chassisLast4 || !isValidLastFourDigits(enrichedPayload.chassisLast4)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Could not fetch chassis number from RC records. Please verify the vehicle number and try again.'
+        });
+      }
+    }
+
+    const requestBody = buildActionRequestBody(action, enrichedPayload);
 
     const response = await fetch(`${CHALLANWALA_BASE_URL}/runs/${runId}/actions`, {
       method: 'POST',

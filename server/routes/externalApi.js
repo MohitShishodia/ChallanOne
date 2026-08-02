@@ -6,11 +6,34 @@ const router = express.Router();
 
 // APIClub — used for RC / vehicle info
 const APICLUB_BASE_URL = 'https://prod.apiclub.in/api/v1';
-const APICLUB_API_KEY = process.env.APICLUB_API_KEY || 'apclb_hYzvq3Wp24xEFExS8M9Mgkg9412fd0db';
+const APICLUB_API_KEY = process.env.APICLUB_API_KEY || '';
 
 // ChallanWala — used for challan lookup
 const CHALLANWALA_API_URL = 'https://api.challanwala.com/api/v1/corporate-api/challan-lookup';
-const CHALLANWALA_TOKEN = process.env.CHALLANWALA_TOKEN || 'cw_3a0583236101a82574b7410d99706b5057da7f10ebf34091e62dd5865ffab6e22e1a1eb3d2d0619ceea703f434a6832c696e23092b94f4b3a0339296584e4601';
+const CHALLANWALA_TOKEN = process.env.CHALLANWALA_TOKEN || '';
+
+/** Short-lived in-memory cache so repeat searches feel instant */
+const CHALLAN_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+const challanResponseCache = new Map();
+
+function getCachedChallan(vehicleNumber) {
+  const entry = challanResponseCache.get(vehicleNumber);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAt > CHALLAN_CACHE_TTL_MS) {
+    challanResponseCache.delete(vehicleNumber);
+    return null;
+  }
+  return entry.payload;
+}
+
+function setCachedChallan(vehicleNumber, payload) {
+  challanResponseCache.set(vehicleNumber, { payload, cachedAt: Date.now() });
+  // Cap cache size
+  if (challanResponseCache.size > 100) {
+    const oldestKey = challanResponseCache.keys().next().value;
+    challanResponseCache.delete(oldestKey);
+  }
+}
 
 /**
  * GET /api/external/vehicle/:vehicleNumber
@@ -78,7 +101,7 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
  */
 router.post('/challan', async (req, res) => {
     try {
-        const { vehicleNumber } = req.body;
+        const { vehicleNumber, forceRefresh } = req.body;
 
         if (!vehicleNumber) {
             return res.status(400).json({
@@ -88,6 +111,25 @@ router.post('/challan', async (req, res) => {
         }
 
         const normalizedVehicleNumber = vehicleNumber.replace(/[\s-]/g, '').toUpperCase();
+
+        if (!forceRefresh) {
+            const cached = getCachedChallan(normalizedVehicleNumber);
+            if (cached) {
+                console.log(`[ChallanWala] Cache hit for: ${normalizedVehicleNumber}`);
+                logChallanSearch(req, {
+                    vehicleNumber: normalizedVehicleNumber,
+                    searchType: 'ALL_CHALLANS',
+                    status: 'success',
+                    challansFound:
+                        (cached.data?.pendingChallans?.length || 0) +
+                        (cached.data?.paidChallans?.length || 0) +
+                        (cached.data?.disposedChallans?.length || 0),
+                    responseTimeMs: 0,
+                    metadata: { cache: true }
+                });
+                return res.json({ ...cached, cached: true });
+            }
+        }
 
         console.log(`[ChallanWala] Fetching challan info for: ${normalizedVehicleNumber}`);
 
@@ -125,14 +167,18 @@ router.post('/challan', async (req, res) => {
         const allRaw = [...pending, ...paid, ...disposed];
         const challansFound = allRaw.length;
 
-        // Persist real challans to database for admin panel
-        try {
-            await syncRawChallans(normalizedVehicleNumber, allRaw, 'external');
-        } catch (syncErr) {
-            console.error('[ChallanWala] Sync to DB failed:', syncErr.message);
-        }
+        const payload = {
+            success: true,
+            source: 'CHALLANWALA',
+            vehicleNumber: normalizedVehicleNumber,
+            message: data.message,
+            data: data.data
+        };
 
-        console.log(`[ChallanWala] Challan info fetched successfully for: ${normalizedVehicleNumber}`);
+        setCachedChallan(normalizedVehicleNumber, payload);
+
+        // Respond immediately — sync/log in background (was blocking 60+ DB writes)
+        res.json(payload);
 
         logChallanSearch(req, {
             vehicleNumber: normalizedVehicleNumber,
@@ -140,15 +186,14 @@ router.post('/challan', async (req, res) => {
             status: challansFound > 0 ? 'success' : 'no_results',
             challansFound,
             responseTimeMs
+        }).catch(() => {});
+
+        syncRawChallans(normalizedVehicleNumber, allRaw, 'external').catch((syncErr) => {
+            console.error('[ChallanWala] Sync to DB failed:', syncErr.message);
         });
 
-        return res.json({
-            success: true,
-            source: 'CHALLANWALA',
-            vehicleNumber: normalizedVehicleNumber,
-            message: data.message,
-            data: data.data
-        });
+        console.log(`[ChallanWala] Challan info fetched in ${responseTimeMs}ms for: ${normalizedVehicleNumber}`);
+        return;
 
     } catch (error) {
         console.error('[ChallanWala] Challan info error:', error);

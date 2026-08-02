@@ -34,12 +34,17 @@
     @apply w-full min-h-screen bg-white relative;
   }
 
-  /* Content container - centered with max-width */
+  /* Content container — consistent max width + edge margins */
   .container-main {
     @apply mx-auto w-full px-4;
-    max-width: 1200px;
+    max-width: 1280px;
   }
   @media (min-width: 768px) {
+    .container-main {
+      @apply px-6;
+    }
+  }
+  @media (min-width: 1280px) {
     .container-main {
       @apply px-8;
     }
@@ -49,6 +54,11 @@
     max-width: 720px;
   }
   @media (min-width: 768px) {
+    .container-narrow {
+      @apply px-6;
+    }
+  }
+  @media (min-width: 1280px) {
     .container-narrow {
       @apply px-8;
     }
@@ -112,12 +122,17 @@
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
   .site-navbar-inner {
-    @apply mx-auto flex h-14 items-center justify-between px-4;
-    max-width: 1200px;
+    @apply mx-auto flex h-14 w-full items-center justify-between px-4;
+    max-width: none;
   }
   @media (min-width: 768px) {
     .site-navbar-inner {
-      @apply h-[68px] px-8;
+      @apply h-[68px] px-6;
+    }
+  }
+  @media (min-width: 1280px) {
+    .site-navbar-inner {
+      @apply px-8;
     }
   }
   .nav-links {
@@ -160,11 +175,15 @@
 
   /* Sub-page header */
   .page-header {
-    @apply flex h-14 items-center gap-4 px-4;
-    max-width: 1200px;
-    margin: 0 auto;
+    @apply mx-auto flex h-14 w-full items-center gap-4 px-4;
+    max-width: none;
   }
   @media (min-width: 768px) {
+    .page-header {
+      @apply px-6;
+    }
+  }
+  @media (min-width: 1280px) {
     .page-header {
       @apply px-8;
     }
@@ -336,7 +355,14 @@
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-up { animation: fadeUp 0.35s ease-out both; }
+/* fill-mode: none so transform does not stick and trap position:fixed children */
+.animate-fade-up { animation: fadeUp 0.35s ease-out; }
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0.6; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right { animation: slideInRight 0.28s ease-out both; }
 
 @keyframes float {
   0%,100% { transform: translateY(0); }
