@@ -17,7 +17,13 @@ echo "==> Backend install"
 cd "$APP_DIR/server"
 npm install --omit=dev
 npx playwright install chromium firefox
-npx playwright install-deps chromium firefox || true
+# System packages need root. Do NOT run install-deps as challanone (sudo password fails).
+# As root once: cd /var/www/challanone/server && npx playwright install-deps
+if [ "$(id -u)" -eq 0 ]; then
+  npx playwright install-deps chromium firefox || true
+else
+  echo "==> Skipping playwright install-deps (run as root if browsers fail to launch)"
+fi
 
 if [ ! -f .env ]; then
   echo "ERROR: server/.env is missing. Create it before deploying."
