@@ -9,30 +9,34 @@ const log = createLogger();
 
 /**
  * Open Download Challan Print and return captcha image + sessionId.
- * Retries once — government portal from VPS is often slow/flaky.
+ * Retries across browsers (chromium → firefox → webkit).
  */
 export async function startCaptchaSession() {
+  const browsers = ['chromium', 'firefox', 'webkit'];
   let lastError;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+
+  for (let i = 0; i < browsers.length; i++) {
+    const prefer = browsers[i];
     let browser;
     try {
-      log.step(`Captcha session attempt ${attempt}/2`);
-      const launched = await launchBrowser();
+      log.step(`Captcha session attempt ${i + 1}/${browsers.length} (${prefer})`);
+      const launched = await launchBrowser({ prefer });
       browser = launched.browser;
-      const { context, page } = launched;
+      const { page } = launched;
 
       await openDownloadChallanPrint(page);
       const captchaImage = await readCaptchaImage(page);
-      const sessionId = createSession({ browser, context, page, captchaImage });
+      const sessionId = createSession({ browser, context: launched.context, page, captchaImage });
 
-      log.step('Captcha session ready', sessionId);
+      log.step('Captcha session ready', { sessionId, browser: launched.browserName });
       return { sessionId, captchaImage };
     } catch (err) {
       lastError = err;
-      log.warn(`Captcha session attempt ${attempt} failed`, err?.message || err);
+      log.warn(`Captcha session attempt with ${prefer} failed`, err?.message || err);
       await safeClose(browser);
     }
   }
+
   throw mapAutomationError(lastError);
 }
 
@@ -148,29 +152,69 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
 }
 
 async function openDownloadChallanPrint(page) {
-  // Services landing is the stable entry; /challan redirects here anyway
-  log.step('Opening Portal...', PORTAL.servicesUrl);
-  const response = await page.goto(PORTAL.servicesUrl, {
-    waitUntil: 'domcontentloaded',
-    timeout: 60000,
-  });
+  const urls = PORTAL.servicesUrlFallbacks?.length
+    ? PORTAL.servicesUrlFallbacks
+    : [PORTAL.servicesUrl];
 
-  if (!response || response.status() >= 500) {
-    throw new ReceiptError(ERROR_CODES.PORTAL_DOWN, 'Receipt service is temporarily unavailable.');
+  let lastError;
+  let opened = false;
+
+  for (const url of urls) {
+    try {
+      log.step('Opening Portal...', url);
+      const response = await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: 90000,
+      });
+
+      if (!response || response.status() >= 500) {
+        throw new Error(`Portal returned status ${response?.status()}`);
+      }
+      opened = true;
+      break;
+    } catch (err) {
+      lastError = err;
+      log.warn(`Portal navigation failed for ${url}`, err?.message || err);
+    }
   }
 
-  log.step('Navigating... Download Challan Print');
-  const tile = page.locator(SELECTORS.downloadChallanPrintTile).first();
-  await tile.waitFor({ state: 'visible', timeout: 30000 });
-  await Promise.all([
-    page
-      .locator(SELECTORS.challanNumberInput)
-      .first()
-      .waitFor({ state: 'visible', timeout: 30000 }),
-    tile.click(),
-  ]);
+  if (!opened) {
+    throw lastError || new ReceiptError(ERROR_CODES.PORTAL_DOWN, 'Receipt service is temporarily unavailable.');
+  }
 
-  await page.locator(SELECTORS.captchaImage).first().waitFor({ state: 'visible', timeout: 20000 });
+  // Already on download form?
+  const formReady = await page
+    .locator(SELECTORS.challanNumberInput)
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  if (!formReady) {
+    log.step('Navigating... Download Challan Print');
+    const tile = page.locator(SELECTORS.downloadChallanPrintTile).first();
+    const hasTile = await tile.count().catch(() => 0);
+    if (hasTile) {
+      await tile.waitFor({ state: 'visible', timeout: 30000 });
+      await Promise.all([
+        page.locator(SELECTORS.challanNumberInput).first().waitFor({ state: 'visible', timeout: 30000 }),
+        tile.click(),
+      ]);
+    } else {
+      const textLink = page.locator(SELECTORS.downloadChallanPrintText).first();
+      if (await textLink.count()) {
+        await Promise.all([
+          page.locator(SELECTORS.challanNumberInput).first().waitFor({ state: 'visible', timeout: 30000 }),
+          textLink.click(),
+        ]);
+      } else {
+        // Last resort: go to challan route
+        await page.goto(PORTAL.challanUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
+        await page.locator(SELECTORS.challanNumberInput).first().waitFor({ state: 'visible', timeout: 30000 });
+      }
+    }
+  }
+
+  await page.locator(SELECTORS.captchaImage).first().waitFor({ state: 'visible', timeout: 30000 });
   log.step('Download Challan Print form ready');
 }
 

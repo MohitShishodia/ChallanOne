@@ -9,7 +9,7 @@
     "dev": "node --watch server.js",
     "test": "node --test tests/**/*.test.js",
     "test:watch": "node --test --watch tests/**/*.test.js",
-    "postinstall": "npx playwright install chromium"
+    "postinstall": "npx playwright install chromium firefox"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -8,6 +8,11 @@ export const PORTAL = {
   servicesUrl: 'https://echallan.parivahan.nic.in/challan/challan-services',
   challanUrl: 'https://echallan.parivahan.nic.in/challan',
   homeUrl: 'https://echallan.parivahan.nic.in',
+  /** Fallback mirrors if nic.in is unreachable from the VPS */
+  servicesUrlFallbacks: [
+    'https://echallan.parivahan.nic.in/challan/challan-services',
+    'https://echallan.parivahan.gov.in/',
+  ],
 };
 
 export const SELECTORS = {

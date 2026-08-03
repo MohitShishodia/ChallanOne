@@ -16,7 +16,8 @@ git pull --ff-only origin main
 echo "==> Backend install"
 cd "$APP_DIR/server"
 npm install --omit=dev
-npx playwright install chromium
+npx playwright install chromium firefox
+npx playwright install-deps chromium firefox || true
 
 if [ ! -f .env ]; then
   echo "ERROR: server/.env is missing. Create it before deploying."
