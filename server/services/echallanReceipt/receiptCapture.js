@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { chromium } from 'playwright';
 import { createLogger } from './logger.js';
 import {
   ensureReceiptsDir,
@@ -22,15 +23,13 @@ const LOADING_MARKERS = [
  *
  * @param {import('playwright').Page} receiptPage
  * @param {string} challanNumber
- * @returns {Promise<{ receiptUrl: string, filename: string, contentType: string }>}
+ * @param {{ browserName?: string }} [opts]
  */
-export async function captureReceipt(receiptPage, challanNumber) {
+export async function captureReceipt(receiptPage, challanNumber, opts = {}) {
   ensureReceiptsDir();
   log.step('Receipt Found... capturing');
 
   await receiptPage.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
-
-  // Unblock fonts/images so the receipt (logos + text) renders correctly in the PDF
   await receiptPage.context().unroute('**/*').catch(() => {});
 
   const url = receiptPage.url();
@@ -49,43 +48,76 @@ export async function captureReceipt(receiptPage, challanNumber) {
     return savePdfFromPage(receiptPage, challanNumber, url);
   }
 
-  // Critical: wait until loading spinner is gone and real receipt content is present
   await waitForReceiptReady(receiptPage, challanNumber);
 
-  log.step('Saving PDF... (HTML receipt → page.pdf)');
   const filename = buildReceiptFilename(challanNumber, 'pdf');
   const filePath = absoluteReceiptPath(filename);
-
-  // Give layout/fonts a brief settle after content appears
   await receiptPage.waitForTimeout(400);
 
-  const pdfBuffer = await receiptPage.pdf({
-    format: 'A4',
-    printBackground: true,
-    margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' },
-  });
+  const browserName = opts.browserName || '';
+  const canNativePdf = browserName === 'chromium' || browserName === '';
 
-  if (!pdfBuffer || pdfBuffer.length < 15000) {
-    // Still suspiciously small — likely captured a blank/loading frame
-    const bodyText = await receiptPage.locator('body').innerText().catch(() => '');
-    if (isLoadingText(bodyText)) {
-      throw new ReceiptError(
-        ERROR_CODES.TIMEOUT,
-        'Receipt is still loading. Please try again.'
-      );
+  if (canNativePdf) {
+    try {
+      log.step('Saving PDF... (page.pdf)');
+      const pdfBuffer = await receiptPage.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' },
+      });
+      fs.writeFileSync(filePath, pdfBuffer);
+      const receiptUrl = publicReceiptUrl(filename);
+      log.step('Returning URL...', receiptUrl);
+      return { receiptUrl, filename, contentType: 'application/pdf' };
+    } catch (err) {
+      log.warn('page.pdf failed — falling back to Chromium HTML render', err.message);
     }
+  } else {
+    log.step(`Saving PDF... (${browserName} has no page.pdf, using Chromium render)`);
   }
 
-  fs.writeFileSync(filePath, pdfBuffer);
-
-  const receiptUrl = publicReceiptUrl(filename);
-  log.step('Returning URL...', receiptUrl);
-  return { receiptUrl, filename, contentType: 'application/pdf' };
+  // Firefox/WebKit (or chromium pdf failure): render HTML via Chromium
+  const html = await receiptPage.content();
+  return renderHtmlToPdfWithChromium(html, challanNumber, filename, filePath);
 }
 
 /**
- * Wait until portal loading UI is gone and receipt content is visible.
+ * Playwright page.pdf() only works in Chromium.
+ * For Firefox sessions, open the captured HTML in Chromium and print to PDF.
  */
+async function renderHtmlToPdfWithChromium(html, challanNumber, filename, filePath) {
+  let browser;
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(500);
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' },
+    });
+    fs.writeFileSync(filePath, pdfBuffer);
+
+    const receiptUrl = publicReceiptUrl(filename);
+    log.step('Returning URL...', receiptUrl);
+    return { receiptUrl, filename, contentType: 'application/pdf' };
+  } catch (err) {
+    throw new ReceiptError(
+      ERROR_CODES.INTERNAL,
+      `Unable to generate receipt PDF: ${err.message}`
+    );
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
+}
+
 async function waitForReceiptReady(page, challanNumber) {
   log.step('Waiting for receipt content to finish loading...');
 
@@ -101,7 +133,6 @@ async function waitForReceiptReady(page, challanNumber) {
         const stillLoading = loadingMarkers.some((m) => text.includes(m));
         if (stillLoading) return false;
 
-        // Pre-loader component still visible
         const preloader = document.querySelector('app-pre-loader');
         if (preloader && preloader.children.length > 0 && preloader.offsetParent !== null) {
           const preText = (preloader.innerText || '').trim();
@@ -164,18 +195,12 @@ async function savePdfFromPage(page, challanNumber, url) {
       return { receiptUrl, filename, contentType: 'application/pdf' };
     }
   } catch (err) {
-    log.warn('Direct PDF fetch failed, falling back to page.pdf()', err.message);
+    log.warn('Direct PDF fetch failed, falling back', err.message);
   }
 
   await waitForReceiptReady(page, challanNumber).catch(() => {});
-  const pdfBuffer = await page.pdf({
-    format: 'A4',
-    printBackground: true,
-  });
-  fs.writeFileSync(filePath, pdfBuffer);
-  const receiptUrl = publicReceiptUrl(filename);
-  log.step('Returning URL...', receiptUrl);
-  return { receiptUrl, filename, contentType: 'application/pdf' };
+  const html = await page.content();
+  return renderHtmlToPdfWithChromium(html, challanNumber, filename, filePath);
 }
 
 /**

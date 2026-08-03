@@ -12,7 +12,8 @@ const log = createLogger();
  * Retries across browsers (chromium → firefox → webkit).
  */
 export async function startCaptchaSession() {
-  const browsers = ['chromium', 'firefox', 'webkit'];
+  // Firefox reaches the portal more reliably from this VPS; Chromium often stalls on the form.
+  const browsers = ['firefox', 'chromium', 'webkit'];
   let lastError;
 
   for (let i = 0; i < browsers.length; i++) {
@@ -26,7 +27,13 @@ export async function startCaptchaSession() {
 
       await openDownloadChallanPrint(page);
       const captchaImage = await readCaptchaImage(page);
-      const sessionId = createSession({ browser, context: launched.context, page, captchaImage });
+      const sessionId = createSession({
+        browser,
+        context: launched.context,
+        page,
+        captchaImage,
+        browserName: launched.browserName,
+      });
 
       log.step('Captcha session ready', { sessionId, browser: launched.browserName });
       return { sessionId, captchaImage };
@@ -88,10 +95,10 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
     throw new ReceiptError(ERROR_CODES.VALIDATION, 'Session expired. Please try again.', { status: 410 });
   }
 
-  const { browser, context, page } = session;
+  const { browser, context, page, browserName } = session;
 
   try {
-    log.step('Submitting Form...', { challanNumber: challanNumber.trim() });
+    log.step('Submitting Form...', { challanNumber: challanNumber.trim(), browser: browserName });
 
     await ensureOnDownloadForm(page);
     await selectChallanSearchType(page);
@@ -121,6 +128,8 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
       popupPromise.then((popup) => (popup ? { type: 'popup', popup } : null)),
     ]);
 
+    const captureOpts = { browserName };
+
     if (firstEvent?.type === 'download') {
       return await saveDownload(firstEvent.download, challanNumber.trim());
     }
@@ -130,12 +139,12 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
       if (firstEvent.popup.url().startsWith('chrome://')) {
         throw new ReceiptError(ERROR_CODES.SITE_CHANGED, 'Unable to capture receipt. Please try again.');
       }
-      return await captureReceipt(firstEvent.popup, challanNumber.trim());
+      return await captureReceipt(firstEvent.popup, challanNumber.trim(), captureOpts);
     }
 
     const latePopup = await popupPromise;
     if (latePopup && !latePopup.url().startsWith('chrome://')) {
-      return await captureReceipt(latePopup, challanNumber.trim());
+      return await captureReceipt(latePopup, challanNumber.trim(), captureOpts);
     }
     const lateDownload = await downloadPromise;
     if (lateDownload) {
@@ -143,7 +152,7 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
     }
 
     log.step('Opening Receipt... (same page)');
-    return await captureReceipt(page, challanNumber.trim());
+    return await captureReceipt(page, challanNumber.trim(), captureOpts);
   } catch (err) {
     throw mapAutomationError(err);
   } finally {

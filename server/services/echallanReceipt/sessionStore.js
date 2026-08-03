@@ -24,7 +24,7 @@ function purgeExpired() {
   }
 }
 
-export function createSession({ browser, context, page, captchaImage }) {
+export function createSession({ browser, context, page, captchaImage, browserName = 'chromium' }) {
   purgeExpired();
   const sessionId = randomUUID();
   sessions.set(sessionId, {
@@ -32,6 +32,7 @@ export function createSession({ browser, context, page, captchaImage }) {
     context,
     page,
     captchaImage,
+    browserName,
     createdAt: Date.now(),
   });
   return sessionId;
