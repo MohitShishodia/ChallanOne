@@ -24,11 +24,11 @@ if [ ! -f .env ]; then
 fi
 
 echo "==> Restart API (PM2)"
+cd "$APP_DIR/server"
 if pm2 describe challanone-api >/dev/null 2>&1; then
-  pm2 restart challanone-api --update-env
-else
-  pm2 start server.js --name challanone-api
+  pm2 delete challanone-api >/dev/null 2>&1 || true
 fi
+pm2 start server.js --name challanone-api --cwd "$APP_DIR/server" --update-env
 pm2 save
 
 echo "==> Build customer app"

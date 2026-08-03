@@ -8,6 +8,7 @@ const DEFAULT_LAUNCH_OPTIONS = {
   args: [
     '--disable-blink-features=AutomationControlled',
     '--no-sandbox',
+    '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
     '--disable-gpu',
     '--disable-extensions',
@@ -31,11 +32,10 @@ export async function launchBrowser(options = {}) {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     userAgent:
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     acceptDownloads: true,
     javaScriptEnabled: true,
     ignoreHTTPSErrors: true,
-    // Skip loading large extras — captcha is usually a data:image URL
     serviceWorkers: 'block',
   });
 
@@ -50,14 +50,14 @@ export async function launchBrowser(options = {}) {
     return route.continue();
   });
 
-  // Avoid native print dialog
   await context.addInitScript(() => {
     window.print = () => {};
   });
 
   const page = await context.newPage();
-  page.setDefaultTimeout(20000);
-  page.setDefaultNavigationTimeout(30000);
+  // VPS → Indian government portal can be slow
+  page.setDefaultTimeout(45000);
+  page.setDefaultNavigationTimeout(60000);
 
   return { browser, context, page };
 }

@@ -9,24 +9,31 @@ const log = createLogger();
 
 /**
  * Open Download Challan Print and return captcha image + sessionId.
+ * Retries once — government portal from VPS is often slow/flaky.
  */
 export async function startCaptchaSession() {
-  let browser;
-  try {
-    const launched = await launchBrowser();
-    browser = launched.browser;
-    const { context, page } = launched;
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    let browser;
+    try {
+      log.step(`Captcha session attempt ${attempt}/2`);
+      const launched = await launchBrowser();
+      browser = launched.browser;
+      const { context, page } = launched;
 
-    await openDownloadChallanPrint(page);
-    const captchaImage = await readCaptchaImage(page);
-    const sessionId = createSession({ browser, context, page, captchaImage });
+      await openDownloadChallanPrint(page);
+      const captchaImage = await readCaptchaImage(page);
+      const sessionId = createSession({ browser, context, page, captchaImage });
 
-    log.step('Captcha session ready', sessionId);
-    return { sessionId, captchaImage };
-  } catch (err) {
-    await safeClose(browser);
-    throw mapAutomationError(err);
+      log.step('Captcha session ready', sessionId);
+      return { sessionId, captchaImage };
+    } catch (err) {
+      lastError = err;
+      log.warn(`Captcha session attempt ${attempt} failed`, err?.message || err);
+      await safeClose(browser);
+    }
   }
+  throw mapAutomationError(lastError);
 }
 
 /**
@@ -94,8 +101,8 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
 
     log.step('Receipt Found... clicking Print');
 
-    const popupPromise = context.waitForEvent('page', { timeout: 12000 }).catch(() => null);
-    const downloadPromise = page.waitForEvent('download', { timeout: 12000 }).catch(() => null);
+    const popupPromise = context.waitForEvent('page', { timeout: 30000 }).catch(() => null);
+    const downloadPromise = page.waitForEvent('download', { timeout: 30000 }).catch(() => null);
 
     const printClicked = await clickPrint(page);
     if (!printClicked) {
@@ -145,7 +152,7 @@ async function openDownloadChallanPrint(page) {
   log.step('Opening Portal...', PORTAL.servicesUrl);
   const response = await page.goto(PORTAL.servicesUrl, {
     waitUntil: 'domcontentloaded',
-    timeout: 30000,
+    timeout: 60000,
   });
 
   if (!response || response.status() >= 500) {
@@ -154,16 +161,16 @@ async function openDownloadChallanPrint(page) {
 
   log.step('Navigating... Download Challan Print');
   const tile = page.locator(SELECTORS.downloadChallanPrintTile).first();
-  await tile.waitFor({ state: 'visible', timeout: 12000 });
+  await tile.waitFor({ state: 'visible', timeout: 30000 });
   await Promise.all([
     page
       .locator(SELECTORS.challanNumberInput)
       .first()
-      .waitFor({ state: 'visible', timeout: 15000 }),
+      .waitFor({ state: 'visible', timeout: 30000 }),
     tile.click(),
   ]);
 
-  await page.locator(SELECTORS.captchaImage).first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator(SELECTORS.captchaImage).first().waitFor({ state: 'visible', timeout: 20000 });
   log.step('Download Challan Print form ready');
 }
 
@@ -240,9 +247,9 @@ async function waitForResultsOrError(page) {
   const alertLocator = page.locator(SELECTORS.alertMessage).first();
 
   const outcome = await Promise.race([
-    resultLocator.waitFor({ state: 'visible', timeout: 18000 }).then(() => 'results'),
-    swalLocator.waitFor({ state: 'visible', timeout: 18000 }).then(() => 'swal'),
-    alertLocator.waitFor({ state: 'visible', timeout: 18000 }).then(() => 'alert'),
+    resultLocator.waitFor({ state: 'visible', timeout: 45000 }).then(() => 'results'),
+    swalLocator.waitFor({ state: 'visible', timeout: 45000 }).then(() => 'swal'),
+    alertLocator.waitFor({ state: 'visible', timeout: 45000 }).then(() => 'alert'),
   ]).catch(() => null);
 
   if (outcome === 'results') {

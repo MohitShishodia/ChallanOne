@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './loadEnv.js';
 import { connectDB, isDbConnected } from './config/mongodb.js';
 import { migrateDemoChallans } from './utils/challanSync.js';
 import { ensureDefaultCmsPages } from './utils/ensureCms.js';
