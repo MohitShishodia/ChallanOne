@@ -1,15 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { API, API_BASE_URL } from '../config/api'
+
+const LOADING_STEPS = [
+  { after: 0, text: 'Opening Download Challan Print…' },
+  { after: 4000, text: 'Solving captcha…' },
+  { after: 8000, text: 'Submitting challan…' },
+  { after: 14000, text: 'Fetching challan print…' },
+  { after: 22000, text: 'Almost there…' },
+]
 
 /**
  * Modal viewer for challan receipts.
- * Captcha → fetch receipt → embed PDF in iframe.
+ * Default: silent backend auto-fetch (2Captcha).
+ * Fallback: show captcha form only if auto-solve fails.
  */
 export default function ReceiptViewer({
   open,
   challanNumber,
   onClose,
 }) {
+  const [phase, setPhase] = useState('loading') // loading | captcha | receipt | error
   const [sessionId, setSessionId] = useState('')
   const [captchaImage, setCaptchaImage] = useState('')
   const [captcha, setCaptcha] = useState('')
@@ -17,18 +27,75 @@ export default function ReceiptViewer({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [receiptUrl, setReceiptUrl] = useState('')
+  const requestIdRef = useRef(0)
 
-  const resetForm = useCallback(() => {
+  const toAbsoluteReceiptUrl = (url) =>
+    url?.startsWith('http') ? url : `${API_BASE_URL}${url}`
+
+  const resetState = useCallback(() => {
+    setPhase('loading')
+    setSessionId('')
+    setCaptchaImage('')
     setCaptcha('')
+    setLoadingCaptcha(false)
+    setSubmitting(false)
     setError('')
     setReceiptUrl('')
   }, [])
+
+  const startAutoFetch = useCallback(async () => {
+    if (!challanNumber) return
+
+    const requestId = ++requestIdRef.current
+    setPhase('loading')
+    setError('')
+    setReceiptUrl('')
+    setSessionId('')
+    setCaptchaImage('')
+    setCaptcha('')
+
+    try {
+      const res = await fetch(API.challanReceipt.auto, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challanNumber }),
+      })
+
+      let data = null
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('Unable to fetch challan receipt. Please try again.')
+      }
+
+      if (requestId !== requestIdRef.current) return
+
+      if (!res.ok || !data.success) {
+        throw new Error(data?.message || 'Unable to fetch challan receipt. Please try again.')
+      }
+
+      if (data.needsCaptcha) {
+        setSessionId(data.sessionId || '')
+        setCaptchaImage(data.captchaImage || '')
+        setCaptcha('')
+        setError(data.message || 'Please enter the captcha to continue.')
+        setPhase('captcha')
+        return
+      }
+
+      setReceiptUrl(toAbsoluteReceiptUrl(data.receiptUrl))
+      setPhase('receipt')
+    } catch (err) {
+      if (requestId !== requestIdRef.current) return
+      setError(err.message || 'Unable to fetch challan receipt. Please try again.')
+      setPhase('error')
+    }
+  }, [challanNumber])
 
   const loadCaptcha = useCallback(async ({ keepError = false } = {}) => {
     setLoadingCaptcha(true)
     if (!keepError) setError('')
     setCaptcha('')
-    setReceiptUrl('')
     try {
       const res = await fetch(API.challanReceipt.captcha)
       let data = null
@@ -42,12 +109,14 @@ export default function ReceiptViewer({
       }
       setSessionId(data.sessionId)
       setCaptchaImage(data.captchaImage)
+      setPhase('captcha')
     } catch (err) {
       if (!keepError) {
         setError(err.message || 'Failed to load captcha. Please try again.')
       }
       setCaptchaImage('')
       setSessionId('')
+      setPhase('error')
     } finally {
       setLoadingCaptcha(false)
     }
@@ -81,10 +150,12 @@ export default function ReceiptViewer({
 
   useEffect(() => {
     if (!open || !challanNumber) return undefined
-    resetForm()
-    loadCaptcha()
-    return undefined
-  }, [open, challanNumber, loadCaptcha, resetForm])
+    resetState()
+    startAutoFetch()
+    return () => {
+      requestIdRef.current += 1
+    }
+  }, [open, challanNumber, resetState, startAutoFetch])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -114,14 +185,11 @@ export default function ReceiptViewer({
         throw new Error(data?.message || 'Unable to fetch challan receipt. Please try again.')
       }
 
-      const absoluteUrl = data.receiptUrl?.startsWith('http')
-        ? data.receiptUrl
-        : `${API_BASE_URL}${data.receiptUrl}`
-      setReceiptUrl(absoluteUrl)
+      setReceiptUrl(toAbsoluteReceiptUrl(data.receiptUrl))
+      setPhase('receipt')
     } catch (err) {
       const message = err.message || 'Unable to fetch challan receipt. Please try again.'
       setError(message)
-      // Reload captcha for retry, but keep the error visible
       await loadCaptcha({ keepError: true })
     } finally {
       setSubmitting(false)
@@ -135,7 +203,7 @@ export default function ReceiptViewer({
       className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Challan receipt"
+      aria-label="Download Challan Print"
       onClick={onClose}
     >
       <div
@@ -145,7 +213,7 @@ export default function ReceiptViewer({
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
           <div>
             <h2 className="text-[17px] font-bold text-slate-900">
-              Challan Receipt
+              Download Challan Print
             </h2>
             <p className="mt-0.5 break-all text-[12px] text-slate-500">
               {challanNumber}
@@ -164,11 +232,11 @@ export default function ReceiptViewer({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-          {receiptUrl ? (
+          {phase === 'receipt' && receiptUrl ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[13px] font-medium text-emerald-700">
-                  Receipt ready
+                  Challan print ready
                 </p>
                 <a
                   href={receiptUrl}
@@ -185,10 +253,27 @@ export default function ReceiptViewer({
                 className="h-[70vh] w-full rounded-xl border border-slate-200 bg-slate-50"
               />
             </div>
+          ) : phase === 'loading' ? (
+            <LoadingView />
+          ) : phase === 'error' ? (
+            <div className="mx-auto max-w-md space-y-4 py-8 text-center">
+              {error && (
+                <div className="rounded-xl border border-rose-100 bg-rose-50 px-3.5 py-2.5 text-left text-[13px] font-medium text-rose-700">
+                  {error}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={startAutoFetch}
+                className="btn-primary w-full"
+              >
+                Try again
+              </button>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="mx-auto max-w-md space-y-4">
               <p className="text-[13px] leading-relaxed text-slate-600">
-                Fill the captcha for your challan receipt.
+                Automatic captcha solve failed. Enter the captcha below to continue.
               </p>
 
               {error && (
@@ -247,11 +332,52 @@ export default function ReceiptViewer({
                 disabled={submitting || loadingCaptcha || !captcha.trim() || !sessionId}
                 className="btn-primary w-full disabled:opacity-50"
               >
-                {submitting ? 'Fetching receipt…' : 'Download Receipt'}
+                {submitting ? 'Fetching challan print…' : 'Download Challan Print'}
               </button>
             </form>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function LoadingView() {
+  const [stepIdx, setStepIdx] = useState(0)
+
+  useEffect(() => {
+    const timers = LOADING_STEPS.slice(1).map((s, i) =>
+      setTimeout(() => setStepIdx(i + 1), s.after)
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [])
+
+  const step = LOADING_STEPS[stepIdx]
+
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 py-16 text-center">
+      <div
+        className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-brand-red"
+        aria-hidden
+      />
+      <div>
+        <p className="text-[15px] font-semibold text-slate-900">
+          {step.text}
+        </p>
+        <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
+          Please wait while we fetch your receipt.
+        </p>
+      </div>
+
+      <div className="mt-2 flex gap-1.5">
+        {LOADING_STEPS.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 w-6 rounded-full transition-colors duration-500 ${
+              i <= stepIdx ? 'bg-brand-red' : 'bg-slate-200'
+            }`}
+          />
+        ))}
       </div>
     </div>
   )

@@ -1,10 +1,56 @@
 import express from 'express';
-import { startCaptchaSession, refreshCaptchaSession, fetchChallanReceipt } from '../services/echallanReceipt/index.js';
+import {
+  startCaptchaSession,
+  refreshCaptchaSession,
+  fetchChallanReceipt,
+  autoFetchChallanReceipt,
+} from '../services/echallanReceipt/index.js';
 import { ReceiptError, ERROR_CODES, friendlyMessage } from '../services/echallanReceipt/errors.js';
 import { createLogger } from '../services/echallanReceipt/logger.js';
 
 const router = express.Router();
 const log = createLogger('[API/challan/receipt]');
+
+/**
+ * POST /api/challan/receipt/auto
+ * Fully automatic: portal + 2Captcha + PDF.
+ * Falls back with needsCaptcha + session when solver fails.
+ * { "challanNumber": "" }
+ */
+router.post('/auto', async (req, res) => {
+  try {
+    const { challanNumber } = req.body || {};
+    if (!challanNumber?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'challanNumber is required',
+      });
+    }
+
+    log.step('Auto-fetching receipt...', { challanNumber });
+    const result = await autoFetchChallanReceipt(String(challanNumber).trim());
+
+    if (result.needsCaptcha) {
+      return res.json({
+        success: true,
+        needsCaptcha: true,
+        sessionId: result.sessionId,
+        captchaImage: result.captchaImage,
+        message: result.message || 'Please enter the captcha to continue.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      needsCaptcha: false,
+      receiptUrl: result.receiptUrl,
+      filename: result.filename,
+      contentType: result.contentType,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+});
 
 /**
  * GET /api/challan/receipt/captcha
@@ -14,11 +60,13 @@ const log = createLogger('[API/challan/receipt]');
 router.get('/captcha', async (_req, res) => {
   try {
     log.step('Starting captcha session...');
-    const { sessionId, captchaImage } = await startCaptchaSession();
+    const { sessionId, captchaImage, solvedCaptcha, captchaAutoSolved } = await startCaptchaSession();
     return res.json({
       success: true,
       sessionId,
       captchaImage,
+      solvedCaptcha: solvedCaptcha || '',
+      captchaAutoSolved: Boolean(captchaAutoSolved),
     });
   } catch (err) {
     return sendError(res, err);
@@ -35,8 +83,14 @@ router.post('/captcha/refresh', async (req, res) => {
     if (!sessionId) {
       return res.status(400).json({ success: false, message: 'sessionId is required' });
     }
-    const { captchaImage } = await refreshCaptchaSession(sessionId);
-    return res.json({ success: true, sessionId, captchaImage });
+    const { captchaImage, solvedCaptcha, captchaAutoSolved } = await refreshCaptchaSession(sessionId);
+    return res.json({
+      success: true,
+      sessionId,
+      captchaImage,
+      solvedCaptcha: solvedCaptcha || '',
+      captchaAutoSolved: Boolean(captchaAutoSolved),
+    });
   } catch (err) {
     return sendError(res, err);
   }
@@ -44,6 +98,7 @@ router.post('/captcha/refresh', async (req, res) => {
 
 /**
  * POST /api/challan/receipt
+ * Manual fallback after needsCaptcha:
  * {
  *   "challanNumber": "",
  *   "captcha": "",

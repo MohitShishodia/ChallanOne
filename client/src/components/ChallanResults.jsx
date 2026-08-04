@@ -570,7 +570,7 @@ export default function ChallanResults({
               {paidChallans.length}
               <span className="ml-1.5 text-[12px] font-bold text-emerald-600">{formatAmount(paidTotal)}</span>
             </p>
-            <span className="mt-1 inline-block text-[11px] font-semibold text-emerald-600">View Receipts →</span>
+            <span className="mt-1 inline-block text-[11px] font-semibold text-emerald-600">Download Challan Print →</span>
           </div>
         </button>
 
@@ -943,22 +943,26 @@ export default function ChallanResults({
                       </td>
 
                       <td className="px-2 py-3.5 align-top">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const number =
-                              challan.noticeId || challan.challanNumber || challan.id
-                            setDrawer(null)
-                            setReceiptChallanNumber(number)
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-red px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-brand-red-dark"
-                          title="Download challan receipt"
-                        >
-                          <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-                          </svg>
-                          Download Receipt
-                        </button>
+                        {isPaid ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const number =
+                                challan.noticeId || challan.challanNumber || challan.id
+                              setDrawer(null)
+                              setReceiptChallanNumber(number)
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-emerald-700"
+                            title="Download Challan Print from Parivahan portal"
+                          >
+                            <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                            </svg>
+                            Download Challan Print
+                          </button>
+                        ) : (
+                          <span className="text-[11px] font-medium text-slate-400">Pay to unlock print</span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -1029,20 +1033,34 @@ export default function ChallanResults({
               <DetailRow label="Location" value={drawer.challan.location} />
             )}
             <div className="mt-4 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  const number =
-                    drawer.challan.noticeId ||
-                    drawer.challan.challanNumber ||
-                    drawer.challan.id
-                  setDrawer(null)
-                  setReceiptChallanNumber(number)
-                }}
-                className="btn-primary w-full"
-              >
-                Download Receipt
-              </button>
+              {drawer.challan.status === 'PAID' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const number =
+                      drawer.challan.noticeId ||
+                      drawer.challan.challanNumber ||
+                      drawer.challan.id
+                    setDrawer(null)
+                    setReceiptChallanNumber(number)
+                  }}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  Download Challan Print
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDrawer(null)
+                    onPay?.(drawer.challan.id)
+                  }}
+                  disabled={paymentLoading}
+                  className="btn-primary w-full disabled:opacity-50"
+                >
+                  Pay Now
+                </button>
+              )}
             </div>
           </div>
         )}

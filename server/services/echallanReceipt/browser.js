@@ -25,16 +25,45 @@ const BROWSER_TYPES = [
   { name: 'webkit', engine: webkit, args: [] },
 ];
 
+const BLOCKED_RESOURCE_TYPES = new Set(['image', 'stylesheet', 'font', 'media']);
+
+const BLOCKED_URL_PATTERNS =
+  /google-analytics|googletagmanager|facebook|hotjar|clarity\.ms|doubleclick|\.woff2?|\.ttf|\.otf|\.eot/i;
+
+/**
+ * Whether a request should load (true) or be blocked (false).
+ * Blocks analytics, fonts, stylesheets, and non-captcha images to speed up portal load.
+ */
+function shouldAllowRequest(route) {
+  const url = route.request().url();
+  const resourceType = route.request().resourceType();
+
+  if (BLOCKED_URL_PATTERNS.test(url)) return false;
+
+  if (resourceType === 'image') {
+    // Allow captcha images only
+    return /captcha/i.test(url);
+  }
+
+  if (BLOCKED_RESOURCE_TYPES.has(resourceType)) return false;
+
+  return true;
+}
+
 /**
  * Launch a browser engine by name (or first available).
+ * When `prefer` is set, only that engine is tried — callers handle fallbacks.
  * @param {{ prefer?: string }} [options]
  */
 export async function launchBrowser(options = {}) {
-  const preferred = (options.prefer || process.env.PLAYWRIGHT_BROWSER || 'chromium').toLowerCase();
-  const ordered = [
-    ...BROWSER_TYPES.filter((b) => b.name === preferred),
-    ...BROWSER_TYPES.filter((b) => b.name !== preferred),
-  ];
+  const preferred = (options.prefer || process.env.PLAYWRIGHT_BROWSER || '').toLowerCase();
+  const ordered = preferred
+    ? BROWSER_TYPES.filter((b) => b.name === preferred)
+    : BROWSER_TYPES;
+
+  if (!ordered.length) {
+    throw new Error(`Unknown Playwright browser: ${preferred}`);
+  }
 
   let lastError;
   for (const candidate of ordered) {
@@ -53,15 +82,9 @@ export async function launchBrowser(options = {}) {
         serviceWorkers: 'block',
       });
 
-      await context.route('**/*', (route) => {
-        const url = route.request().url();
-        if (
-          /google-analytics|googletagmanager|facebook|hotjar|clarity\.ms|doubleclick/i.test(url)
-        ) {
-          return route.abort();
-        }
-        return route.continue();
-      });
+      await context.route('**/*', (route) =>
+        shouldAllowRequest(route) ? route.continue() : route.abort()
+      );
 
       await context.addInitScript(() => {
         window.print = () => {};
@@ -79,6 +102,72 @@ export async function launchBrowser(options = {}) {
   }
 
   throw lastError || new Error('Unable to launch any Playwright browser');
+}
+
+// ─── Browser pool ────────────────────────────────────────────
+// Keep one warm browser to skip launch + navigation on repeat requests.
+
+const POOL_SIZE = parseInt(process.env.BROWSER_POOL_SIZE || '1', 10);
+const POOL_MAX_AGE_MS = 4 * 60 * 1000;
+
+/** @type {{ browser: any, context: any, page: any, browserName: string, createdAt: number }[]} */
+const pool = [];
+let warmingUp = false;
+
+/**
+ * Take a ready-to-use browser from the pool (already on Download Challan Print form).
+ * Returns null if pool is empty.
+ */
+export function takeFromPool() {
+  while (pool.length) {
+    const entry = pool.shift();
+    if (Date.now() - entry.createdAt > POOL_MAX_AGE_MS) {
+      safeClose(entry.browser);
+      continue;
+    }
+    log.step('Using pooled browser', { browser: entry.browserName, age: `${((Date.now() - entry.createdAt) / 1000).toFixed(0)}s` });
+    return entry;
+  }
+  return null;
+}
+
+/**
+ * Add a pre-navigated browser to the pool for reuse.
+ */
+export function returnToPool(entry) {
+  if (pool.length >= POOL_SIZE) {
+    safeClose(entry.browser);
+    return;
+  }
+  entry.createdAt = Date.now();
+  pool.push(entry);
+}
+
+/**
+ * Pre-warm the pool with a browser navigated to the Download Challan Print form.
+ * Called after a request finishes so the next request is instant.
+ */
+export async function warmPool(openFormFn) {
+  if (warmingUp || pool.length >= POOL_SIZE) return;
+  warmingUp = true;
+
+  try {
+    const preferred = process.env.PLAYWRIGHT_BROWSER || 'chromium';
+    const launched = await launchBrowser({ prefer: preferred });
+    await openFormFn(launched.page);
+    returnToPool({
+      browser: launched.browser,
+      context: launched.context,
+      page: launched.page,
+      browserName: launched.browserName,
+      createdAt: Date.now(),
+    });
+    log.step('Pool warmed', { browser: launched.browserName });
+  } catch (err) {
+    log.warn('Pool warm failed', err?.message || err);
+  } finally {
+    warmingUp = false;
+  }
 }
 
 export async function safeClose(browser) {

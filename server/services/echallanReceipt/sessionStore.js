@@ -10,7 +10,7 @@ import { createLogger } from './logger.js';
 const log = createLogger();
 const SESSION_TTL_MS = 5 * 60 * 1000;
 
-/** @type {Map<string, { browser: import('playwright').Browser, context: import('playwright').BrowserContext, page: import('playwright').Page, createdAt: number, captchaImage: string }>} */
+/** @type {Map<string, { browser: import('playwright').Browser, context: import('playwright').BrowserContext, page: import('playwright').Page, createdAt: number, captchaImage: string, solvedCaptcha?: string, captchaTaskId?: number|string }>} */
 const sessions = new Map();
 
 function purgeExpired() {
@@ -24,7 +24,15 @@ function purgeExpired() {
   }
 }
 
-export function createSession({ browser, context, page, captchaImage, browserName = 'chromium' }) {
+export function createSession({
+  browser,
+  context,
+  page,
+  captchaImage,
+  browserName = 'chromium',
+  solvedCaptcha = '',
+  captchaTaskId = null,
+}) {
   purgeExpired();
   const sessionId = randomUUID();
   sessions.set(sessionId, {
@@ -33,6 +41,8 @@ export function createSession({ browser, context, page, captchaImage, browserNam
     page,
     captchaImage,
     browserName,
+    solvedCaptcha,
+    captchaTaskId,
     createdAt: Date.now(),
   });
   return sessionId;
@@ -57,10 +67,12 @@ export async function destroySession(sessionId) {
   await safeClose(session.browser);
 }
 
-export function updateSessionCaptcha(sessionId, captchaImage) {
+export function updateSessionCaptcha(sessionId, captchaImage, { solvedCaptcha = '', captchaTaskId = null } = {}) {
   const session = sessions.get(sessionId);
   if (!session) return false;
   session.captchaImage = captchaImage;
+  session.solvedCaptcha = solvedCaptcha;
+  session.captchaTaskId = captchaTaskId;
   session.createdAt = Date.now();
   return true;
 }

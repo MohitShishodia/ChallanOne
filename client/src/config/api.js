@@ -14,6 +14,7 @@ export const API = {
   },
   challan: (vehicleNumber) => `${API_BASE_URL}/api/challan/${encodeURIComponent(vehicleNumber)}`,
   challanReceipt: {
+    auto: `${API_BASE_URL}/api/challan/receipt/auto`,
     captcha: `${API_BASE_URL}/api/challan/receipt/captcha`,
     refreshCaptcha: `${API_BASE_URL}/api/challan/receipt/captcha/refresh`,
     fetch: `${API_BASE_URL}/api/challan/receipt`,
