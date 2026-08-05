@@ -171,57 +171,28 @@ describe('PayChallan page', () => {
     })
   })
 
-  it('restores cached challan data when returning to the page', async () => {
-    sessionStorage.setItem(
-      'challanone_check_challan_state',
-      JSON.stringify({
-        data: {
-          success: true,
-          dataSource: 'EXTERNAL',
-          vehicle: {
-            number: 'UP32AB1234',
-            owner: 'Test Owner',
-            vehicleType: 'Private Vehicle',
-            isVerified: true,
-          },
-          challans: [{
-            id: 'NT-001',
-            noticeId: 'NT-001',
-            offenceDetails: 'Signal violation',
-            amount: 500,
-            status: 'PENDING',
-            date: '01 May 2024',
-            time: '10:00',
-            location: 'Lucknow',
-            displayType: 'E-Challan',
-            isCourtChallan: false,
-            courtFee: 0,
-          }],
-          pendingCount: 1,
-          paidCount: 0,
-        },
-        vehicleNumber: 'UP32AB1234',
-        flowType: 'ALL_CHALLANS',
-        selectedChallans: ['NT-001'],
-        filters: {
-          activeTab: 'all',
-          selectedState: 'all',
-          searchQuery: '',
-          courtFilter: 'all',
-          dateFilter: 'all',
-          sortBy: 'newest',
-          page: 1,
-        },
-        fetchedAt: Date.now(),
-      })
-    )
+  it('fetches fresh challan data instead of restoring cache', async () => {
+    global.fetch = vi.fn((url, options) => {
+      if (String(url).includes('/api/external/challan')) {
+        const body = JSON.parse(options?.body || '{}')
+        expect(body.forceRefresh).toBe(true)
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockChallanApiResponse,
+        })
+      }
+      return httpFetch(url, options)
+    })
 
-    renderWithRouter(<PayChallan />, { route: '/pay-challan', path: '/pay-challan' })
+    renderWithRouter(<PayChallan />, {
+      route: '/pay-challan?vehicle=UP32AB1234',
+      path: '/pay-challan',
+    })
 
-    expect(screen.getByText('NT-001')).toBeInTheDocument()
-    expect(screen.getByText('Signal violation')).toBeInTheDocument()
-    expect(screen.getByText('Test Owner')).toBeInTheDocument()
-    expect(screen.getAllByText('Payment Summary').length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(screen.getByText('NT-001')).toBeInTheDocument()
+    })
+    expect(global.fetch).toHaveBeenCalled()
   })
 
   it('opens Delhi OTP flow even when Fetch All results are visible', async () => {

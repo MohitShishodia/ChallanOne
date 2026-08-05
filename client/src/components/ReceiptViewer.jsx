@@ -17,8 +17,11 @@ const LOADING_STEPS = [
 export default function ReceiptViewer({
   open,
   challanNumber,
+  variant = 'receipt',
   onClose,
 }) {
+  const isPdf = variant === 'pdf'
+  const title = isPdf ? 'View PDF' : 'View Receipt'
   const [phase, setPhase] = useState('loading') // loading | captcha | receipt | error
   const [sessionId, setSessionId] = useState('')
   const [captchaImage, setCaptchaImage] = useState('')
@@ -209,7 +212,7 @@ export default function ReceiptViewer({
       className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Download Challan Print"
+      aria-label={title}
       onClick={onClose}
     >
       <div
@@ -219,7 +222,7 @@ export default function ReceiptViewer({
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
           <div>
             <h2 className="text-[17px] font-bold text-slate-900">
-              Download Challan Print
+              {title}
             </h2>
             <p className="mt-0.5 break-all text-[12px] text-slate-500">
               {challanNumber}
@@ -242,7 +245,7 @@ export default function ReceiptViewer({
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[13px] font-medium text-emerald-700">
-                  Challan print ready
+                  {isPdf ? 'PDF ready' : 'Receipt ready'}
                 </p>
                 <a
                   href={receiptUrl}
@@ -338,7 +341,7 @@ export default function ReceiptViewer({
                 disabled={submitting || loadingCaptcha || !captcha.trim() || !sessionId}
                 className="btn-primary w-full disabled:opacity-50"
               >
-                {submitting ? 'Fetching challan print…' : 'Download Challan Print'}
+                {submitting ? (isPdf ? 'Fetching PDF…' : 'Fetching receipt…') : title}
               </button>
             </form>
           )}

@@ -12,7 +12,6 @@ import {
 } from '../utils/challanUtils'
 import { savePendingChallans } from '../utils/userStorage'
 import {
-  loadChallanSearchState,
   saveChallanSearchState,
   clearChallanSearchState,
   getDefaultFilters,
@@ -38,22 +37,18 @@ export default function PayChallan() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isFeatureEnabled } = useFeatures()
-  const cachedRef = useRef(loadChallanSearchState())
-  const cached = cachedRef.current
   const autoFetchDone = useRef(false)
   const allChallansSnapshot = useRef(null)
 
-  const [flowType, setFlowType] = useState(cached?.flowType || FLOW_TYPES.ALL_CHALLANS)
-  const [vehicleNumber, setVehicleNumber] = useState(
-    searchParams.get('vehicle') || cached?.vehicleNumber || ''
-  )
+  const [flowType, setFlowType] = useState(FLOW_TYPES.ALL_CHALLANS)
+  const [vehicleNumber, setVehicleNumber] = useState(searchParams.get('vehicle') || '')
   const [loading, setLoading] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [data, setData] = useState(cached?.data || null)
+  const [data, setData] = useState(null)
   const [error, setError] = useState(null)
-  const [selectedChallans, setSelectedChallans] = useState(cached?.selectedChallans || [])
-  const [filters, setFilters] = useState(cached?.filters || getDefaultFilters())
-  const [fetchedAt, setFetchedAt] = useState(cached?.fetchedAt || null)
+  const [selectedChallans, setSelectedChallans] = useState([])
+  const [filters, setFilters] = useState(getDefaultFilters())
+  const [fetchedAt, setFetchedAt] = useState(null)
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -95,20 +90,10 @@ export default function PayChallan() {
     })
   }, [data, vehicleNumber, flowType, selectedChallans, filters, fetchedAt])
 
-  const fetchChallans = async (number, { force = false, forceRefresh = false } = {}) => {
+  const fetchChallans = async (number) => {
     const trimmed = String(number || '').trim().toUpperCase()
     if (!trimmed) {
       setError('Please enter a vehicle number')
-      return
-    }
-
-    // Reuse cache when returning to same vehicle unless force refresh
-    if (
-      !force &&
-      data?.vehicle?.number === trimmed &&
-      data?.challans?.length &&
-      fetchedAt
-    ) {
       return
     }
 
@@ -118,7 +103,7 @@ export default function PayChallan() {
       const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleNumber: trimmed, forceRefresh })
+        body: JSON.stringify({ vehicleNumber: trimmed, forceRefresh: true })
       })
       const result = await response.json()
       if (result.success) {
@@ -167,12 +152,7 @@ export default function PayChallan() {
     setVehicleNumber(vehicle)
     setFlowType(FLOW_TYPES.ALL_CHALLANS)
 
-    const cachedSame =
-      data?.vehicle?.number?.toUpperCase() === vehicle.toUpperCase() &&
-      data?.challans?.length
-    if (cachedSame) return
-
-    fetchChallans(vehicle, { force: true })
+    fetchChallans(vehicle)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
@@ -239,7 +219,7 @@ export default function PayChallan() {
       setError('Fetch All Challans is temporarily unavailable')
       return
     }
-    fetchChallans(vehicleNumber.trim(), { force: true })
+    fetchChallans(vehicleNumber.trim())
   }
 
   const handlePayment = async (idsOrSingle) => {
@@ -347,7 +327,7 @@ export default function PayChallan() {
 
   const handleRefresh = () => {
     if (!data?.vehicle?.number) return
-    fetchChallans(data.vehicle.number, { force: true, forceRefresh: true })
+    fetchChallans(data.vehicle.number)
   }
 
   const showResult = data && !loading
@@ -423,13 +403,11 @@ export default function PayChallan() {
                       if (!allEnabled) return
                       setFlowType(FLOW_TYPES.ALL_CHALLANS)
                       setError(null)
-                      // Restore previous Fetch All results if available
-                      if (!data && allChallansSnapshot.current) {
-                        setData(allChallansSnapshot.current.data)
-                        setSelectedChallans(allChallansSnapshot.current.selectedChallans || [])
-                        setFilters(allChallansSnapshot.current.filters || getDefaultFilters())
-                        setFetchedAt(allChallansSnapshot.current.fetchedAt || Date.now())
-                        setVehicleNumber(allChallansSnapshot.current.vehicleNumber || vehicleNumber)
+                      const number =
+                        allChallansSnapshot.current?.vehicleNumber || vehicleNumber
+                      if (number) {
+                        setVehicleNumber(number)
+                        fetchChallans(number)
                       }
                     }}
                     disabled={!allEnabled}
@@ -513,13 +491,11 @@ export default function PayChallan() {
                     onBack={() => {
                       setFlowType(FLOW_TYPES.ALL_CHALLANS)
                       setError(null)
-                      if (allChallansSnapshot.current) {
-                        const snap = allChallansSnapshot.current
-                        setData(snap.data)
-                        setSelectedChallans(snap.selectedChallans || [])
-                        setFilters(snap.filters || getDefaultFilters())
-                        setFetchedAt(snap.fetchedAt || Date.now())
-                        setVehicleNumber(snap.vehicleNumber || vehicleNumber)
+                      const number =
+                        allChallansSnapshot.current?.vehicleNumber || vehicleNumber
+                      if (number) {
+                        setVehicleNumber(number)
+                        fetchChallans(number)
                       }
                     }}
                   />

@@ -101,7 +101,7 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
  */
 router.post('/challan', async (req, res) => {
     try {
-        const { vehicleNumber, forceRefresh } = req.body;
+        const { vehicleNumber } = req.body;
 
         if (!vehicleNumber) {
             return res.status(400).json({
@@ -111,25 +111,6 @@ router.post('/challan', async (req, res) => {
         }
 
         const normalizedVehicleNumber = vehicleNumber.replace(/[\s-]/g, '').toUpperCase();
-
-        if (!forceRefresh) {
-            const cached = getCachedChallan(normalizedVehicleNumber);
-            if (cached) {
-                console.log(`[ChallanWala] Cache hit for: ${normalizedVehicleNumber}`);
-                logChallanSearch(req, {
-                    vehicleNumber: normalizedVehicleNumber,
-                    searchType: 'ALL_CHALLANS',
-                    status: 'success',
-                    challansFound:
-                        (cached.data?.pendingChallans?.length || 0) +
-                        (cached.data?.paidChallans?.length || 0) +
-                        (cached.data?.disposedChallans?.length || 0),
-                    responseTimeMs: 0,
-                    metadata: { cache: true }
-                });
-                return res.json({ ...cached, cached: true });
-            }
-        }
 
         console.log(`[ChallanWala] Fetching challan info for: ${normalizedVehicleNumber}`);
 
