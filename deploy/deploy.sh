@@ -50,6 +50,10 @@ echo "VITE_API_URL=$API_URL" > .env.production
 npm install
 npm run build
 
+echo "==> Allow nginx to read built files"
+chmod 755 "$APP_DIR" "$APP_DIR/client" "$APP_DIR/admin" || true
+chmod -R a+rX "$APP_DIR/client/dist" "$APP_DIR/admin/dist" || true
+
 echo "==> Health check"
 sleep 1
 curl -fsS "http://127.0.0.1:5000/api/health" || {
