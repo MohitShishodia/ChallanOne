@@ -43,6 +43,36 @@ export default function ReceiptViewer({
     setReceiptUrl('')
   }, [])
 
+  const loadCaptcha = useCallback(async ({ keepError = false } = {}) => {
+    setLoadingCaptcha(true)
+    if (!keepError) setError('')
+    setCaptcha('')
+    try {
+      const res = await fetch(API.challanReceipt.captcha)
+      let data = null
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('Failed to load captcha. Please try again.')
+      }
+      if (!res.ok || !data.success) {
+        throw new Error(data?.message || 'Failed to load captcha. Please try again.')
+      }
+      setSessionId(data.sessionId)
+      setCaptchaImage(data.captchaImage)
+      setPhase('captcha')
+    } catch (err) {
+      if (!keepError) {
+        setError(err.message || 'Failed to load captcha. Please try again.')
+      }
+      setCaptchaImage('')
+      setSessionId('')
+      setPhase('error')
+    } finally {
+      setLoadingCaptcha(false)
+    }
+  }, [])
+
   const startAutoFetch = useCallback(async () => {
     if (!challanNumber) return
 
@@ -60,6 +90,12 @@ export default function ReceiptViewer({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ challanNumber }),
       })
+
+      // Old production API without /auto — fall back to captcha session
+      if (res.status === 404) {
+        await loadCaptcha()
+        return
+      }
 
       let data = null
       try {
@@ -90,37 +126,7 @@ export default function ReceiptViewer({
       setError(err.message || 'Unable to fetch challan receipt. Please try again.')
       setPhase('error')
     }
-  }, [challanNumber])
-
-  const loadCaptcha = useCallback(async ({ keepError = false } = {}) => {
-    setLoadingCaptcha(true)
-    if (!keepError) setError('')
-    setCaptcha('')
-    try {
-      const res = await fetch(API.challanReceipt.captcha)
-      let data = null
-      try {
-        data = await res.json()
-      } catch {
-        throw new Error('Failed to load captcha. Please try again.')
-      }
-      if (!res.ok || !data.success) {
-        throw new Error(data?.message || 'Failed to load captcha. Please try again.')
-      }
-      setSessionId(data.sessionId)
-      setCaptchaImage(data.captchaImage)
-      setPhase('captcha')
-    } catch (err) {
-      if (!keepError) {
-        setError(err.message || 'Failed to load captcha. Please try again.')
-      }
-      setCaptchaImage('')
-      setSessionId('')
-      setPhase('error')
-    } finally {
-      setLoadingCaptcha(false)
-    }
-  }, [])
+  }, [challanNumber, loadCaptcha])
 
   const refreshCaptcha = useCallback(async () => {
     if (!sessionId) {
