@@ -930,16 +930,6 @@ export default function ChallanResults({
                         <p className="mt-0.5 text-[10px] font-medium text-slate-400">
                           {challan.displayType || 'E-Challan'}
                         </p>
-                        {!isPaid && (
-                          <button
-                            type="button"
-                            onClick={() => onPay(challan.id)}
-                            disabled={paymentLoading}
-                            className="mt-1.5 text-[12px] font-bold text-brand-red hover:text-brand-red-dark disabled:opacity-50"
-                          >
-                            Pay Now
-                          </button>
-                        )}
                       </td>
 
                       <td className="px-2 py-3.5 align-top">
@@ -961,7 +951,15 @@ export default function ChallanResults({
                             Download Challan Print
                           </button>
                         ) : (
-                          <span className="text-[11px] font-medium text-slate-400">Pay to unlock print</span>
+                          <button
+                            type="button"
+                            onClick={() => onPay(challan.id)}
+                            disabled={paymentLoading}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-red px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-brand-red-dark disabled:opacity-50"
+                            title="Pay this challan"
+                          >
+                            Pay Now
+                          </button>
                         )}
                       </td>
                     </tr>
