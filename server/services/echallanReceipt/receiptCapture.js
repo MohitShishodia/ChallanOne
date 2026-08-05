@@ -8,6 +8,7 @@ import {
   absoluteReceiptPath,
 } from './paths.js';
 import { ReceiptError, ERROR_CODES } from './errors.js';
+import { ensureImageCache, inlinePageImages } from './imageInline.js';
 
 const log = createLogger();
 
@@ -30,7 +31,8 @@ export async function captureReceipt(receiptPage, challanNumber, opts = {}) {
   log.step('Receipt Found... capturing');
 
   await receiptPage.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
-  await receiptPage.context().unroute('**/*').catch(() => {});
+  await receiptPage.context().unrouteAll().catch(() => {});
+  ensureImageCache(receiptPage.context());
 
   const url = receiptPage.url();
   log.step('Opening Receipt...', url);
@@ -49,6 +51,7 @@ export async function captureReceipt(receiptPage, challanNumber, opts = {}) {
   }
 
   await waitForReceiptReady(receiptPage, challanNumber);
+  await inlinePageImages(receiptPage);
 
   const filename = buildReceiptFilename(challanNumber, 'pdf');
   const filePath = absoluteReceiptPath(filename);
@@ -59,6 +62,7 @@ export async function captureReceipt(receiptPage, challanNumber, opts = {}) {
   if (canNativePdf) {
     try {
       log.step('Saving PDF... (page.pdf)');
+      await receiptPage.emulateMedia({ media: 'screen' }).catch(() => {});
       const pdfBuffer = await receiptPage.pdf({
         format: 'A4',
         printBackground: true,
@@ -92,7 +96,8 @@ async function renderHtmlToPdfWithChromium(html, challanNumber, filename, filePa
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     });
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.setContent(html, { waitUntil: 'networkidle', timeout: 30000 });
+    await inlinePageImages(page);
 
     const pdfBuffer = await page.pdf({
       format: 'A4',

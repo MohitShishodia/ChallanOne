@@ -18,6 +18,8 @@ export const PORTAL = {
 export const SELECTORS = {
   downloadChallanPrintTile: 'img[alt="Download Challan Print"]',
   downloadChallanPrintText: 'text=Download Challan Print',
+  downloadPaymentReceiptTile: 'img[alt="Download Payment Receipt"]',
+  downloadPaymentReceiptText: 'text=Download Payment Receipt',
 
   /** Search type radios on Download Challan Print */
   searchTypeChallan: '#CHLN',

@@ -32,6 +32,7 @@ export function createSession({
   browserName = 'chromium',
   solvedCaptcha = '',
   captchaTaskId = null,
+  documentType = 'challanPrint',
 }) {
   purgeExpired();
   const sessionId = randomUUID();
@@ -43,6 +44,7 @@ export function createSession({
     browserName,
     solvedCaptcha,
     captchaTaskId,
+    documentType,
     createdAt: Date.now(),
   });
   return sessionId;

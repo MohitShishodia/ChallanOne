@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { API, API_BASE_URL } from '../config/api'
 
-const LOADING_STEPS = [
+const PRINT_LOADING_STEPS = [
   { after: 0, text: 'Opening Download Challan Print…' },
   { after: 4000, text: 'Solving captcha…' },
   { after: 8000, text: 'Submitting challan…' },
   { after: 14000, text: 'Fetching challan print…' },
+  { after: 22000, text: 'Almost there…' },
+]
+
+const RECEIPT_LOADING_STEPS = [
+  { after: 0, text: 'Opening Download Payment Receipt…' },
+  { after: 4000, text: 'Solving captcha…' },
+  { after: 8000, text: 'Submitting challan…' },
+  { after: 14000, text: 'Fetching payment receipt…' },
   { after: 22000, text: 'Almost there…' },
 ]
 
@@ -22,6 +30,7 @@ export default function ReceiptViewer({
 }) {
   const isPdf = variant === 'pdf'
   const title = isPdf ? 'View PDF' : 'View Receipt'
+  const documentType = isPdf ? 'challanPrint' : 'paymentReceipt'
   const [phase, setPhase] = useState('loading') // loading | captcha | receipt | error
   const [sessionId, setSessionId] = useState('')
   const [captchaImage, setCaptchaImage] = useState('')
@@ -51,7 +60,7 @@ export default function ReceiptViewer({
     if (!keepError) setError('')
     setCaptcha('')
     try {
-      const res = await fetch(API.challanReceipt.captcha)
+      const res = await fetch(`${API.challanReceipt.captcha}?documentType=${encodeURIComponent(documentType)}`)
       let data = null
       try {
         data = await res.json()
@@ -74,7 +83,7 @@ export default function ReceiptViewer({
     } finally {
       setLoadingCaptcha(false)
     }
-  }, [])
+  }, [documentType])
 
   const startAutoFetch = useCallback(async () => {
     if (!challanNumber) return
@@ -91,7 +100,7 @@ export default function ReceiptViewer({
       const res = await fetch(API.challanReceipt.auto, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challanNumber }),
+        body: JSON.stringify({ challanNumber, documentType }),
       })
 
       // Old production API without /auto — fall back to captcha session
@@ -129,7 +138,7 @@ export default function ReceiptViewer({
       setError(err.message || 'Unable to fetch challan receipt. Please try again.')
       setPhase('error')
     }
-  }, [challanNumber, loadCaptcha])
+  }, [challanNumber, loadCaptcha, documentType])
 
   const refreshCaptcha = useCallback(async () => {
     if (!sessionId) {
@@ -263,7 +272,7 @@ export default function ReceiptViewer({
               />
             </div>
           ) : phase === 'loading' ? (
-            <LoadingView />
+            <LoadingView variant={variant} />
           ) : phase === 'error' ? (
             <div className="mx-auto max-w-md space-y-4 py-8 text-center">
               {error && (
@@ -351,17 +360,18 @@ export default function ReceiptViewer({
   )
 }
 
-function LoadingView() {
+function LoadingView({ variant = 'receipt' }) {
   const [stepIdx, setStepIdx] = useState(0)
+  const steps = variant === 'pdf' ? PRINT_LOADING_STEPS : RECEIPT_LOADING_STEPS
 
   useEffect(() => {
-    const timers = LOADING_STEPS.slice(1).map((s, i) =>
+    const timers = steps.slice(1).map((s, i) =>
       setTimeout(() => setStepIdx(i + 1), s.after)
     )
     return () => timers.forEach(clearTimeout)
-  }, [])
+  }, [steps])
 
-  const step = LOADING_STEPS[stepIdx]
+  const step = steps[stepIdx]
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 py-16 text-center">
@@ -374,12 +384,12 @@ function LoadingView() {
           {step.text}
         </p>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-          Please wait while we fetch your receipt.
+          Please wait while we fetch your {variant === 'pdf' ? 'challan print' : 'receipt'}.
         </p>
       </div>
 
       <div className="mt-2 flex gap-1.5">
-        {LOADING_STEPS.map((_, i) => (
+        {steps.map((_, i) => (
           <div
             key={i}
             className={`h-1.5 w-6 rounded-full transition-colors duration-500 ${

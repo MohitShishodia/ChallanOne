@@ -19,7 +19,7 @@ const log = createLogger('[API/challan/receipt]');
  */
 router.post('/auto', async (req, res) => {
   try {
-    const { challanNumber } = req.body || {};
+    const { challanNumber, documentType } = req.body || {};
     if (!challanNumber?.trim()) {
       return res.status(400).json({
         success: false,
@@ -27,8 +27,8 @@ router.post('/auto', async (req, res) => {
       });
     }
 
-    log.step('Auto-fetching receipt...', { challanNumber });
-    const result = await autoFetchChallanReceipt(String(challanNumber).trim());
+    log.step('Auto-fetching receipt...', { challanNumber, documentType });
+    const result = await autoFetchChallanReceipt(String(challanNumber).trim(), { documentType });
 
     if (result.needsCaptcha) {
       return res.json({
@@ -57,10 +57,11 @@ router.post('/auto', async (req, res) => {
  * Opens the portal Download Challan Print form and returns a captcha image.
  * Body/response keeps a short-lived Playwright session for the follow-up POST.
  */
-router.get('/captcha', async (_req, res) => {
+router.get('/captcha', async (req, res) => {
   try {
-    log.step('Starting captcha session...');
-    const { sessionId, captchaImage, solvedCaptcha, captchaAutoSolved } = await startCaptchaSession();
+    const documentType = req.query?.documentType;
+    log.step('Starting captcha session...', { documentType });
+    const { sessionId, captchaImage, solvedCaptcha, captchaAutoSolved } = await startCaptchaSession(documentType);
     return res.json({
       success: true,
       sessionId,

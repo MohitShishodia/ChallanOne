@@ -1,5 +1,6 @@
 import { chromium, firefox, webkit } from 'playwright';
 import { createLogger } from './logger.js';
+import { ensureImageCache } from './imageInline.js';
 
 const log = createLogger();
 
@@ -13,6 +14,7 @@ const CHROMIUM_ARGS = [
   '--disable-background-networking',
   '--disable-default-apps',
   '--mute-audio',
+  '--disable-web-security',
 ];
 
 const USER_AGENT =
@@ -25,30 +27,8 @@ const BROWSER_TYPES = [
   { name: 'webkit', engine: webkit, args: [] },
 ];
 
-const BLOCKED_RESOURCE_TYPES = new Set(['image', 'stylesheet', 'font', 'media']);
-
 const BLOCKED_URL_PATTERNS =
-  /google-analytics|googletagmanager|facebook|hotjar|clarity\.ms|doubleclick|\.woff2?|\.ttf|\.otf|\.eot/i;
-
-/**
- * Whether a request should load (true) or be blocked (false).
- * Blocks analytics, fonts, stylesheets, and non-captcha images to speed up portal load.
- */
-function shouldAllowRequest(route) {
-  const url = route.request().url();
-  const resourceType = route.request().resourceType();
-
-  if (BLOCKED_URL_PATTERNS.test(url)) return false;
-
-  if (resourceType === 'image') {
-    // Allow captcha images only
-    return /captcha/i.test(url);
-  }
-
-  if (BLOCKED_RESOURCE_TYPES.has(resourceType)) return false;
-
-  return true;
-}
+  /google-analytics|googletagmanager|facebook\.net|hotjar|clarity\.ms|doubleclick|\.woff2?(?:\?|$)|fonts\.gstatic\.com/i;
 
 /**
  * Launch a browser engine by name (or first available).
@@ -82,9 +62,8 @@ export async function launchBrowser(options = {}) {
         serviceWorkers: 'block',
       });
 
-      await context.route('**/*', (route) =>
-        shouldAllowRequest(route) ? route.continue() : route.abort()
-      );
+      await context.route(BLOCKED_URL_PATTERNS, (route) => route.abort());
+      ensureImageCache(context);
 
       await context.addInitScript(() => {
         window.print = () => {};

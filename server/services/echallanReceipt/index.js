@@ -4,12 +4,17 @@ import { createLogger } from './logger.js';
 import { ReceiptError, ERROR_CODES } from './errors.js';
 import { createSession, takeSession, updateSessionCaptcha, getSession } from './sessionStore.js';
 import { captureReceipt, saveDownload } from './receiptCapture.js';
+import { ensureImageCache } from './imageInline.js';
 import { isTwoCaptchaConfigured, solveImageCaptcha, reportIncorrect } from '../twoCaptcha.js';
 
 const log = createLogger();
 
 function schedulePoolWarm() {
-  setTimeout(() => warmPool(openDownloadChallanPrint).catch(() => {}), 500);
+  setTimeout(() => warmPool((page) => openPortalServiceForm(page, 'challanPrint')).catch(() => {}), 500);
+}
+
+function normalizeDocumentType(value) {
+  return value === 'paymentReceipt' ? 'paymentReceipt' : 'challanPrint';
 }
 
 /**
@@ -17,7 +22,8 @@ function schedulePoolWarm() {
  * Retries across browsers (chromium → firefox → webkit).
  * When TWOCAPTCHA_API_KEY is set, also auto-solves the captcha.
  */
-export async function startCaptchaSession() {
+export async function startCaptchaSession(documentType = 'challanPrint') {
+  const docType = normalizeDocumentType(documentType);
   const browsers = ['chromium', 'firefox'];
   let lastError;
 
@@ -30,7 +36,7 @@ export async function startCaptchaSession() {
       browser = launched.browser;
       const { page } = launched;
 
-      await openDownloadChallanPrint(page);
+      await openPortalServiceForm(page, docType);
       const captchaImage = await readCaptchaImage(page);
       const solved = await trySolveCaptcha(captchaImage);
       const sessionId = createSession({
@@ -41,6 +47,7 @@ export async function startCaptchaSession() {
         browserName: launched.browserName,
         solvedCaptcha: solved.text,
         captchaTaskId: solved.taskId,
+        documentType: docType,
       });
 
       log.step('Captcha session ready', {
@@ -121,7 +128,7 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
     throw new ReceiptError(ERROR_CODES.VALIDATION, 'Session expired. Please try again.', { status: 410 });
   }
 
-  const { browser, context, page, browserName, captchaTaskId } = session;
+  const { browser, context, page, browserName, captchaTaskId, documentType } = session;
 
   try {
     return await submitAndCaptureReceipt({
@@ -130,6 +137,7 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
       browserName,
       challanNumber: challanNumber.trim(),
       captcha: captcha.trim(),
+      documentType: normalizeDocumentType(documentType),
     });
   } catch (err) {
     const mapped = mapAutomationError(err);
@@ -153,16 +161,17 @@ export async function fetchChallanReceipt({ challanNumber, captcha, sessionId })
  *   | { needsCaptcha: true, sessionId: string, captchaImage: string, message?: string }
  * >}
  */
-export async function autoFetchChallanReceipt(challanNumber) {
+export async function autoFetchChallanReceipt(challanNumber, options = {}) {
   if (!challanNumber?.trim()) {
     throw new ReceiptError(ERROR_CODES.VALIDATION, 'Challan number is required.');
   }
 
   log.startTimer();
   const trimmed = challanNumber.trim();
+  const documentType = normalizeDocumentType(options.documentType);
 
   if (!isTwoCaptchaConfigured()) {
-    const session = await startCaptchaSession();
+    const session = await startCaptchaSession(documentType);
     return {
       needsCaptcha: true,
       sessionId: session.sessionId,
@@ -177,24 +186,24 @@ export async function autoFetchChallanReceipt(challanNumber) {
   let browserName;
 
   try {
-    const pooled = takeFromPool();
+    const pooled = documentType === 'challanPrint' ? takeFromPool() : null;
     if (pooled) {
       browser = pooled.browser;
       context = pooled.context;
       page = pooled.page;
       browserName = pooled.browserName;
-      log.step('Auto receipt (pooled browser)', { challanNumber: trimmed, browser: browserName });
+      log.step('Auto receipt (pooled browser)', { challanNumber: trimmed, browser: browserName, documentType });
     } else {
-      log.step('Auto receipt starting (chromium)', { challanNumber: trimmed });
+      log.step('Auto receipt starting (chromium)', { challanNumber: trimmed, documentType });
       const launched = await launchBrowser({ prefer: 'chromium' });
       browser = launched.browser;
       context = launched.context;
       page = launched.page;
       browserName = launched.browserName;
-      await openDownloadChallanPrint(page);
+      await openPortalServiceForm(page, documentType);
     }
 
-    await ensureOnDownloadForm(page);
+    await ensureOnDownloadForm(page, documentType);
     await selectChallanSearchType(page);
     await fillChallanNumber(page, trimmed);
 
@@ -229,7 +238,13 @@ export async function autoFetchChallanReceipt(challanNumber) {
         log.step('Waiting for Result...');
         await waitForResultsOrError(page);
 
-        const result = await captureReceiptFromResults({ page, context, browserName, challanNumber: trimmed });
+        const result = await captureReceiptFromResults({
+          page,
+          context,
+          browserName,
+          challanNumber: trimmed,
+          documentType,
+        });
         await safeClose(browser);
         browser = null;
         schedulePoolWarm();
@@ -247,7 +262,7 @@ export async function autoFetchChallanReceipt(challanNumber) {
             if (stillOnForm) {
               await refreshCaptchaOnPage(page).catch(() => {});
             } else {
-              await openDownloadChallanPrint(page);
+              await openPortalServiceForm(page, documentType);
               await selectChallanSearchType(page);
               await fillChallanNumber(page, trimmed);
             }
@@ -264,7 +279,7 @@ export async function autoFetchChallanReceipt(challanNumber) {
     await dismissPortalOverlays(page).catch(() => {});
     const onForm = await page.locator(SELECTORS.captchaImage).first().isVisible().catch(() => false);
     if (!onForm) {
-      await openDownloadChallanPrint(page);
+      await openPortalServiceForm(page, documentType);
       await selectChallanSearchType(page);
       await fillChallanNumber(page, trimmed);
     } else {
@@ -277,6 +292,7 @@ export async function autoFetchChallanReceipt(challanNumber) {
       page,
       captchaImage: fallbackImage,
       browserName,
+      documentType,
     });
     browser = null;
     return {
@@ -296,10 +312,10 @@ export async function autoFetchChallanReceipt(challanNumber) {
  * Submit filled form and capture the receipt PDF. Does not close the browser.
  * Used by manual captcha fallback path.
  */
-async function submitAndCaptureReceipt({ page, context, browserName, challanNumber, captcha }) {
-  log.step('Submitting Form...', { challanNumber, browser: browserName });
+async function submitAndCaptureReceipt({ page, context, browserName, challanNumber, captcha, documentType = 'challanPrint' }) {
+  log.step('Submitting Form...', { challanNumber, browser: browserName, documentType });
 
-  await ensureOnDownloadForm(page);
+  await ensureOnDownloadForm(page, documentType);
   await selectChallanSearchType(page);
   await fillChallanNumber(page, challanNumber);
   await fillCaptcha(page, captcha);
@@ -309,19 +325,23 @@ async function submitAndCaptureReceipt({ page, context, browserName, challanNumb
 
   await waitForResultsOrError(page);
 
-  return captureReceiptFromResults({ page, context, browserName, challanNumber });
+  return captureReceiptFromResults({ page, context, browserName, challanNumber, documentType });
 }
 
 /**
  * After results are visible, click Print and capture the receipt PDF.
  */
-async function captureReceiptFromResults({ page, context, browserName, challanNumber }) {
-  log.step('Receipt Found... clicking Print');
+async function captureReceiptFromResults({ page, context, browserName, challanNumber, documentType = 'challanPrint' }) {
+  log.step(documentType === 'paymentReceipt' ? 'Receipt Found... clicking Payment Receipt' : 'Challan Found... clicking Print');
+
+  // Drop request blocking so evidence photos can load on the print tab
+  await context.unrouteAll().catch(() => {});
+  ensureImageCache(context);
 
   const popupPromise = context.waitForEvent('page', { timeout: 30000 }).catch(() => null);
   const downloadPromise = page.waitForEvent('download', { timeout: 30000 }).catch(() => null);
 
-  const printClicked = await clickPrint(page);
+  const printClicked = await clickResultDocument(page, documentType);
   if (!printClicked) {
     throw new ReceiptError(
       ERROR_CODES.SITE_CHANGED,
@@ -413,7 +433,23 @@ async function trySolveCaptcha(captchaImage) {
   }
 }
 
-async function openDownloadChallanPrint(page) {
+function serviceTileConfig(documentType) {
+  if (documentType === 'paymentReceipt') {
+    return {
+      img: SELECTORS.downloadPaymentReceiptTile,
+      text: SELECTORS.downloadPaymentReceiptText,
+      label: 'Download Payment Receipt',
+    };
+  }
+  return {
+    img: SELECTORS.downloadChallanPrintTile,
+    text: SELECTORS.downloadChallanPrintText,
+    label: 'Download Challan Print',
+  };
+}
+
+async function openPortalServiceForm(page, documentType = 'challanPrint') {
+  const tile = serviceTileConfig(documentType);
   const urls = PORTAL.servicesUrlFallbacks?.length
     ? PORTAL.servicesUrlFallbacks
     : [PORTAL.servicesUrl];
@@ -444,23 +480,22 @@ async function openDownloadChallanPrint(page) {
     throw lastError || new ReceiptError(ERROR_CODES.PORTAL_DOWN, 'Receipt service is temporarily unavailable.');
   }
 
-  // Give Angular a moment to paint service tiles (reduced from 1500ms)
   await page.waitForTimeout(500);
   await dismissPortalOverlays(page);
 
   if (!(await isDownloadFormReady(page))) {
-    log.step('Navigating... Download Challan Print');
-    const openedForm = await openDownloadFormFromServices(page);
+    log.step(`Navigating... ${tile.label}`);
+    const openedForm = await openServiceFormFromServices(page, documentType);
     if (!openedForm) {
       throw new ReceiptError(
         ERROR_CODES.SITE_CHANGED,
-        'Could not open Download Challan Print form. Please try again.'
+        `Could not open ${tile.label} form. Please try again.`
       );
     }
   }
 
   await page.locator(SELECTORS.captchaImage).first().waitFor({ state: 'visible', timeout: 45000 });
-  log.step('Download Challan Print form ready');
+  log.step(`${tile.label} form ready`);
 }
 
 async function isDownloadFormReady(page) {
@@ -489,20 +524,21 @@ async function dismissPortalOverlays(page) {
  * Portal SPA is flaky: tile click sometimes does nothing.
  * Retry with image click, text click, parent click, then hard navigation.
  */
-async function openDownloadFormFromServices(page) {
+async function openServiceFormFromServices(page, documentType = 'challanPrint') {
+  const cfg = serviceTileConfig(documentType);
   const strategies = [
     async () => {
-      const tile = page.locator(SELECTORS.downloadChallanPrintTile).first();
+      const tile = page.locator(cfg.img).first();
       await tile.waitFor({ state: 'visible', timeout: 30000 });
       await tile.click({ force: true, timeout: 8000 });
     },
     async () => {
-      const textLink = page.locator(SELECTORS.downloadChallanPrintText).first();
+      const textLink = page.locator(cfg.text).first();
       await textLink.waitFor({ state: 'visible', timeout: 15000 });
       await textLink.click({ force: true, timeout: 8000 });
     },
     async () => {
-      const tile = page.locator(SELECTORS.downloadChallanPrintTile).first();
+      const tile = page.locator(cfg.img).first();
       await tile.waitFor({ state: 'visible', timeout: 15000 });
       await tile.evaluate((el) => {
         const clickable =
@@ -513,7 +549,7 @@ async function openDownloadFormFromServices(page) {
     async () => {
       await page.goto(PORTAL.servicesUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
       await page.waitForTimeout(500);
-      const tile = page.locator(SELECTORS.downloadChallanPrintTile).first();
+      const tile = page.locator(cfg.img).first();
       await tile.waitFor({ state: 'visible', timeout: 30000 });
       await tile.click({ force: true });
       await page.waitForURL(/\/challan\/?$/, { timeout: 15000 }).catch(() => {});
@@ -537,12 +573,12 @@ async function openDownloadFormFromServices(page) {
   return false;
 }
 
-async function ensureOnDownloadForm(page) {
+async function ensureOnDownloadForm(page, documentType = 'challanPrint') {
   const input = page.locator(SELECTORS.challanNumberInput).first();
   if (await input.isVisible().catch(() => false)) return;
 
-  log.warn('Form not present — reopening Download Challan Print');
-  await openDownloadChallanPrint(page);
+  log.warn(`Form not present — reopening ${serviceTileConfig(documentType).label}`);
+  await openPortalServiceForm(page, documentType);
 }
 
 async function selectChallanSearchType(page) {
@@ -727,17 +763,26 @@ async function throwIfPortalError(page) {
   }
 }
 
-async function clickPrint(page) {
-  const candidates = [
-    page.locator('a[title*="Print" i]').first(),
-    page.locator('button[title*="Print" i]').first(),
-    page.locator('img[alt*="Print" i]').first(),
-    page.locator('i.fa-print').first(),
-    page.getByRole('button', { name: /print/i }).first(),
-    page.getByRole('link', { name: /print/i }).first(),
-    page.locator(SELECTORS.printButton).first(),
-    page.locator('.mobile-challan-card a, .mobile-challan-card button').first(),
-  ];
+async function clickResultDocument(page, documentType = 'challanPrint') {
+  const wantReceipt = documentType === 'paymentReceipt';
+  const candidates = wantReceipt
+    ? [
+        page.locator('a[title*="Receipt" i]').first(),
+        page.locator('button[title*="Receipt" i]').first(),
+        page.locator('img[alt*="Receipt" i]').first(),
+        page.getByRole('button', { name: /receipt/i }).first(),
+        page.getByRole('link', { name: /receipt/i }).first(),
+        page.locator('a:has-text("Receipt"), button:has-text("Receipt")').first(),
+      ]
+    : [
+        page.locator('a[title*="Print" i]:not([title*="Receipt" i])').first(),
+        page.locator('button[title*="Print" i]:not([title*="Receipt" i])').first(),
+        page.locator('img[alt*="Print" i]:not([alt*="Receipt" i])').first(),
+        page.locator('i.fa-print').first(),
+        page.getByRole('button', { name: /^print$/i }).first(),
+        page.getByRole('link', { name: /^print$/i }).first(),
+        page.locator('a:has-text("Print"), button:has-text("Print")').first(),
+      ];
 
   for (const loc of candidates) {
     if (!(await loc.count())) continue;
@@ -746,18 +791,21 @@ async function clickPrint(page) {
     return true;
   }
 
-  return page.evaluate(() => {
+  return page.evaluate((wantReceiptDoc) => {
     const root =
       document.querySelector('table, .mobile-challan-list, .mobile-challan-card') || document.body;
     const el = [...root.querySelectorAll('a,button,img,i,span')].find((node) => {
       const hay =
         `${node.getAttribute('title') || ''} ${node.getAttribute('alt') || ''} ${node.getAttribute('aria-label') || ''} ${node.textContent || ''}`.toLowerCase();
-      return hay.includes('print') || hay.includes('receipt') || hay.includes('download');
+      if (wantReceiptDoc) {
+        return hay.includes('receipt');
+      }
+      return hay.includes('print') && !hay.includes('receipt');
     });
     if (!el) return false;
     el.click();
     return true;
-  });
+  }, wantReceipt);
 }
 
 function mapAutomationError(err) {
