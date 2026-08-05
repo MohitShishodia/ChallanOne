@@ -8,7 +8,7 @@ import {
   absoluteReceiptPath,
 } from './paths.js';
 import { ReceiptError, ERROR_CODES } from './errors.js';
-import { ensureImageCache, inlinePageImages } from './imageInline.js';
+import { ensureImageCache, inlinePageImages, installChallanImageRoutes } from './imageInline.js';
 
 const log = createLogger();
 
@@ -31,7 +31,7 @@ export async function captureReceipt(receiptPage, challanNumber, opts = {}) {
   log.step('Receipt Found... capturing');
 
   await receiptPage.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
-  await receiptPage.context().unrouteAll().catch(() => {});
+  await installChallanImageRoutes(receiptPage.context());
   ensureImageCache(receiptPage.context());
 
   const url = receiptPage.url();
@@ -51,7 +51,7 @@ export async function captureReceipt(receiptPage, challanNumber, opts = {}) {
   }
 
   await waitForReceiptReady(receiptPage, challanNumber);
-  await inlinePageImages(receiptPage);
+  await inlinePageImages(receiptPage, challanNumber);
 
   const filename = buildReceiptFilename(challanNumber, 'pdf');
   const filePath = absoluteReceiptPath(filename);
@@ -97,7 +97,7 @@ async function renderHtmlToPdfWithChromium(html, challanNumber, filename, filePa
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle', timeout: 30000 });
-    await inlinePageImages(page);
+    await inlinePageImages(page, challanNumber);
 
     const pdfBuffer = await page.pdf({
       format: 'A4',

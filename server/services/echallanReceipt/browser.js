@@ -1,6 +1,6 @@
 import { chromium, firefox, webkit } from 'playwright';
 import { createLogger } from './logger.js';
-import { ensureImageCache } from './imageInline.js';
+import { ensureImageCache, installChallanImageRoutes } from './imageInline.js';
 
 const log = createLogger();
 
@@ -63,6 +63,7 @@ export async function launchBrowser(options = {}) {
       });
 
       await context.route(BLOCKED_URL_PATTERNS, (route) => route.abort());
+      await installChallanImageRoutes(context);
       ensureImageCache(context);
 
       await context.addInitScript(() => {

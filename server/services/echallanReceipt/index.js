@@ -4,7 +4,7 @@ import { createLogger } from './logger.js';
 import { ReceiptError, ERROR_CODES } from './errors.js';
 import { createSession, takeSession, updateSessionCaptcha, getSession } from './sessionStore.js';
 import { captureReceipt, saveDownload } from './receiptCapture.js';
-import { ensureImageCache } from './imageInline.js';
+import { ensureImageCache, installChallanImageRoutes } from './imageInline.js';
 import { isTwoCaptchaConfigured, solveImageCaptcha, reportIncorrect } from '../twoCaptcha.js';
 
 const log = createLogger();
@@ -334,8 +334,9 @@ async function submitAndCaptureReceipt({ page, context, browserName, challanNumb
 async function captureReceiptFromResults({ page, context, browserName, challanNumber, documentType = 'challanPrint' }) {
   log.step(documentType === 'paymentReceipt' ? 'Receipt Found... clicking Payment Receipt' : 'Challan Found... clicking Print');
 
-  // Drop request blocking so evidence photos can load on the print tab
+  // Drop analytics blocking, then retry evidence photos across .gov.in / .nic.in
   await context.unrouteAll().catch(() => {});
+  await installChallanImageRoutes(context);
   ensureImageCache(context);
 
   const popupPromise = context.waitForEvent('page', { timeout: 30000 }).catch(() => null);
