@@ -295,18 +295,33 @@ function ViolationIcon({ challan }) {
   )
 }
 
-function LoadingSkeleton() {
+function LoadingSkeleton({ vehicleNumber = '' }) {
   return (
-    <div className="surface-card overflow-hidden animate-pulse">
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 p-5">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-20 rounded-xl bg-slate-100" />
-        ))}
+    <div className="space-y-3 animate-fade-up">
+      <div className="surface-card flex items-center gap-3 px-4 py-3.5 md:px-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-red-100 border-t-brand-red" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[14px] font-bold text-slate-900">
+            Searching challans{vehicleNumber ? ` for ${vehicleNumber}` : '…'}
+          </p>
+          <p className="mt-0.5 text-[12px] text-slate-500">
+            Fetching live records from official government sources
+          </p>
+        </div>
       </div>
-      <div className="space-y-3 border-t border-slate-100 p-5">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-16 rounded-xl bg-slate-100" />
-        ))}
+      <div className="surface-card overflow-hidden animate-pulse">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 p-5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 rounded-xl bg-slate-100" />
+          ))}
+        </div>
+        <div className="space-y-3 border-t border-slate-100 p-5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 rounded-xl bg-slate-100" />
+          ))}
+        </div>
       </div>
     </div>
   )

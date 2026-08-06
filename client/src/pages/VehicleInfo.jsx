@@ -3,7 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
 import { RcDocIllustration } from '../components/Illustrations'
 import PageTitleBar from '../components/PageTitleBar'
+import RecentSearches, { SearchLoadingButton } from '../components/RecentSearches'
+import SearchLoadingOverlay from '../components/SearchLoadingOverlay'
+import { VehicleInfoSkeleton } from '../components/ui/Skeleton'
 import { useFeatures } from '../context/FeatureContext'
+import { addRecentSearch } from '../utils/recentSearches'
 
 export default function VehicleInfo() {
   const [searchParams] = useSearchParams()
@@ -13,6 +17,7 @@ export default function VehicleInfo() {
   const [vehicle, setVehicle] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [recentRefreshKey, setRecentRefreshKey] = useState(0)
 
   useEffect(() => {
     const v = searchParams.get('vehicle')
@@ -23,12 +28,15 @@ export default function VehicleInfo() {
   }, [searchParams])
 
   const fetchVehicleInfo = async (number) => {
-    if (!number.trim()) return
+    const trimmed = String(number || '').trim().toUpperCase()
+    if (!trimmed) return
     setLoading(true)
     setError('')
     setVehicle(null)
+    addRecentSearch(trimmed, 'rc')
+    setRecentRefreshKey((k) => k + 1)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/external/vehicle/${encodeURIComponent(number.trim())}`)
+      const response = await fetch(`${API_BASE_URL}/api/external/vehicle/${encodeURIComponent(trimmed)}`)
       const data = await response.json()
       if (data.success && data.vehicle?.response) {
         const v = data.vehicle.response
@@ -68,6 +76,7 @@ export default function VehicleInfo() {
           ownerCount: v.owner_count || '1',
           manufacturingDate: v.manufacturing_date_formatted || v.manufacturing_date || 'N/A',
         })
+        setVehicleNumber(trimmed)
       } else {
         setError(data.message || 'Vehicle not found')
       }
@@ -233,6 +242,11 @@ export default function VehicleInfo() {
 
   return (
     <div className="screen">
+      <SearchLoadingOverlay
+        open={loading}
+        type="rc"
+        vehicleNumber={vehicleNumber}
+      />
       <div className="screen-content">
         <PageTitleBar
           title="RC Details"
@@ -261,14 +275,32 @@ export default function VehicleInfo() {
                       placeholder="Enter vehicle number (e.g. UP32AB1234)"
                       value={vehicleNumber}
                       onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                      className="input-field"
+                      disabled={loading}
+                      className="input-field disabled:opacity-60"
                     />
                   </div>
-                  <button type="submit" disabled={loading} className="btn-primary w-full">
-                    {loading ? 'Fetching...' : 'Get RC Details'}
-                  </button>
-                  {error && <p className="text-sm text-rose-500">{error}</p>}
+                  <SearchLoadingButton
+                    type="submit"
+                    loading={loading}
+                    loadingLabel="Fetching…"
+                    disabled={!vehicleNumber.trim()}
+                  >
+                    Get RC Details
+                  </SearchLoadingButton>
+                  {error && !loading && <p className="text-sm text-rose-500">{error}</p>}
                 </form>
+
+                <RecentSearches
+                  type="rc"
+                  refreshKey={recentRefreshKey}
+                  onSelect={(number) => {
+                    if (loading) return
+                    setVehicleNumber(number)
+                    setError('')
+                    navigate(`/vehicle-info?vehicle=${encodeURIComponent(number)}`)
+                    fetchVehicleInfo(number)
+                  }}
+                />
 
                 <div className="animate-fade-up">
                   <p className="field-label">Try a sample number</p>
@@ -315,11 +347,9 @@ export default function VehicleInfo() {
         )}
 
         {loading && (
-          <div className="container-main">
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="h-14 w-14 animate-spin rounded-full border-4 border-red-100 border-t-brand-red" />
-              <p className="mt-5 text-[14px] font-medium text-slate-700">Fetching vehicle details...</p>
-              <p className="mt-1 text-[12px] text-slate-400">Accessing official RTO records</p>
+          <div className="container-main py-6 md:py-10 opacity-30 pointer-events-none" aria-hidden="true">
+            <div className="mx-auto max-w-4xl">
+              <VehicleInfoSkeleton />
             </div>
           </div>
         )}

@@ -4,6 +4,8 @@ import { API_BASE_URL } from '../config/api'
 import DelhiOtpFlow from '../components/DelhiOtpFlow'
 import ChallanResults, { ChallanResultsSkeleton } from '../components/ChallanResults'
 import PaymentSummaryPanel from '../components/PaymentSummaryPanel'
+import RecentSearches, { SearchLoadingButton } from '../components/RecentSearches'
+import SearchLoadingOverlay from '../components/SearchLoadingOverlay'
 import { useFeatures } from '../context/FeatureContext'
 import {
   FLOW_TYPES,
@@ -11,6 +13,7 @@ import {
   calculatePaymentTotal
 } from '../utils/challanUtils'
 import { savePendingChallans } from '../utils/userStorage'
+import { addRecentSearch } from '../utils/recentSearches'
 import {
   saveChallanSearchState,
   clearChallanSearchState,
@@ -49,6 +52,7 @@ export default function PayChallan() {
   const [selectedChallans, setSelectedChallans] = useState([])
   const [filters, setFilters] = useState(getDefaultFilters())
   const [fetchedAt, setFetchedAt] = useState(null)
+  const [recentRefreshKey, setRecentRefreshKey] = useState(0)
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -99,6 +103,8 @@ export default function PayChallan() {
 
     setLoading(true)
     setError(null)
+    addRecentSearch(trimmed, 'challan')
+    setRecentRefreshKey((k) => k + 1)
     try {
       const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
         method: 'POST',
@@ -158,6 +164,12 @@ export default function PayChallan() {
 
   const handleDelhiChallansFound = ({ challans, vehicleNumber: vNum }) => {
     if (challans.length === 0) return
+
+    const trimmed = String(vNum || '').trim().toUpperCase()
+    if (trimmed) {
+      addRecentSearch(trimmed, 'challan')
+      setRecentRefreshKey((k) => k + 1)
+    }
 
     const transformedVehicle = {
       number: vNum,
@@ -341,6 +353,11 @@ export default function PayChallan() {
 
   return (
     <div className="relative flex min-h-screen flex-col bg-slate-50">
+      <SearchLoadingOverlay
+        open={flowType === FLOW_TYPES.ALL_CHALLANS && loading}
+        type="challan"
+        vehicleNumber={vehicleNumber}
+      />
       <div className="flex-1 pt-0 pb-6 md:pt-2 md:pb-12">
         <div className="mx-auto w-full px-3 md:px-4 xl:px-5 py-4 md:py-6 space-y-5">
           <div
@@ -350,137 +367,155 @@ export default function PayChallan() {
                 : 'lg:grid-cols-[210px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]'
             }`}
           >
-            {/* Left sidebar — search & source */}
-            <aside className="surface-card overflow-hidden border-slate-200/80 lg:sticky lg:top-[84px]">
-              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                  Vehicle Search
-                </p>
-              </div>
+            {/* Left sidebar — search, source & recent */}
+            <div className="space-y-3 lg:sticky lg:top-[84px]">
+              <aside className="surface-card overflow-hidden border-slate-200/80">
+                <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                    Vehicle Search
+                  </p>
+                </div>
 
-              <div className="space-y-3.5 p-3.5">
-                {/* Always-visible vehicle search */}
-                <div className="space-y-2">
-                  <label className="block">
-                    <span className="mb-1 block text-[12px] font-medium text-slate-600">Vehicle Number</span>
-                    <input
-                      type="text"
-                      placeholder="DL8CAF1234"
-                      value={vehicleNumber}
-                      onChange={(e) => {
-                        setVehicleNumber(e.target.value.toUpperCase())
-                        setError(null)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && flowType === FLOW_TYPES.ALL_CHALLANS) {
-                          handleCheckNow(e)
-                        }
-                      }}
-                      disabled={flowType === FLOW_TYPES.DELHI_OTP}
-                      className="input-field !py-2.5 text-[14px] font-bold tracking-wide uppercase disabled:opacity-60"
-                    />
-                  </label>
-                  {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                <div className="space-y-3.5 p-3.5">
+                  <div className="space-y-2">
+                    <label className="block">
+                      <span className="mb-1 block text-[12px] font-medium text-slate-600">Vehicle Number</span>
+                      <input
+                        type="text"
+                        placeholder="DL8CAF1234"
+                        value={vehicleNumber}
+                        onChange={(e) => {
+                          setVehicleNumber(e.target.value.toUpperCase())
+                          setError(null)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && flowType === FLOW_TYPES.ALL_CHALLANS) {
+                            handleCheckNow(e)
+                          }
+                        }}
+                        disabled={flowType === FLOW_TYPES.DELHI_OTP || loading}
+                        className="input-field !py-2.5 text-[14px] font-bold tracking-wide uppercase disabled:opacity-60"
+                      />
+                    </label>
+                    {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                      <SearchLoadingButton
+                        onClick={handleCheckNow}
+                        loading={loading}
+                        loadingLabel="Searching…"
+                        disabled={!vehicleNumber.trim() || !allEnabled}
+                        className="!py-2.5 text-[13px]"
+                      >
+                        <span className="inline-flex items-center justify-center gap-2">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                          </svg>
+                          Search Vehicle
+                        </span>
+                      </SearchLoadingButton>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                      Challan Source
+                    </p>
                     <button
                       type="button"
-                      onClick={handleCheckNow}
-                      disabled={loading || !vehicleNumber.trim() || !allEnabled}
-                      className="btn-primary w-full !py-2.5 text-[13px]"
+                      onClick={() => {
+                        if (!allEnabled || loading) return
+                        setFlowType(FLOW_TYPES.ALL_CHALLANS)
+                        setError(null)
+                        const number =
+                          allChallansSnapshot.current?.vehicleNumber || vehicleNumber
+                        if (number) {
+                          setVehicleNumber(number)
+                          fetchChallans(number)
+                        }
+                      }}
+                      disabled={!allEnabled || loading}
+                      aria-pressed={flowType === FLOW_TYPES.ALL_CHALLANS}
+                      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
+                        flowType === FLOW_TYPES.ALL_CHALLANS
+                          ? 'bg-red-50 text-brand-red ring-1 ring-red-100'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      } ${!allEnabled || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {loading ? 'Searching...' : 'Search Vehicle'}
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                          flowType === FLOW_TYPES.ALL_CHALLANS
+                            ? 'border-brand-red'
+                            : 'border-slate-300'
+                        }`}
+                      >
+                        {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                          <span className="h-2 w-2 rounded-full bg-brand-red" />
+                        )}
+                      </span>
+                      Fetch All Challans
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!delhiEnabled || loading) return
+                        if (data && data.dataSource !== 'DELHI_OTP') {
+                          allChallansSnapshot.current = {
+                            data,
+                            selectedChallans,
+                            filters,
+                            fetchedAt,
+                            vehicleNumber: data.vehicle?.number || vehicleNumber,
+                          }
+                        }
+                        setFlowType(FLOW_TYPES.DELHI_OTP)
+                        setError(null)
+                        setSelectedChallans([])
+                        setData(null)
+                        setLoading(false)
+                      }}
+                      disabled={!delhiEnabled || loading}
+                      aria-pressed={flowType === FLOW_TYPES.DELHI_OTP}
+                      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
+                        flowType === FLOW_TYPES.DELHI_OTP
+                          ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-100'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      } ${!delhiEnabled || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                          flowType === FLOW_TYPES.DELHI_OTP
+                            ? 'border-orange-500'
+                            : 'border-slate-300'
+                        }`}
+                      >
+                        {flowType === FLOW_TYPES.DELHI_OTP && (
+                          <span className="h-2 w-2 rounded-full bg-orange-500" />
+                        )}
+                      </span>
+                      Delhi Challan (OTP Required)
+                    </button>
+                  </div>
+
+                  {error && flowType === FLOW_TYPES.ALL_CHALLANS && (
+                    <p className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[12px] text-rose-600">
+                      {error}
+                    </p>
                   )}
                 </div>
+              </aside>
 
-                {/* Challan source — nav style */}
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                    Challan Source
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!allEnabled) return
-                      setFlowType(FLOW_TYPES.ALL_CHALLANS)
-                      setError(null)
-                      const number =
-                        allChallansSnapshot.current?.vehicleNumber || vehicleNumber
-                      if (number) {
-                        setVehicleNumber(number)
-                        fetchChallans(number)
-                      }
-                    }}
-                    disabled={!allEnabled}
-                    aria-pressed={flowType === FLOW_TYPES.ALL_CHALLANS}
-                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
-                      flowType === FLOW_TYPES.ALL_CHALLANS
-                        ? 'bg-red-50 text-brand-red ring-1 ring-red-100'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    } ${!allEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <span
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                        flowType === FLOW_TYPES.ALL_CHALLANS
-                          ? 'border-brand-red'
-                          : 'border-slate-300'
-                      }`}
-                    >
-                      {flowType === FLOW_TYPES.ALL_CHALLANS && (
-                        <span className="h-2 w-2 rounded-full bg-brand-red" />
-                      )}
-                    </span>
-                    Fetch All Challans
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!delhiEnabled) return
-                      // Snapshot Fetch All results so switching back restores them
-                      if (data && data.dataSource !== 'DELHI_OTP') {
-                        allChallansSnapshot.current = {
-                          data,
-                          selectedChallans,
-                          filters,
-                          fetchedAt,
-                          vehicleNumber: data.vehicle?.number || vehicleNumber,
-                        }
-                      }
-                      setFlowType(FLOW_TYPES.DELHI_OTP)
-                      setError(null)
-                      setSelectedChallans([])
-                      setData(null)
-                      setLoading(false)
-                    }}
-                    disabled={!delhiEnabled}
-                    aria-pressed={flowType === FLOW_TYPES.DELHI_OTP}
-                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
-                      flowType === FLOW_TYPES.DELHI_OTP
-                        ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-100'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    } ${!delhiEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <span
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                        flowType === FLOW_TYPES.DELHI_OTP
-                          ? 'border-orange-500'
-                          : 'border-slate-300'
-                      }`}
-                    >
-                      {flowType === FLOW_TYPES.DELHI_OTP && (
-                        <span className="h-2 w-2 rounded-full bg-orange-500" />
-                      )}
-                    </span>
-                    Delhi Challan (OTP Required)
-                  </button>
-                </div>
-
-                {error && flowType === FLOW_TYPES.ALL_CHALLANS && (
-                  <p className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[12px] text-rose-600">
-                    {error}
-                  </p>
-                )}
-              </div>
-            </aside>
+              {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                <RecentSearches
+                  type="challan"
+                  refreshKey={recentRefreshKey}
+                  onSelect={(number) => {
+                    if (loading) return
+                    setVehicleNumber(number)
+                    setError(null)
+                    fetchChallans(number)
+                  }}
+                />
+              )}
+            </div>
 
             {/* Main content */}
             <main className="min-w-0">
@@ -503,7 +538,9 @@ export default function PayChallan() {
               )}
 
               {flowType === FLOW_TYPES.ALL_CHALLANS && loading && (
-                <ChallanResultsSkeleton />
+                <div className="surface-card min-h-[420px] opacity-40">
+                  <ChallanResultsSkeleton vehicleNumber={vehicleNumber} />
+                </div>
               )}
 
               {showResult && (
