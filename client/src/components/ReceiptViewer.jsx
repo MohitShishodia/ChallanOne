@@ -96,14 +96,19 @@ export default function ReceiptViewer({
     setCaptchaImage('')
     setCaptcha('')
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 170_000)
+
     try {
       const res = await fetch(API.challanReceipt.auto, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ challanNumber, documentType }),
+        signal: controller.signal,
       })
 
-      // Old production API without /auto — fall back to captcha session
+      clearTimeout(timeout)
+
       if (res.status === 404) {
         await loadCaptcha()
         return
@@ -134,8 +139,12 @@ export default function ReceiptViewer({
       setReceiptUrl(toAbsoluteReceiptUrl(data.receiptUrl))
       setPhase('receipt')
     } catch (err) {
+      clearTimeout(timeout)
       if (requestId !== requestIdRef.current) return
-      setError(err.message || 'Unable to fetch challan receipt. Please try again.')
+      const message = err.name === 'AbortError'
+        ? 'Request timed out. The government portal may be slow — please try again.'
+        : (err.message || 'Unable to fetch challan receipt. Please try again.')
+      setError(message)
       setPhase('error')
     }
   }, [challanNumber, loadCaptcha, documentType])

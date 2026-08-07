@@ -8,9 +8,8 @@ const caches = new WeakMap();
  * Accept missing evidence photos gracefully — generate PDF with whatever loaded.
  * Don't burn the request budget retrying blocked hosts or proxies.
  */
-const IMAGE_WAIT_MS = 8000;
-const FETCH_TIMEOUT_MS = 8000;
-const MIN_EVIDENCE_BYTES = 800;
+const IMAGE_WAIT_MS = 6000;
+const ROUTE_FETCH_TIMEOUT_MS = 5000;
 
 /**
  * Record every image response on this browser context so we can embed
@@ -69,13 +68,12 @@ export async function installChallanImageRoutes(context) {
     const referer =
       headers.referer || headers.Referer || 'https://echallan.parivahan.nic.in/challan/';
 
-    // Try original + one alternate host — that's it. No long retry loops.
-    const candidates = hostFallbackUrls(original).slice(0, 3);
+    const candidates = hostFallbackUrls(original).slice(0, 2);
     for (const url of candidates) {
       try {
         const resp = await route.fetch({
           url,
-          timeout: FETCH_TIMEOUT_MS,
+          timeout: ROUTE_FETCH_TIMEOUT_MS,
           headers: {
             ...headers,
             referer,
@@ -116,7 +114,7 @@ export async function inlinePageImages(page, challanNumber = '') {
   const cache = ensureImageCache(page.context());
   const started = Date.now();
 
-  await page.waitForTimeout(500).catch(() => {});
+  await page.waitForTimeout(400).catch(() => {});
   await page
     .evaluate(() => {
       for (const img of document.images) {
@@ -126,20 +124,15 @@ export async function inlinePageImages(page, challanNumber = '') {
     })
     .catch(() => {});
 
-  // Short wait — don't block PDF gen on broken CDN images
   await page
     .waitForFunction(
       () => [...document.images].every((img) => img.complete || !(img.getAttribute('src') || img.currentSrc)),
       { timeout: IMAGE_WAIT_MS }
     )
     .catch(() => {
-      log.warn('Image load wait timed out — proceeding with loaded images', {
-        challanNumber,
-        waitedMs: Date.now() - started,
-      });
+      log.warn('Image load wait timed out — proceeding', { challanNumber, waitedMs: Date.now() - started });
     });
 
-  // Inline whatever DID load (from cache or successful CDN hits)
   const imgs = await page.evaluate(() =>
     [...document.images].map((img, index) => ({
       index,
@@ -154,32 +147,9 @@ export async function inlinePageImages(page, challanNumber = '') {
     if (/no_image/i.test(img.src)) continue;
 
     let abs = img.src;
-    try {
-      abs = new URL(img.src, page.url()).href;
-    } catch {
-      // keep
-    }
+    try { abs = new URL(img.src, page.url()).href; } catch { /* keep */ }
 
-    let entry = cache.get(abs) || cache.get(img.src);
-
-    // One quick direct fetch if not cached — no expensive recovery loops
-    if (!entry) {
-      entry = await fetchImage(page, abs);
-      if (entry) cache.set(abs, entry);
-    }
-
-    // Screenshot fallback if the image rendered with pixels
-    if (!entry && img.naturalWidth > 2) {
-      const shot = await page
-        .locator('img')
-        .nth(img.index)
-        .screenshot({ type: 'png' })
-        .catch(() => null);
-      if (shot?.length > MIN_EVIDENCE_BYTES && isUsableImage(shot, 'image/png')) {
-        entry = { body: Buffer.from(shot), contentType: 'image/png' };
-      }
-    }
-
+    const entry = cache.get(abs) || cache.get(img.src);
     if (!entry) continue;
 
     const dataUrl = `data:${entry.contentType};base64,${entry.body.toString('base64')}`;
@@ -196,16 +166,12 @@ export async function inlinePageImages(page, challanNumber = '') {
   }
 
   log.step('Inlined challan images', {
-    total: imgs.length,
-    inlined,
-    cached: cache.size,
-    withPixels: imgs.filter((i) => i.naturalWidth > 2).length,
-    elapsedMs: Date.now() - started,
-    challanNumber,
+    total: imgs.length, inlined, cached: cache.size,
+    elapsedMs: Date.now() - started, challanNumber,
   });
 
   await page
-    .waitForFunction(() => [...document.images].every((img) => img.complete), { timeout: 3000 })
+    .waitForFunction(() => [...document.images].every((img) => img.complete), { timeout: 2000 })
     .catch(() => {});
 }
 
@@ -230,28 +196,6 @@ function hostFallbackUrls(originalSrc) {
     // ignore
   }
   return [...new Set(urls.filter(Boolean))];
-}
-
-async function fetchImage(page, url) {
-  try {
-    const resp = await page.request.get(url, {
-      timeout: FETCH_TIMEOUT_MS,
-      headers: {
-        Referer: page.url(),
-        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      },
-    });
-    if (!resp.ok()) return null;
-    const body = Buffer.from(await resp.body());
-    const ct = String(resp.headers()['content-type'] || '').split(';')[0].toLowerCase();
-    if (!isUsableImage(body, ct)) return null;
-    return {
-      body,
-      contentType: ct.startsWith('image/') ? ct : sniffImageType(body),
-    };
-  } catch {
-    return null;
-  }
 }
 
 function rememberImage(cache, url, entry) {

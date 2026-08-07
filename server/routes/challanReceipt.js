@@ -11,16 +11,29 @@ import { createLogger } from '../services/echallanReceipt/logger.js';
 const router = express.Router();
 const log = createLogger('[API/challan/receipt]');
 
+const REQUEST_TIMEOUT_MS = 160_000;
+
 /**
  * POST /api/challan/receipt/auto
  * Fully automatic: portal + 2Captcha + PDF.
  * Falls back with needsCaptcha + session when solver fails.
- * { "challanNumber": "" }
  */
 router.post('/auto', async (req, res) => {
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      log.warn('Auto-fetch request timed out', { challanNumber: req.body?.challanNumber });
+      res.status(504).json({
+        success: false,
+        message: 'The request took too long. The government portal may be slow — please try again.',
+        code: 'TIMEOUT',
+      });
+    }
+  }, REQUEST_TIMEOUT_MS);
+
   try {
     const { challanNumber, documentType } = req.body || {};
     if (!challanNumber?.trim()) {
+      clearTimeout(timer);
       return res.status(400).json({
         success: false,
         message: 'challanNumber is required',
@@ -29,6 +42,9 @@ router.post('/auto', async (req, res) => {
 
     log.step('Auto-fetching receipt...', { challanNumber, documentType });
     const result = await autoFetchChallanReceipt(String(challanNumber).trim(), { documentType });
+
+    clearTimeout(timer);
+    if (res.headersSent) return;
 
     if (result.needsCaptcha) {
       return res.json({
@@ -48,6 +64,8 @@ router.post('/auto', async (req, res) => {
       contentType: result.contentType,
     });
   } catch (err) {
+    clearTimeout(timer);
+    if (res.headersSent) return;
     return sendError(res, err);
   }
 });
