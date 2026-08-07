@@ -32,9 +32,18 @@ fi
 
 echo "==> Restart API (PM2)"
 cd "$APP_DIR/server"
+# Stop crash loops from leftover node processes holding PORT
+PORT_TO_FREE="${PORT:-5000}"
 if pm2 describe challanone-api >/dev/null 2>&1; then
   pm2 delete challanone-api >/dev/null 2>&1 || true
 fi
+# Kill anything still bound to the API port (orphans from previous crash loops)
+if command -v fuser >/dev/null 2>&1; then
+  fuser -k "${PORT_TO_FREE}/tcp" >/dev/null 2>&1 || true
+elif command -v lsof >/dev/null 2>&1; then
+  lsof -ti ":${PORT_TO_FREE}" | xargs -r kill -9 >/dev/null 2>&1 || true
+fi
+sleep 1
 pm2 start server.js --name challanone-api --cwd "$APP_DIR/server" --update-env
 pm2 save
 
