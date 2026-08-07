@@ -219,8 +219,6 @@ app.get('/api/health/db', async (req, res) => {
 });
 
 if (!isPassenger) {
-  let listenStarted = false;
-
   process.on('uncaughtException', (err) => {
     console.error('❌ uncaughtException:', err?.stack || err);
   });
@@ -228,29 +226,23 @@ if (!isPassenger) {
     console.error('❌ unhandledRejection:', err?.stack || err);
   });
 
-  const startListening = (retriesLeft = 8) => {
-    if (listenStarted) return;
-    listenStarted = true;
+  let bindRetriesLeft = 15;
 
-    const onError = (err) => {
-      httpServer.off('error', onError);
-      listenStarted = false;
-      if (err?.code === 'EADDRINUSE' && retriesLeft > 0) {
-        console.warn(`⚠️ Port ${PORT} busy — retrying in 1s (${retriesLeft} left)`);
-        setTimeout(() => startListening(retriesLeft - 1), 1000);
-        return;
-      }
-      console.error('❌ Failed to bind API port:', err);
-      process.exit(1);
-    };
-
-    httpServer.once('error', onError);
-    httpServer.listen(PORT, '0.0.0.0', () => {
-      httpServer.off('error', onError);
-      console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-      console.log(`👑 Admin API ready at http://localhost:${PORT}/api/admin`);
-    });
-  };
+  // Single error handler — avoid MaxListenersExceeded from retry loops
+  httpServer.on('error', (err) => {
+    if (err?.code === 'EADDRINUSE' && bindRetriesLeft > 0) {
+      bindRetriesLeft -= 1;
+      console.warn(`⚠️ Port ${PORT} busy — retrying in 2s (${bindRetriesLeft} left)`);
+      setTimeout(() => {
+        if (!httpServer.listening) {
+          httpServer.listen(PORT, '0.0.0.0');
+        }
+      }, 2000);
+      return;
+    }
+    console.error('❌ Failed to bind API port:', err);
+    process.exit(1);
+  });
 
   // Bind port even if email/DB bootstrap warns — don't block listen on Brevo
   bootstrapPromise
@@ -258,7 +250,12 @@ if (!isPassenger) {
       console.error('❌ Bootstrap failed (server will still listen):', err?.message || err);
     })
     .finally(() => {
-      startListening();
+      if (!httpServer.listening) {
+        httpServer.listen(PORT, '0.0.0.0', () => {
+          console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+          console.log(`👑 Admin API ready at http://localhost:${PORT}/api/admin`);
+        });
+      }
     });
 }
 
