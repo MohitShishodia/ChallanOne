@@ -18,6 +18,14 @@ const MIN_EVIDENCE_BYTES = 800;
 const IMAGE_PROXIES = [
   (url) => `https://wsrv.nl/?url=${encodeURIComponent(url)}&output=jpg`,
   (url) => `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=jpg`,
+  (url) => {
+    try {
+      const u = new URL(url);
+      return `https://cdn.statically.io/img/${u.host}${u.pathname}${u.search}`;
+    } catch {
+      return '';
+    }
+  },
 ];
 
 function isEvidenceSrc(src = '') {
@@ -25,10 +33,10 @@ function isEvidenceSrc(src = '') {
 }
 
 function proxyUrlsFor(originalUrl) {
-  if (!originalUrl || originalUrl.startsWith('data:') || /no_image|wsrv\.nl|weserv\.nl/i.test(originalUrl)) {
+  if (!originalUrl || originalUrl.startsWith('data:') || /no_image|wsrv\.nl|weserv\.nl|statically\.io/i.test(originalUrl)) {
     return [];
   }
-  return IMAGE_PROXIES.map((fn) => fn(originalUrl));
+  return IMAGE_PROXIES.map((fn) => fn(originalUrl)).filter(Boolean);
 }
 
 /**
@@ -140,7 +148,7 @@ export async function inlinePageImages(page, challanNumber = '') {
         if (!src || src.startsWith('data:')) continue;
         if (/no_image/i.test(src)) continue;
         if (!/itmschallan|img2\/challans|vehicle_img|\/storage\/|\/uploads\//i.test(src)) continue;
-        if (/wsrv\.nl|weserv\.nl/i.test(src)) continue;
+        if (/wsrv\.nl|weserv\.nl|statically\.io/i.test(src)) continue;
 
         let abs = src;
         try {
