@@ -88,7 +88,8 @@ export async function launchBrowser(options = {}) {
 // Keep one warm browser to skip launch + navigation on repeat requests.
 
 const POOL_SIZE = parseInt(process.env.BROWSER_POOL_SIZE || '1', 10);
-const POOL_MAX_AGE_MS = 4 * 60 * 1000;
+// Shorter max age — Angular captcha/session on pooled print form goes stale fast
+const POOL_MAX_AGE_MS = 2 * 60 * 1000;
 
 /** @type {{ browser: any, context: any, page: any, browserName: string, createdAt: number }[]} */
 const pool = [];

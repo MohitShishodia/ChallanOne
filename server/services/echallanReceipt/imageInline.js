@@ -3,6 +3,12 @@ import { createLogger } from './logger.js';
 const log = createLogger();
 const caches = new WeakMap();
 
+/** Soft ceiling so missing evidence photos never blow the whole PDF request. */
+const IMAGE_WAIT_MS = 8000;
+const RECOVERY_BUDGET_MS = 10000;
+const FETCH_TIMEOUT_MS = 8000;
+const TAB_FETCH_TIMEOUT_MS = 10000;
+
 /**
  * Record every image response on this browser context so we can embed
  * them in page.pdf() (Chromium omits cross-origin images without CORS).
@@ -55,7 +61,7 @@ export async function installChallanImageRoutes(context) {
       try {
         const resp = await route.fetch({
           url,
-          timeout: 20000,
+          timeout: FETCH_TIMEOUT_MS,
           headers: {
             ...headers,
             referer: headers.referer || headers.Referer || 'https://echallan.parivahan.nic.in/challan/',
@@ -93,8 +99,9 @@ export async function installChallanImageRoutes(context) {
 
 export async function inlinePageImages(page, challanNumber = '') {
   const cache = ensureImageCache(page.context());
+  const started = Date.now();
 
-  await page.waitForTimeout(1500).catch(() => {});
+  await page.waitForTimeout(500).catch(() => {});
   await page
     .evaluate(() => {
       for (const img of document.images) {
@@ -104,14 +111,29 @@ export async function inlinePageImages(page, challanNumber = '') {
     })
     .catch(() => {});
 
+  // Don't block PDF generation waiting forever for broken CDN images
   await page
     .waitForFunction(
-      () => [...document.images].every((img) => img.complete || !(img.getAttribute('src') || img.currentSrc)),
-      { timeout: 25000 }
+      () => {
+        const imgs = [...document.images];
+        if (!imgs.length) return true;
+        const pending = imgs.filter((img) => {
+          const src = img.getAttribute('src') || img.currentSrc || '';
+          if (!src || src.startsWith('data:')) return false;
+          return !img.complete;
+        });
+        return pending.length === 0;
+      },
+      { timeout: IMAGE_WAIT_MS }
     )
-    .catch(() => {});
+    .catch(() => {
+      log.warn('Image load wait timed out — continuing with available images', {
+        challanNumber,
+        waitedMs: Date.now() - started,
+      });
+    });
 
-  await recoverMissingEvidenceImages(page, challanNumber);
+  await recoverMissingEvidenceImages(page, challanNumber, RECOVERY_BUDGET_MS);
 
   const imgs = await page.evaluate(() =>
     [...document.images].map((img, index) => ({
@@ -169,15 +191,17 @@ export async function inlinePageImages(page, challanNumber = '') {
     inlined,
     cached: cache.size,
     withPixels: imgs.filter((i) => i.naturalWidth > 2).length,
+    elapsedMs: Date.now() - started,
     challanNumber,
   });
 
   await page
-    .waitForFunction(() => [...document.images].every((img) => img.complete), { timeout: 8000 })
+    .waitForFunction(() => [...document.images].every((img) => img.complete), { timeout: 3000 })
     .catch(() => {});
 }
 
-async function recoverMissingEvidenceImages(page, challanNumber) {
+async function recoverMissingEvidenceImages(page, challanNumber, budgetMs = RECOVERY_BUDGET_MS) {
+  const deadline = Date.now() + budgetMs;
   const slots = await page.evaluate(() =>
     [...document.images].map((img, index) => {
       const src = img.currentSrc || img.getAttribute('src') || '';
@@ -205,18 +229,22 @@ async function recoverMissingEvidenceImages(page, challanNumber) {
 
   log.step('Recovering missing evidence images', {
     broken: broken.length,
+    budgetMs,
     srcs: broken.map((s) => shorten(s.src)),
   });
 
   for (const slot of broken) {
-    const candidates = candidateImageUrls(challanNumber, slot.src, page.url());
-    let entry = null;
-    for (const url of candidates) {
-      entry = ensureImageCache(page.context()).get(url) || (await fetchImage(page, url));
-      if (!entry) entry = await fetchImageInBrowserTab(page.context(), url, page.url());
-      if (entry && entry.body.length > 800) break;
-      entry = null;
+    if (Date.now() >= deadline) {
+      log.warn('Evidence recovery budget exhausted — continuing without remaining images', {
+        remaining: broken.length - broken.indexOf(slot),
+        challanNumber,
+      });
+      break;
     }
+
+    const candidates = candidateImageUrls(challanNumber, slot.src, page.url()).slice(0, 8);
+    const remainingMs = Math.max(1500, deadline - Date.now());
+    const entry = await raceFirstImage(page, candidates, remainingMs);
     if (!entry) continue;
 
     const dataUrl = `data:${entry.contentType};base64,${entry.body.toString('base64')}`;
@@ -230,6 +258,52 @@ async function recoverMissingEvidenceImages(page, challanNumber) {
       { index: slot.index, dataUrl }
     );
     log.step('Recovered evidence image', { index: slot.index, bytes: entry.body.length });
+  }
+}
+
+/**
+ * Try candidate URLs in parallel (capped) and return the first usable image.
+ */
+async function raceFirstImage(page, candidates, budgetMs) {
+  if (!candidates.length) return null;
+  const cache = ensureImageCache(page.context());
+
+  for (const url of candidates) {
+    const hit = cache.get(url);
+    if (hit && hit.body.length > 800) return hit;
+  }
+
+  const controller = { done: false };
+  const attempt = async (url) => {
+    if (controller.done) return null;
+    let entry = cache.get(url) || (await fetchImage(page, url));
+    if (!entry && !controller.done) {
+      entry = await fetchImageInBrowserTab(page.context(), url, page.url());
+    }
+    if (entry && entry.body.length > 800) {
+      controller.done = true;
+      return entry;
+    }
+    return null;
+  };
+
+  try {
+    return await Promise.race([
+      (async () => {
+        // Parallel batches of 3 to avoid opening too many tabs
+        for (let i = 0; i < candidates.length; i += 3) {
+          if (controller.done) break;
+          const batch = candidates.slice(i, i + 3);
+          const results = await Promise.all(batch.map(attempt));
+          const found = results.find(Boolean);
+          if (found) return found;
+        }
+        return null;
+      })(),
+      new Promise((resolve) => setTimeout(() => resolve(null), budgetMs)),
+    ]);
+  } finally {
+    controller.done = true;
   }
 }
 
@@ -303,7 +377,7 @@ async function fetchImageInBrowserTab(context, url, referer) {
       Referer: referer || 'https://echallan.parivahan.nic.in/challan/',
       Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
     });
-    const resp = await tab.goto(url, { waitUntil: 'load', timeout: 20000 });
+    const resp = await tab.goto(url, { waitUntil: 'load', timeout: TAB_FETCH_TIMEOUT_MS });
     if (!resp || !resp.ok()) return null;
     const body = Buffer.from(await resp.body());
     const ct = String(resp.headers()['content-type'] || '').toLowerCase();
@@ -324,7 +398,7 @@ async function fetchImageInBrowserTab(context, url, referer) {
 async function fetchImage(page, url) {
   try {
     const resp = await page.request.get(url, {
-      timeout: 15000,
+      timeout: FETCH_TIMEOUT_MS,
       headers: {
         Referer: page.url(),
         Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',

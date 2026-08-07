@@ -33,8 +33,18 @@ export const SELECTORS = {
   getDetailsButton: 'button.get-details-btn',
   goBackButton: 'button.bck-btn',
 
-  /** Results area after GET DETAILS */
-  resultsTable: 'table, .mobile-challan-list, .mobile-challan-card',
+  /** Results area after GET DETAILS — avoid bare `table` (false early match). */
+  resultsTable: [
+    'table.challan',
+    'table.main-table',
+    '.challan-wrapper table',
+    '.mobile-challan-list',
+    '.mobile-challan-card',
+    'table:has(a[title*="Print" i])',
+    'table:has(img[alt*="Print" i])',
+    'table:has(a[title*="Receipt" i])',
+    'table:has(img[alt*="Receipt" i])',
+  ].join(', '),
   printButton: [
     'a[title*="Print" i]',
     'button[title*="Print" i]',

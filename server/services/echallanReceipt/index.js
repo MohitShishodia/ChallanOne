@@ -187,13 +187,22 @@ export async function autoFetchChallanReceipt(challanNumber, options = {}) {
 
   try {
     const pooled = documentType === 'challanPrint' ? takeFromPool() : null;
+    let usedPool = false;
     if (pooled) {
-      browser = pooled.browser;
-      context = pooled.context;
-      page = pooled.page;
-      browserName = pooled.browserName;
-      log.step('Auto receipt (pooled browser)', { challanNumber: trimmed, browser: browserName, documentType });
-    } else {
+      const poolOk = await isPooledFormUsable(pooled.page);
+      if (poolOk) {
+        browser = pooled.browser;
+        context = pooled.context;
+        page = pooled.page;
+        browserName = pooled.browserName;
+        usedPool = true;
+        log.step('Auto receipt (pooled browser)', { challanNumber: trimmed, browser: browserName, documentType });
+      } else {
+        log.warn('Pooled browser form stale — discarding and launching fresh');
+        await safeClose(pooled.browser);
+      }
+    }
+    if (!usedPool) {
       log.step('Auto receipt starting (chromium)', { challanNumber: trimmed, documentType });
       const launched = await launchBrowser({ prefer: 'chromium' });
       browser = launched.browser;
@@ -229,6 +238,9 @@ export async function autoFetchChallanReceipt(challanNumber, options = {}) {
       }
 
       try {
+        // Re-fill challan every attempt — portal often clears it after Invalid captcha
+        await selectChallanSearchType(page).catch(() => {});
+        await fillChallanNumber(page, trimmed);
         log.step(`Submitting with auto-solved captcha (attempt ${attempt}/${AUTO_ATTEMPTS})`, {
           text: solved.text,
           length: solved.text.length,
@@ -257,15 +269,13 @@ export async function autoFetchChallanReceipt(challanNumber, options = {}) {
 
           if (attempt < AUTO_ATTEMPTS) {
             await dismissPortalOverlays(page).catch(() => {});
-            // Stay on form — refresh captcha only (no full portal reopen)
             const stillOnForm = await page.locator(SELECTORS.captchaImage).first().isVisible().catch(() => false);
-            if (stillOnForm) {
-              await refreshCaptchaOnPage(page).catch(() => {});
-            } else {
+            if (!stillOnForm) {
               await openPortalServiceForm(page, documentType);
-              await selectChallanSearchType(page);
-              await fillChallanNumber(page, trimmed);
             }
+            await selectChallanSearchType(page).catch(() => {});
+            await fillChallanNumber(page, trimmed);
+            await refreshCaptchaOnPage(page).catch(() => {});
             continue;
           }
           break;
@@ -280,11 +290,10 @@ export async function autoFetchChallanReceipt(challanNumber, options = {}) {
     const onForm = await page.locator(SELECTORS.captchaImage).first().isVisible().catch(() => false);
     if (!onForm) {
       await openPortalServiceForm(page, documentType);
-      await selectChallanSearchType(page);
-      await fillChallanNumber(page, trimmed);
-    } else {
-      await refreshCaptchaOnPage(page).catch(() => {});
     }
+    await selectChallanSearchType(page).catch(() => {});
+    await fillChallanNumber(page, trimmed);
+    await refreshCaptchaOnPage(page).catch(() => {});
     const fallbackImage = await readCaptchaImage(page);
     const sessionId = createSession({
       browser,
@@ -334,13 +343,17 @@ async function submitAndCaptureReceipt({ page, context, browserName, challanNumb
 async function captureReceiptFromResults({ page, context, browserName, challanNumber, documentType = 'challanPrint' }) {
   log.step(documentType === 'paymentReceipt' ? 'Receipt Found... clicking Payment Receipt' : 'Challan Found... clicking Print');
 
-  // Drop analytics blocking, then retry evidence photos across .gov.in / .nic.in
-  await context.unrouteAll().catch(() => {});
+  // Keep analytics blocking; only reinstall evidence image host fallbacks.
+  // unrouteAll() used to wipe all routes and create a race before Print opens.
   await installChallanImageRoutes(context);
   ensureImageCache(context);
 
-  const popupPromise = context.waitForEvent('page', { timeout: 30000 }).catch(() => null);
-  const downloadPromise = page.waitForEvent('download', { timeout: 30000 }).catch(() => null);
+  // Give Angular a beat to paint the Print/Receipt action on the results row
+  await page.waitForTimeout(400).catch(() => {});
+
+  const CAPTURE_WAIT_MS = 25000;
+  const popupPromise = context.waitForEvent('page', { timeout: CAPTURE_WAIT_MS }).catch(() => null);
+  const downloadPromise = page.waitForEvent('download', { timeout: CAPTURE_WAIT_MS }).catch(() => null);
 
   const printClicked = await clickResultDocument(page, documentType);
   if (!printClicked) {
@@ -350,14 +363,19 @@ async function captureReceiptFromResults({ page, context, browserName, challanNu
     );
   }
 
+  // Critical: never let a timed-out null win Promise.race — that used to
+  // fall through to same-page capture of the results table (wrong/empty PDF).
+  const hang = () => new Promise(() => {});
   const firstEvent = await Promise.race([
-    downloadPromise.then((download) => (download ? { type: 'download', download } : null)),
-    popupPromise.then((popup) => (popup ? { type: 'popup', popup } : null)),
+    downloadPromise.then((download) => (download ? { type: 'download', download } : hang())),
+    popupPromise.then((popup) => (popup ? { type: 'popup', popup } : hang())),
+    page.waitForTimeout(CAPTURE_WAIT_MS).then(() => ({ type: 'timeout' })),
   ]);
 
   const captureOpts = { browserName };
 
   if (firstEvent?.type === 'download') {
+    log.step('Opening Receipt... (download)');
     return await saveDownload(firstEvent.download, challanNumber);
   }
 
@@ -369,13 +387,54 @@ async function captureReceiptFromResults({ page, context, browserName, challanNu
     return await captureReceipt(firstEvent.popup, challanNumber, captureOpts);
   }
 
-  const latePopup = await popupPromise;
+  // Timeout path: check both listeners one last time before same-page fallback
+  const [latePopup, lateDownload] = await Promise.all([popupPromise, downloadPromise]);
+  if (lateDownload) {
+    log.step('Opening Receipt... (late download)');
+    return await saveDownload(lateDownload, challanNumber);
+  }
   if (latePopup && !latePopup.url().startsWith('chrome://')) {
+    log.step('Opening Receipt... (late popup)');
     return await captureReceipt(latePopup, challanNumber, captureOpts);
   }
-  const lateDownload = await downloadPromise;
-  if (lateDownload) {
-    return await saveDownload(lateDownload, challanNumber);
+
+  // Same-page navigation: confirm we actually left the results list
+  const navigatedAway = await page
+    .waitForFunction(
+      () => {
+        const text = (document.body?.innerText || '').replace(/\s+/g, ' ');
+        const stillOnResults =
+          /get\s*details/i.test(text) &&
+          document.querySelector('button.get-details-btn, img.captcha-image');
+        const printReady =
+          /Preparing Challans for Print|Challan\s*no|Traffic Police|Offence|Penalty/i.test(text) ||
+          Boolean(document.querySelector('table.challan, table.main-table, .challan-wrapper table'));
+        return printReady && !stillOnResults;
+      },
+      { timeout: 8000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  if (!navigatedAway) {
+    log.warn('Print click did not open a document — retrying click once');
+    const retryPopupPromise = context.waitForEvent('page', { timeout: 12000 }).catch(() => null);
+    const retryDownloadPromise = page.waitForEvent('download', { timeout: 12000 }).catch(() => null);
+    const retried = await clickResultDocument(page, documentType);
+    if (retried) {
+      const retryHang = () => new Promise(() => {});
+      const retryEvent = await Promise.race([
+        retryDownloadPromise.then((download) => (download ? { type: 'download', download } : retryHang())),
+        retryPopupPromise.then((popup) => (popup ? { type: 'popup', popup } : retryHang())),
+        page.waitForTimeout(12000).then(() => ({ type: 'timeout' })),
+      ]);
+      if (retryEvent?.type === 'download') {
+        return await saveDownload(retryEvent.download, challanNumber);
+      }
+      if (retryEvent?.type === 'popup' && !retryEvent.popup.url().startsWith('chrome://')) {
+        return await captureReceipt(retryEvent.popup, challanNumber, captureOpts);
+      }
+    }
   }
 
   log.step('Opening Receipt... (same page)');
@@ -700,10 +759,24 @@ async function readCaptchaImage(page) {
  */
 async function waitForResultsOrError(page) {
   const resultLocator = page.locator(SELECTORS.resultsTable).first();
+  const printAction = page
+    .locator(
+      [
+        'a[title*="Print" i]',
+        'button[title*="Print" i]',
+        'img[alt*="Print" i]',
+        'i.fa-print',
+        'a[title*="Receipt" i]',
+        'button[title*="Receipt" i]',
+        'img[alt*="Receipt" i]',
+      ].join(', ')
+    )
+    .first();
   const swalLocator = page.locator('.swal2-container, .swal2-popup').first();
   const alertLocator = page.locator(SELECTORS.alertMessage).first();
 
   const outcome = await Promise.race([
+    printAction.waitFor({ state: 'visible', timeout: 45000 }).then(() => 'results'),
     resultLocator.waitFor({ state: 'visible', timeout: 45000 }).then(() => 'results'),
     swalLocator.waitFor({ state: 'visible', timeout: 45000 }).then(() => 'swal'),
     alertLocator.waitFor({ state: 'visible', timeout: 45000 }).then(() => 'alert'),
@@ -712,6 +785,8 @@ async function waitForResultsOrError(page) {
   if (outcome === 'results') {
     // Still check if an error toast appeared alongside empty UI
     await throwIfPortalError(page);
+    // Wait briefly for Print/Receipt action if only the table shell appeared
+    await printAction.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
     return;
   }
 
@@ -725,6 +800,22 @@ async function waitForResultsOrError(page) {
     ERROR_CODES.NOT_FOUND,
     'Challan not found. Please check the challan number or captcha.'
   );
+}
+
+/** Pooled browsers go stale when Angular session/captcha expires. */
+async function isPooledFormUsable(page) {
+  try {
+    if (page.isClosed()) return false;
+    const input = page.locator(SELECTORS.challanNumberInput).first();
+    const captcha = page.locator(SELECTORS.captchaImage).first();
+    const inputOk = await input.isVisible().catch(() => false);
+    const captchaOk = await captcha.isVisible().catch(() => false);
+    if (!inputOk || !captchaOk) return false;
+    const width = await captcha.evaluate((el) => el.naturalWidth || 0).catch(() => 0);
+    return width > 20;
+  } catch {
+    return false;
+  }
 }
 
 async function throwIfPortalError(page) {
@@ -794,7 +885,17 @@ async function clickResultDocument(page, documentType = 'challanPrint') {
 
   return page.evaluate((wantReceiptDoc) => {
     const root =
-      document.querySelector('table, .mobile-challan-list, .mobile-challan-card') || document.body;
+      document.querySelector(
+        [
+          'table.challan',
+          'table.main-table',
+          '.challan-wrapper table',
+          '.mobile-challan-list',
+          '.mobile-challan-card',
+          'table:has(a[title*="Print" i]), table:has(img[alt*="Print" i])',
+          'table:has(a[title*="Receipt" i]), table:has(img[alt*="Receipt" i])',
+        ].join(', ')
+      ) || document.body;
     const el = [...root.querySelectorAll('a,button,img,i,span')].find((node) => {
       const hay =
         `${node.getAttribute('title') || ''} ${node.getAttribute('alt') || ''} ${node.getAttribute('aria-label') || ''} ${node.textContent || ''}`.toLowerCase();

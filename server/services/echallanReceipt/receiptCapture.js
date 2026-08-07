@@ -152,13 +152,20 @@ async function waitForReceiptReady(page, challanNumber) {
         return hasTable || hasChallanNo || hasReceiptMarkers;
       },
       { challan: challanNumber || '', loadingMarkers: LOADING_MARKERS },
-      { timeout: 20000 }
+      // Print pages with evidence photos often take longer than payment receipts
+      { timeout: 35000 }
     );
   } catch {
     // Give a short extra grace period before giving up
     const bodyText = (await page.locator('body').innerText().catch(() => '')) || '';
-    if (bodyText.length > 100) {
+    if (bodyText.length > 100 && !isLoadingText(bodyText)) {
       log.step('Receipt content check timed out but page has content — proceeding');
+      return;
+    }
+    // Still on "Preparing…" but some challan text already present — soft proceed
+    if (isLoadingText(bodyText) && challanNumber && bodyText.includes(String(challanNumber))) {
+      log.warn('Print page still shows loading marker but challan text present — proceeding');
+      await page.waitForTimeout(2000).catch(() => {});
       return;
     }
     if (isLoadingText(bodyText)) {
