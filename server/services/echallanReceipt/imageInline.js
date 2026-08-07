@@ -2,14 +2,34 @@ import { createLogger } from './logger.js';
 
 const log = createLogger();
 const caches = new WeakMap();
-const warmedHosts = new WeakMap();
 
-/** Evidence photos can take longer on VPS — prefer images over speed. */
-const IMAGE_WAIT_MS = 25000;
-const RECOVERY_BUDGET_MS = 60000;
-const FETCH_TIMEOUT_MS = 20000;
-const TAB_FETCH_TIMEOUT_MS = 25000;
+/**
+ * VPS datacenter IPs are often blocked by itmschallan / echallan.gov.in camera CDNs
+ * (ERR_CONNECTION_RESET / timeout) while local IPs work. We:
+ * 1) rewrite <img> src through a public image proxy so Chromium can load them
+ * 2) recover/fetch via proxy candidates and inline as data URLs for page.pdf()
+ */
+const IMAGE_WAIT_MS = 12000;
+const RECOVERY_BUDGET_MS = 45000;
+const FETCH_TIMEOUT_MS = 15000;
+const TAB_FETCH_TIMEOUT_MS = 15000;
 const MIN_EVIDENCE_BYTES = 800;
+
+const IMAGE_PROXIES = [
+  (url) => `https://wsrv.nl/?url=${encodeURIComponent(url)}&output=jpg`,
+  (url) => `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=jpg`,
+];
+
+function isEvidenceSrc(src = '') {
+  return /itmschallan|img2\/challans|vehicle_img|no_image|\/storage\/|\/uploads\//i.test(src);
+}
+
+function proxyUrlsFor(originalUrl) {
+  if (!originalUrl || originalUrl.startsWith('data:') || /no_image|wsrv\.nl|weserv\.nl/i.test(originalUrl)) {
+    return [];
+  }
+  return IMAGE_PROXIES.map((fn) => fn(originalUrl));
+}
 
 /**
  * Record every image response on this browser context so we can embed
@@ -47,9 +67,7 @@ export function ensureImageCache(context) {
 }
 
 /**
- * Intercept evidence image CDNs used by Parivahan print pages:
- * - echallan.../www/img2/challans/...
- * - itmschallan.parivahan.gov.in/... (HR/ITMS camera photos — main VPS failure)
+ * Intercept evidence CDNs. On VPS, fulfill from proxy when direct CDN is blocked.
  */
 export async function installChallanImageRoutes(context) {
   ensureImageCache(context);
@@ -58,61 +76,45 @@ export async function installChallanImageRoutes(context) {
 
   const handler = async (route) => {
     const original = route.request().url();
-    // Only intercept image-like evidence URLs (skip HTML/login navigations)
-    if (!/\.(png|jpe?g|webp|gif)(\?|$)/i.test(original) && !/img2\/challans|\/storage\/|\/uploads\/|evidence|vehicle|challan.?img/i.test(original)) {
+    if (
+      !/\.(png|jpe?g|webp|gif)(\?|$)/i.test(original) &&
+      !/img2\/challans|\/storage\/|\/uploads\/|evidence|vehicle|challan.?img/i.test(original)
+    ) {
       await route.continue().catch(() => {});
       return;
     }
 
     const headers = route.request().headers();
     const referer =
-      headers.referer ||
-      headers.Referer ||
-      'https://echallan.parivahan.nic.in/challan/';
-    const candidates = hostFallbackUrls(original);
+      headers.referer || headers.Referer || 'https://echallan.parivahan.nic.in/challan/';
+
+    const candidates = [
+      ...hostFallbackUrls(original),
+      ...proxyUrlsFor(original),
+    ];
 
     for (const url of candidates) {
-      try {
-        const resp = await route.fetch({
-          url,
-          timeout: FETCH_TIMEOUT_MS,
-          headers: {
-            ...headers,
-            referer,
-            Referer: referer,
-            accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-            Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          },
-        });
-        if (!resp.ok()) continue;
-        const body = await resp.body();
-        const ct = String(resp.headers()['content-type'] || '').toLowerCase();
-        if (!isUsableImage(body, ct)) {
-          if (looksLikeWafHtml(body, ct)) {
-            log.warn('Evidence CDN returned WAF/HTML instead of image', { url: shorten(url) });
-          }
-          continue;
-        }
+      const entry = await fetchBytes(context, url, referer, headers);
+      if (!entry) continue;
 
-        const contentType = ct.split(';')[0].startsWith('image/') ? ct.split(';')[0] : sniffImageType(body);
-        const buf = Buffer.from(body);
-        rememberImage(ensureImageCache(context), original, { body: buf, contentType });
-        rememberImage(ensureImageCache(context), url, { body: buf, contentType });
-        if (url !== original) {
-          log.step('Evidence image host fallback', { from: shorten(original), to: shorten(url), bytes: buf.length });
-        }
-        await route.fulfill({
-          status: 200,
-          headers: {
-            'content-type': contentType,
-            'cache-control': 'public, max-age=60',
-          },
-          body: buf,
+      rememberImage(ensureImageCache(context), original, entry);
+      rememberImage(ensureImageCache(context), url, entry);
+      if (url !== original) {
+        log.step('Evidence image fulfilled', {
+          from: shorten(original),
+          via: shorten(url),
+          bytes: entry.body.length,
         });
-        return;
-      } catch {
-        // try next host
       }
+      await route.fulfill({
+        status: 200,
+        headers: {
+          'content-type': entry.contentType,
+          'cache-control': 'public, max-age=60',
+        },
+        body: entry.body,
+      });
+      return;
     }
 
     await route.continue().catch(() => route.abort().catch(() => {}));
@@ -127,17 +129,44 @@ export async function inlinePageImages(page, challanNumber = '') {
   const started = Date.now();
   const referer = page.url();
 
-  await page.waitForTimeout(800).catch(() => {});
+  await page.waitForTimeout(500).catch(() => {});
+
+  // Rewrite blocked CDN URLs through image proxy BEFORE waiting — this is the VPS fix
+  const rewrite = await page
+    .evaluate(() => {
+      const changed = [];
+      for (const img of document.images) {
+        const src = img.getAttribute('src') || img.currentSrc || '';
+        if (!src || src.startsWith('data:')) continue;
+        if (/no_image/i.test(src)) continue;
+        if (!/itmschallan|img2\/challans|vehicle_img|\/storage\/|\/uploads\//i.test(src)) continue;
+        if (/wsrv\.nl|weserv\.nl/i.test(src)) continue;
+
+        let abs = src;
+        try {
+          abs = new URL(src, location.href).href;
+        } catch {
+          // keep
+        }
+        const proxied = `https://wsrv.nl/?url=${encodeURIComponent(abs)}&output=jpg`;
+        img.removeAttribute('srcset');
+        img.loading = 'eager';
+        img.decoding = 'sync';
+        img.src = proxied;
+        changed.push({ from: abs.slice(0, 120), to: proxied.slice(0, 120) });
+      }
+      return changed;
+    })
+    .catch(() => []);
+
+  if (rewrite?.length) {
+    log.step('Rewrote evidence images through proxy', { count: rewrite.length, samples: rewrite.slice(0, 3) });
+  }
+
   await page
     .evaluate(() => {
       for (const img of document.images) {
-        img.loading = 'eager';
-        img.decoding = 'sync';
         img.scrollIntoView({ block: 'nearest' });
-        const src = img.getAttribute('src') || '';
-        if (src && !src.startsWith('data:') && /itmschallan|img2\/challans|vehicle_img/i.test(src)) {
-          img.src = src;
-        }
       }
     })
     .catch(() => {});
@@ -145,13 +174,12 @@ export async function inlinePageImages(page, challanNumber = '') {
   await page
     .waitForFunction(
       () => {
-        const imgs = [...document.images];
-        if (!imgs.length) return true;
-        return imgs.every((img) => {
+        const imgs = [...document.images].filter((img) => {
           const src = img.getAttribute('src') || img.currentSrc || '';
-          if (!src || src.startsWith('data:')) return true;
-          return img.complete;
+          return src && !src.startsWith('data:') && /itmschallan|img2\/challans|wsrv\.nl|weserv|vehicle_img/i.test(src);
         });
+        if (!imgs.length) return true;
+        return imgs.every((img) => img.complete && img.naturalWidth > 2);
       },
       { timeout: IMAGE_WAIT_MS }
     )
@@ -162,21 +190,20 @@ export async function inlinePageImages(page, challanNumber = '') {
       });
     });
 
-  // Capture which evidence URLs the page actually requested (incl. itmschallan)
   const pageImageSrcs = await page
     .evaluate(() =>
       [...document.images].map((img) => img.currentSrc || img.getAttribute('src') || '').filter(Boolean)
     )
     .catch(() => []);
-  const itmsSrcs = pageImageSrcs.filter((s) => /itmschallan/i.test(s));
-  if (itmsSrcs.length) {
-    log.step('Detected ITMS evidence image URLs', {
-      count: itmsSrcs.length,
-      srcs: itmsSrcs.map((s) => String(s).slice(0, 140)),
+  const evidenceSrcs = pageImageSrcs.filter((s) => isEvidenceSrc(s) || /wsrv\.nl|weserv/i.test(s));
+  if (evidenceSrcs.length) {
+    log.step('Evidence image URLs on page', {
+      count: evidenceSrcs.length,
+      srcs: evidenceSrcs.map((s) => String(s).slice(0, 140)),
     });
   }
 
-  await warmImageHosts(page.context(), referer, itmsSrcs);
+  // Do NOT warm itmschallan/gov.in from VPS — those navigations hang and waste the budget.
   await recoverMissingEvidenceImages(page, challanNumber, RECOVERY_BUDGET_MS);
 
   const imgs = await page.evaluate(() =>
@@ -190,21 +217,27 @@ export async function inlinePageImages(page, challanNumber = '') {
   let inlined = 0;
   for (const img of imgs) {
     if (!img.src || img.src.startsWith('data:')) continue;
+    if (/no_image/i.test(img.src)) continue;
 
     let abs = img.src;
     try {
       abs = new URL(img.src, page.url()).href;
     } catch {
-      // keep original
+      // keep
     }
-
-    // Never bake the "NO IMAGE AVAILABLE" placeholder into the PDF as evidence
-    if (/no_image/i.test(abs)) continue;
 
     let entry = cache.get(abs) || cache.get(img.src);
     if (!entry) {
       entry = await fetchImage(page, abs, referer);
       if (entry) cache.set(abs, entry);
+    }
+    if (!entry && isEvidenceSrc(abs)) {
+      for (const proxyUrl of proxyUrlsFor(unwrapProxyUrl(abs))) {
+        entry = await fetchImage(page, proxyUrl, referer);
+        if (entry) break;
+        entry = await fetchImageViaNode(proxyUrl, referer);
+        if (entry) break;
+      }
     }
 
     if (!entry && img.naturalWidth > 2) {
@@ -243,7 +276,7 @@ export async function inlinePageImages(page, challanNumber = '') {
   });
 
   await page
-    .waitForFunction(() => [...document.images].every((img) => img.complete), { timeout: 5000 })
+    .waitForFunction(() => [...document.images].every((img) => img.complete), { timeout: 4000 })
     .catch(() => {});
 }
 
@@ -260,23 +293,26 @@ async function recoverMissingEvidenceImages(page, challanNumber, budgetMs = RECO
         src,
         naturalWidth: img.naturalWidth || 0,
         isEvidence:
-          /150px|img2\/challans|vehicle_img|no_image|itmschallan/i.test(`${src} ${style} ${alt}`) ||
+          /150px|img2\/challans|vehicle_img|no_image|itmschallan|wsrv\.nl|weserv|\/storage\//i.test(
+            `${src} ${style} ${alt}`
+          ) ||
           img.height === 150 ||
           img.clientHeight >= 120,
       };
     })
   );
 
-  // Treat no_image + failed itmschallan/img2 slots as broken (VPS often times out on ITMS CDN)
   const broken = slots.filter((slot) => {
     if (!slot.isEvidence) return false;
     if (slot.src.startsWith('data:')) return false;
     if (/no_image/i.test(slot.src)) return true;
-    if (slot.naturalWidth < 8) return true;
-    return /img2\/challans|vehicle_img|itmschallan/i.test(slot.src);
+    return slot.naturalWidth < 8;
   });
 
-  if (!broken.length) return;
+  if (!broken.length) {
+    log.step('No broken evidence slots — images already loaded');
+    return;
+  }
 
   log.step('Recovering missing evidence images', {
     broken: broken.length,
@@ -285,82 +321,46 @@ async function recoverMissingEvidenceImages(page, challanNumber, budgetMs = RECO
   });
 
   let recovered = 0;
-  for (const slot of broken) {
-    if (Date.now() >= deadline) {
-      log.warn('Evidence recovery budget exhausted — continuing without remaining images', {
-        remaining: broken.length - broken.indexOf(slot),
-        recovered,
-        challanNumber,
-      });
-      break;
+  // Recover in parallel (max 3) — serial was too slow on VPS timeouts
+  const queue = [...broken];
+  const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
+    while (queue.length && Date.now() < deadline) {
+      const slot = queue.shift();
+      if (!slot) break;
+      const original = unwrapProxyUrl(slot.src);
+      const candidates = candidateImageUrls(challanNumber, original, referer);
+      const remainingMs = Math.max(4000, deadline - Date.now());
+      const entry = await raceFirstImage(page, candidates, remainingMs, referer);
+      if (!entry) {
+        log.warn('Could not recover evidence image slot', { index: slot.index, src: shorten(slot.src) });
+        continue;
+      }
+      const dataUrl = `data:${entry.contentType};base64,${entry.body.toString('base64')}`;
+      await page.evaluate(
+        ({ index, dataUrl: nextSrc }) => {
+          const el = document.images[index];
+          if (!el) return;
+          el.removeAttribute('srcset');
+          el.src = nextSrc;
+        },
+        { index: slot.index, dataUrl }
+      );
+      recovered += 1;
+      log.step('Recovered evidence image', { index: slot.index, bytes: entry.body.length });
     }
+  });
 
-    const candidates = candidateImageUrls(challanNumber, slot.src, referer);
-    const remainingMs = Math.max(5000, deadline - Date.now());
-    const entry = await raceFirstImage(page, candidates, remainingMs, referer);
-    if (!entry) {
-      log.warn('Could not recover evidence image slot', { index: slot.index, src: shorten(slot.src) });
-      continue;
-    }
+  await Promise.all(workers);
 
-    const dataUrl = `data:${entry.contentType};base64,${entry.body.toString('base64')}`;
-    await page.evaluate(
-      ({ index, dataUrl: nextSrc }) => {
-        const el = document.images[index];
-        if (!el) return;
-        el.removeAttribute('srcset');
-        el.src = nextSrc;
-      },
-      { index: slot.index, dataUrl }
-    );
-    recovered += 1;
-    log.step('Recovered evidence image', { index: slot.index, bytes: entry.body.length });
+  if (queue.length) {
+    log.warn('Evidence recovery budget exhausted — continuing without remaining images', {
+      remaining: queue.length,
+      recovered,
+      challanNumber,
+    });
   }
 
   log.step('Evidence recovery finished', { recovered, broken: broken.length, challanNumber });
-}
-
-/**
- * Visit image hosts once so WAF/session cookies are set before photo fetches.
- */
-async function warmImageHosts(context, referer = '', itmsSrcs = []) {
-  const done = warmedHosts.get(context) || new Set();
-  const hosts = [
-    'https://echallan.parivahan.gov.in/',
-    'https://echallan.parivahan.nic.in/',
-    'https://itmschallan.parivahan.gov.in/',
-  ];
-
-  // Also warm the origin of any concrete ITMS image URL we already saw
-  for (const src of itmsSrcs) {
-    try {
-      const u = new URL(src);
-      hosts.push(`${u.origin}/`);
-    } catch {
-      // ignore
-    }
-  }
-
-  for (const host of [...new Set(hosts)]) {
-    if (done.has(host)) continue;
-    let tab;
-    try {
-      tab = await context.newPage();
-      await tab.setExtraHTTPHeaders({
-        Referer: referer || 'https://echallan.parivahan.nic.in/challan/',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      });
-      await tab.goto(host, { waitUntil: 'domcontentloaded', timeout: 20000 });
-      await tab.waitForTimeout(800).catch(() => {});
-      done.add(host);
-      log.step('Warmed evidence image host', { host });
-    } catch (err) {
-      log.warn('Failed to warm evidence image host', { host, error: err?.message || String(err) });
-    } finally {
-      if (tab) await tab.close().catch(() => {});
-    }
-  }
-  warmedHosts.set(context, done);
 }
 
 async function raceFirstImage(page, candidates, budgetMs, referer) {
@@ -375,17 +375,24 @@ async function raceFirstImage(page, candidates, budgetMs, referer) {
     }
   }
 
-  for (const url of candidates) {
+  // Try in small parallel batches
+  for (let i = 0; i < candidates.length; i += 3) {
     if (Date.now() >= deadline) break;
-
-    let entry = cache.get(url) || (await fetchImage(page, url, referer));
-    if (!entry) entry = await fetchImageInBrowserTab(page.context(), url, referer);
-    if (!entry) entry = await fetchImageViaNode(url, referer);
-
-    if (entry && entry.body.length >= MIN_EVIDENCE_BYTES && isUsableImage(entry.body, entry.contentType)) {
-      rememberImage(cache, url, entry);
-      return entry;
-    }
+    const batch = candidates.slice(i, i + 3);
+    const results = await Promise.all(
+      batch.map(async (url) => {
+        let entry = cache.get(url) || (await fetchImage(page, url, referer));
+        if (!entry) entry = await fetchImageViaNode(url, referer);
+        if (!entry) entry = await fetchImageInBrowserTab(page.context(), url, referer);
+        if (entry && entry.body.length >= MIN_EVIDENCE_BYTES && isUsableImage(entry.body, entry.contentType)) {
+          rememberImage(cache, url, entry);
+          return entry;
+        }
+        return null;
+      })
+    );
+    const found = results.find(Boolean);
+    if (found) return found;
   }
 
   return null;
@@ -394,63 +401,48 @@ async function raceFirstImage(page, candidates, budgetMs, referer) {
 function candidateImageUrls(challanNumber, originalSrc = '', pageUrl = '') {
   const id = String(challanNumber || '').replace(/[^A-Za-z0-9]/g, '');
   const state = id.slice(0, 2).toUpperCase();
-  const stateLower = state.toLowerCase();
   const urls = [];
-
   const push = (value) => {
     if (value && !urls.includes(value)) urls.push(value);
   };
 
-  // Always prefer the exact URL the print page used (itmschallan or img2)
-  if (originalSrc && !originalSrc.startsWith('data:') && !/no_image/i.test(originalSrc)) {
+  const raw = unwrapProxyUrl(originalSrc);
+
+  if (raw && !raw.startsWith('data:') && !/no_image/i.test(raw)) {
     try {
-      push(new URL(originalSrc, pageUrl || 'https://echallan.parivahan.nic.in/').href);
+      push(new URL(raw, pageUrl || 'https://echallan.parivahan.nic.in/').href);
     } catch {
-      push(originalSrc);
+      push(raw);
     }
-    for (const url of hostFallbackUrls(originalSrc)) push(url);
+    for (const url of hostFallbackUrls(raw)) push(url);
+    // Proxy variants FIRST for VPS (direct CDN often blocked)
+    for (const url of proxyUrlsFor(raw)) urls.unshift(url);
   }
 
   if (id && state) {
-    const echallanHosts = ['https://echallan.parivahan.gov.in', 'https://echallan.parivahan.nic.in'];
-    const folders = [state, stateLower];
-    const suffixes = [
-      '_vehicle_img.png',
-      '_vehicle_img.jpg',
-      '_img.png',
-      '_img.jpg',
-      '_doc_img.png',
-      '_doc_img.jpg',
-      '_challan_img.png',
-      '_challan_img.jpg',
-    ];
-    for (const host of echallanHosts) {
-      for (const folder of folders) {
-        for (const suffix of suffixes) {
-          push(`${host}/www/img2/challans/${folder}/challan/${id}${suffix}`);
-          push(`${host}/img2/challans/${folder}/challan/${id}${suffix}`);
-        }
+    for (const host of ['https://echallan.parivahan.gov.in', 'https://echallan.parivahan.nic.in']) {
+      for (const suffix of ['_vehicle_img.png', '_vehicle_img.jpg', '_img.jpg', '_img.png']) {
+        const u = `${host}/www/img2/challans/${state}/challan/${id}${suffix}`;
+        push(u);
+        for (const p of proxyUrlsFor(u)) push(p);
       }
-    }
-
-    // ITMS-style guesses (HR and other states that host on itmschallan)
-    const itmsHosts = ['https://itmschallan.parivahan.gov.in', 'https://itmschallan.parivahan.nic.in'];
-    const itmsPaths = [
-      `/storage/challan/${id}.jpg`,
-      `/storage/challan/${id}.png`,
-      `/storage/challans/${id}.jpg`,
-      `/storage/${id}.jpg`,
-      `/uploads/challan/${id}.jpg`,
-      `/uploads/${id}.jpg`,
-      `/challan_images/${id}.jpg`,
-      `/public/storage/challan/${id}.jpg`,
-    ];
-    for (const host of itmsHosts) {
-      for (const path of itmsPaths) push(`${host}${path}`);
     }
   }
 
-  return urls;
+  return [...new Set(urls)];
+}
+
+function unwrapProxyUrl(src = '') {
+  try {
+    const u = new URL(src, 'https://echallan.parivahan.nic.in/');
+    if (/wsrv\.nl|weserv\.nl/i.test(u.hostname)) {
+      const inner = u.searchParams.get('url');
+      if (inner) return inner;
+    }
+    return u.href;
+  } catch {
+    return src;
+  }
 }
 
 function hostFallbackUrls(originalSrc) {
@@ -458,43 +450,45 @@ function hostFallbackUrls(originalSrc) {
   try {
     const u = new URL(originalSrc);
     const alts = new Set();
-
-    if (u.hostname.includes('parivahan.gov.in')) {
-      alts.add(u.hostname.replace('parivahan.gov.in', 'parivahan.nic.in'));
-    }
-    if (u.hostname.includes('parivahan.nic.in')) {
-      alts.add(u.hostname.replace('parivahan.nic.in', 'parivahan.gov.in'));
-    }
-    // Cross-swap itmschallan ↔ echallan keeping the path when possible
-    if (u.hostname.startsWith('itmschallan.')) {
-      alts.add(u.hostname.replace('itmschallan.', 'echallan.'));
-    }
-    if (u.hostname.startsWith('echallan.')) {
-      alts.add(u.hostname.replace('echallan.', 'itmschallan.'));
-    }
+    if (u.hostname.includes('parivahan.gov.in')) alts.add(u.hostname.replace('parivahan.gov.in', 'parivahan.nic.in'));
+    if (u.hostname.includes('parivahan.nic.in')) alts.add(u.hostname.replace('parivahan.nic.in', 'parivahan.gov.in'));
+    if (u.hostname.startsWith('itmschallan.')) alts.add(u.hostname.replace('itmschallan.', 'echallan.'));
+    if (u.hostname.startsWith('echallan.')) alts.add(u.hostname.replace('echallan.', 'itmschallan.'));
 
     for (const host of alts) {
       const alt = new URL(originalSrc);
       alt.hostname = host;
-      // Prefer non-gov / alternate host first for VPS blocks
-      if (u.hostname.includes('gov.in') || u.hostname.includes('itmschallan')) {
-        urls.unshift(alt.href);
-      } else {
-        urls.push(alt.href);
-      }
-      if (/\.png$/i.test(u.pathname)) {
-        urls.push(alt.href.replace(/\.png$/i, '.jpg'));
-        urls.push(originalSrc.replace(/\.png$/i, '.jpg'));
-      }
-      if (/\.jpe?g$/i.test(u.pathname)) {
-        urls.push(alt.href.replace(/\.jpe?g$/i, '.png'));
-        urls.push(originalSrc.replace(/\.jpe?g$/i, '.png'));
-      }
+      urls.push(alt.href);
+      if (/\.png$/i.test(u.pathname)) urls.push(alt.href.replace(/\.png$/i, '.jpg'));
+      if (/\.jpe?g$/i.test(u.pathname)) urls.push(alt.href.replace(/\.jpe?g$/i, '.png'));
     }
   } catch {
     // ignore
   }
   return [...new Set(urls.filter(Boolean))];
+}
+
+async function fetchBytes(context, url, referer, headers = {}) {
+  try {
+    const resp = await context.request.get(url, {
+      timeout: FETCH_TIMEOUT_MS,
+      headers: {
+        ...headers,
+        Referer: referer,
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      },
+    });
+    if (!resp.ok()) return null;
+    const body = Buffer.from(await resp.body());
+    const ct = String(resp.headers()['content-type'] || '').toLowerCase();
+    if (!isUsableImage(body, ct)) return null;
+    return {
+      body,
+      contentType: ct.split(';')[0].startsWith('image/') ? ct.split(';')[0] : sniffImageType(body),
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchImageInBrowserTab(context, url, referer) {
@@ -593,7 +587,7 @@ function rememberImage(cache, url, entry) {
     clean.search = '';
     cache.set(clean.href, entry);
   } catch {
-    // ignore invalid urls
+    // ignore
   }
 }
 
@@ -608,17 +602,13 @@ function looksLikeWafHtml(body, contentType = '') {
 function isUsableImage(body, contentType = '') {
   if (!body || body.length < 80) return false;
   if (looksLikeWafHtml(body, contentType)) return false;
-
-  const ct = String(contentType || '').toLowerCase();
-  if (ct.includes('application/json')) return false;
+  if (String(contentType || '').toLowerCase().includes('application/json')) return false;
 
   const isPng = body[0] === 0x89 && body[1] === 0x50;
   const isJpeg = body[0] === 0xff && body[1] === 0xd8;
   const isGif = body[0] === 0x47 && body[1] === 0x49;
   const isWebp = body[0] === 0x52 && body[1] === 0x49 && body[8] === 0x57;
-  if (!(isPng || isJpeg || isGif || isWebp)) return false;
-
-  return true;
+  return isPng || isJpeg || isGif || isWebp;
 }
 
 function sniffImageType(buf) {
