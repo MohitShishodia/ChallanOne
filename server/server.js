@@ -123,12 +123,7 @@ async function bootstrap() {
     console.warn('⚠️ Skipping DB seed — MongoDB not connected (check hosting allows outbound port 27017)');
   }
 
-  const emailReady = await verifyEmailConnection();
-  if (emailReady) {
-    console.log('📧 Email service is ready');
-  } else {
-    console.log('⚠️ Email service is not configured properly');
-  }
+  await verifyEmailConnection();
 }
 
 const bootstrapPromise = bootstrap();
@@ -224,12 +219,47 @@ app.get('/api/health/db', async (req, res) => {
 });
 
 if (!isPassenger) {
-  bootstrapPromise.then(() => {
+  let listenStarted = false;
+
+  process.on('uncaughtException', (err) => {
+    console.error('❌ uncaughtException:', err?.stack || err);
+  });
+  process.on('unhandledRejection', (err) => {
+    console.error('❌ unhandledRejection:', err?.stack || err);
+  });
+
+  const startListening = (retriesLeft = 8) => {
+    if (listenStarted) return;
+    listenStarted = true;
+
+    const onError = (err) => {
+      httpServer.off('error', onError);
+      listenStarted = false;
+      if (err?.code === 'EADDRINUSE' && retriesLeft > 0) {
+        console.warn(`⚠️ Port ${PORT} busy — retrying in 1s (${retriesLeft} left)`);
+        setTimeout(() => startListening(retriesLeft - 1), 1000);
+        return;
+      }
+      console.error('❌ Failed to bind API port:', err);
+      process.exit(1);
+    };
+
+    httpServer.once('error', onError);
     httpServer.listen(PORT, '0.0.0.0', () => {
+      httpServer.off('error', onError);
       console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
       console.log(`👑 Admin API ready at http://localhost:${PORT}/api/admin`);
     });
-  });
+  };
+
+  // Bind port even if email/DB bootstrap warns — don't block listen on Brevo
+  bootstrapPromise
+    .catch((err) => {
+      console.error('❌ Bootstrap failed (server will still listen):', err?.message || err);
+    })
+    .finally(() => {
+      startListening();
+    });
 }
 
 export default app;

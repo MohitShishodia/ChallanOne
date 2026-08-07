@@ -1,12 +1,13 @@
 import { emailConfig, smsConfig } from '../config.js';
 
-// Log email config at startup (without full API key)
-console.log('📧 Email Config Loaded:', {
-  provider: 'Brevo',
-  apiKeyPrefix: emailConfig.apiKey ? emailConfig.apiKey.substring(0, 15) + '...' : 'NOT SET',
-  fromEmail: emailConfig.fromEmail,
-  fromName: emailConfig.fromName
-});
+const brevoConfigured = Boolean(emailConfig.apiKey && emailConfig.apiKey !== 'your-brevo-api-key');
+
+// One quiet line at startup — missing Brevo must never spam/crash the API
+if (brevoConfigured) {
+  console.log('📧 Email (Brevo): configured');
+} else {
+  console.log('📧 Email (Brevo): not configured (email OTP disabled)');
+}
 
 // Send OTP via SMS using Fast2SMS
 export async function sendSmsOtp(phone, otp) {
@@ -86,6 +87,10 @@ function getOtpEmailHtml(otp) {
 
 // Send OTP via Email using Brevo API
 export async function sendEmailOtp(email, otp) {
+  if (!brevoConfigured) {
+    return { success: false, error: 'Email OTP is not configured on this server.' };
+  }
+
   const htmlContent = getOtpEmailHtml(otp);
 
   console.log('📧 ==============================================');
@@ -146,12 +151,5 @@ export async function sendEmailOtp(email, otp) {
 
 // Verify email service connection (for startup check)
 export async function verifyEmailConnection() {
-  console.log('📧 Verifying Brevo API key...');
-  if (!emailConfig.apiKey || emailConfig.apiKey === 'your-brevo-api-key') {
-    console.error('⚠️ Brevo API key not configured!');
-    return false;
-  }
-  console.log('✅ Brevo API key is configured');
-  console.log('✅ Email service is ready');
-  return true;
+  return brevoConfigured;
 }
