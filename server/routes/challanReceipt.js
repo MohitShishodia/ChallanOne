@@ -11,7 +11,7 @@ import { createLogger } from '../services/echallanReceipt/logger.js';
 const router = express.Router();
 const log = createLogger('[API/challan/receipt]');
 
-const REQUEST_TIMEOUT_MS = 160_000;
+const REQUEST_TIMEOUT_MS = 170_000;
 
 /**
  * POST /api/challan/receipt/auto

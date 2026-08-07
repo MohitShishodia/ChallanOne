@@ -152,8 +152,7 @@ async function waitForReceiptReady(page, challanNumber) {
         return hasTable || hasChallanNo || hasReceiptMarkers;
       },
       { challan: challanNumber || '', loadingMarkers: LOADING_MARKERS },
-      // Print pages with evidence photos often take longer than payment receipts
-      { timeout: 35000 }
+      { timeout: 15000 }
     );
   } catch {
     // Give a short extra grace period before giving up

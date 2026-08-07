@@ -3,13 +3,7 @@ import { createLogger } from './logger.js';
 const log = createLogger();
 const caches = new WeakMap();
 
-/**
- * VPS datacenter IPs are blocked by itmschallan / echallan camera CDNs.
- * Accept missing evidence photos gracefully — generate PDF with whatever loaded.
- * Don't burn the request budget retrying blocked hosts or proxies.
- */
-const IMAGE_WAIT_MS = 6000;
-const ROUTE_FETCH_TIMEOUT_MS = 5000;
+const ROUTE_FETCH_TIMEOUT = 4000;
 
 /**
  * Record every image response on this browser context so we can embed
@@ -47,7 +41,10 @@ export function ensureImageCache(context) {
 }
 
 /**
- * Intercept evidence CDN requests. Try host fallback once; don't hang.
+ * Intercept evidence CDN requests with one host-swap fallback.
+ * The route handler is the ONLY place we fetch images — inlinePageImages
+ * only reads from cache, so every image that loads through this handler
+ * gets automatically available for inlining.
  */
 export async function installChallanImageRoutes(context) {
   ensureImageCache(context);
@@ -73,7 +70,7 @@ export async function installChallanImageRoutes(context) {
       try {
         const resp = await route.fetch({
           url,
-          timeout: ROUTE_FETCH_TIMEOUT_MS,
+          timeout: ROUTE_FETCH_TIMEOUT,
           headers: {
             ...headers,
             referer,
@@ -89,9 +86,6 @@ export async function installChallanImageRoutes(context) {
         const contentType = ct.split(';')[0].startsWith('image/') ? ct.split(';')[0] : sniffImageType(body);
         const buf = Buffer.from(body);
         rememberImage(ensureImageCache(context), original, { body: buf, contentType });
-        if (url !== original) {
-          log.step('Evidence image host fallback', { from: shorten(original), to: shorten(url), bytes: buf.length });
-        }
         await route.fulfill({
           status: 200,
           headers: { 'content-type': contentType, 'cache-control': 'public, max-age=60' },
@@ -99,7 +93,7 @@ export async function installChallanImageRoutes(context) {
         });
         return;
       } catch {
-        // next
+        // next candidate
       }
     }
 
@@ -110,36 +104,22 @@ export async function installChallanImageRoutes(context) {
   await context.route('**/*itmschallan.parivahan.*/**', handler);
 }
 
+/**
+ * Inline cached images into the page as data: URIs for page.pdf().
+ * ZERO network calls — only reads from the response cache populated
+ * by installChallanImageRoutes during page load. This keeps inlining
+ * under 1-2 seconds regardless of how many images are on the page.
+ */
 export async function inlinePageImages(page, challanNumber = '') {
   const cache = ensureImageCache(page.context());
   const started = Date.now();
-
-  await page.waitForTimeout(400).catch(() => {});
-  await page
-    .evaluate(() => {
-      for (const img of document.images) {
-        img.loading = 'eager';
-        img.scrollIntoView({ block: 'nearest' });
-      }
-    })
-    .catch(() => {});
-
-  await page
-    .waitForFunction(
-      () => [...document.images].every((img) => img.complete || !(img.getAttribute('src') || img.currentSrc)),
-      { timeout: IMAGE_WAIT_MS }
-    )
-    .catch(() => {
-      log.warn('Image load wait timed out — proceeding', { challanNumber, waitedMs: Date.now() - started });
-    });
 
   const imgs = await page.evaluate(() =>
     [...document.images].map((img, index) => ({
       index,
       src: img.currentSrc || img.getAttribute('src') || '',
-      naturalWidth: img.naturalWidth || 0,
     }))
-  );
+  ).catch(() => []);
 
   let inlined = 0;
   for (const img of imgs) {
@@ -154,14 +134,14 @@ export async function inlinePageImages(page, challanNumber = '') {
 
     const dataUrl = `data:${entry.contentType};base64,${entry.body.toString('base64')}`;
     await page.evaluate(
-      ({ index, dataUrl: nextSrc }) => {
-        const el = document.images[index];
+      ({ idx, src }) => {
+        const el = document.images[idx];
         if (!el) return;
         el.removeAttribute('srcset');
-        el.src = nextSrc;
+        el.src = src;
       },
-      { index: img.index, dataUrl }
-    );
+      { idx: img.index, src: dataUrl }
+    ).catch(() => {});
     inlined += 1;
   }
 
@@ -169,33 +149,25 @@ export async function inlinePageImages(page, challanNumber = '') {
     total: imgs.length, inlined, cached: cache.size,
     elapsedMs: Date.now() - started, challanNumber,
   });
-
-  await page
-    .waitForFunction(() => [...document.images].every((img) => img.complete), { timeout: 2000 })
-    .catch(() => {});
 }
 
 function hostFallbackUrls(originalSrc) {
   const urls = [originalSrc];
   try {
     const u = new URL(originalSrc);
-    const swaps = [];
-    if (u.hostname.includes('parivahan.gov.in')) swaps.push(u.hostname.replace('parivahan.gov.in', 'parivahan.nic.in'));
-    if (u.hostname.includes('parivahan.nic.in')) swaps.push(u.hostname.replace('parivahan.nic.in', 'parivahan.gov.in'));
-    if (u.hostname.startsWith('itmschallan.')) swaps.push(u.hostname.replace('itmschallan.', 'echallan.'));
-    if (u.hostname.startsWith('echallan.')) swaps.push(u.hostname.replace('echallan.', 'itmschallan.'));
-
-    for (const host of swaps) {
+    if (u.hostname.includes('parivahan.gov.in')) {
       const alt = new URL(originalSrc);
-      alt.hostname = host;
+      alt.hostname = u.hostname.replace('parivahan.gov.in', 'parivahan.nic.in');
+      urls.push(alt.href);
+    } else if (u.hostname.includes('parivahan.nic.in')) {
+      const alt = new URL(originalSrc);
+      alt.hostname = u.hostname.replace('parivahan.nic.in', 'parivahan.gov.in');
       urls.push(alt.href);
     }
-    if (/\.png$/i.test(u.pathname)) urls.push(originalSrc.replace(/\.png$/i, '.jpg'));
-    if (/\.jpe?g$/i.test(u.pathname)) urls.push(originalSrc.replace(/\.jpe?g$/i, '.png'));
   } catch {
     // ignore
   }
-  return [...new Set(urls.filter(Boolean))];
+  return urls;
 }
 
 function rememberImage(cache, url, entry) {
@@ -217,7 +189,6 @@ function isUsableImage(body, contentType = '') {
   if (ct.includes('text/html') || ct.includes('application/json')) return false;
   const head = Buffer.from(body).subarray(0, 64).toString('utf8').toLowerCase();
   if (head.includes('<html') || head.includes('<!doctype')) return false;
-
   const isPng = body[0] === 0x89 && body[1] === 0x50;
   const isJpeg = body[0] === 0xff && body[1] === 0xd8;
   const isGif = body[0] === 0x47 && body[1] === 0x49;
@@ -231,8 +202,4 @@ function sniffImageType(buf) {
   if (buf[0] === 0x47 && buf[1] === 0x49) return 'image/gif';
   if (buf[0] === 0x52 && buf[1] === 0x49) return 'image/webp';
   return 'application/octet-stream';
-}
-
-function shorten(url) {
-  return String(url || '').slice(0, 140);
 }
