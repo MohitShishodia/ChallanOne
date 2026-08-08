@@ -1,22 +1,57 @@
+import { request as pwRequest } from 'playwright';
 import { createLogger } from './logger.js';
 
 const log = createLogger();
 const caches = new WeakMap();
 
-const DIRECT_FETCH_TIMEOUT = 4000;
-const PROXY_FETCH_TIMEOUT = 8000;
+const DIRECT_FETCH_TIMEOUT = 5000;
+const PROXY_FETCH_TIMEOUT = 9000;
 const IMAGE_SETTLE_MS = 8000;
 
 /**
- * Build proxy URLs for an image. wsrv.nl runs on Cloudflare's edge network —
- * its IPs aren't blocked by government CDNs, unlike VPS datacenter IPs.
+ * itmschallan.parivahan.gov.in (the evidence-photo CDN) blackholes datacenter
+ * IP ranges — verified: a residential IP gets an instant response while
+ * Cloudflare's network times out. Public image proxies all run on datacenter
+ * IPs, so they cannot help for that host.
+ *
+ * Set CHALLAN_IMAGE_PROXY to an Indian/residential HTTP proxy to fix it:
+ *   CHALLAN_IMAGE_PROXY=http://user:pass@host:port
+ */
+const IMAGE_PROXY = process.env.CHALLAN_IMAGE_PROXY || '';
+
+let proxyRequestContext = null;
+let proxyRequestContextPromise = null;
+
+async function getProxyRequestContext() {
+  if (!IMAGE_PROXY) return null;
+  if (proxyRequestContext) return proxyRequestContext;
+  if (!proxyRequestContextPromise) {
+    proxyRequestContextPromise = pwRequest
+      .newContext({
+        proxy: { server: IMAGE_PROXY },
+        ignoreHTTPSErrors: true,
+        timeout: PROXY_FETCH_TIMEOUT,
+      })
+      .then((ctx) => {
+        proxyRequestContext = ctx;
+        log.step('Image proxy enabled', { proxy: IMAGE_PROXY.replace(/\/\/[^@]*@/, '//***@') });
+        return ctx;
+      })
+      .catch((err) => {
+        log.warn('Failed to create image proxy context', err.message);
+        return null;
+      });
+  }
+  return proxyRequestContextPromise;
+}
+
+/**
+ * Public image proxies. These only help for hosts that allow datacenter IPs
+ * (echallan.parivahan.*). They cannot reach itmschallan.parivahan.gov.in.
  */
 function proxyUrls(originalUrl) {
   const encoded = encodeURIComponent(originalUrl);
-  return [
-    `https://wsrv.nl/?url=${encoded}`,
-    `https://images.weserv.nl/?url=${encoded}`,
-  ];
+  return [`https://wsrv.nl/?url=${encoded}`];
 }
 
 function isEvidenceUrl(url) {
@@ -108,12 +143,27 @@ export async function installChallanImageRoutes(context) {
       }
     }
 
-    // --- Step 3: Image proxy (wsrv.nl) ---
-    // wsrv.nl runs on Cloudflare — its IPs bypass government CDN blocks
+    // --- Step 3: Configured HTTP proxy (the only thing that works for
+    // itmschallan.parivahan.gov.in, which blocks datacenter IPs) ---
+    const viaProxy = await fetchThroughConfiguredProxy(original, referer);
+    if (viaProxy) {
+      log.step('Evidence image via configured proxy', {
+        url: shorten(original), bytes: viaProxy.body.length,
+      });
+      rememberImage(ensureImageCache(context), original, viaProxy);
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': viaProxy.contentType, 'cache-control': 'public, max-age=300' },
+        body: viaProxy.body,
+      });
+      return;
+    }
+
+    // --- Step 4: Public image proxy (helps only for echallan.* hosts) ---
     for (const pUrl of proxyUrls(original)) {
       const result = await tryFetchImage(route, pUrl, PROXY_FETCH_TIMEOUT, { accept: 'image/*' });
       if (result) {
-        log.step('Evidence image via proxy', { original: shorten(original), bytes: result.body.length });
+        log.step('Evidence image via public proxy', { url: shorten(original), bytes: result.body.length });
         rememberImage(ensureImageCache(context), original, result);
         await route.fulfill({
           status: 200,
@@ -124,6 +174,8 @@ export async function installChallanImageRoutes(context) {
       }
     }
 
+    log.warn('Evidence image unreachable — CDN is blocking this server IP', { url: shorten(original) });
+
     // All strategies failed — let the browser show broken image
     await route.continue().catch(() => route.abort().catch(() => {}));
   };
@@ -131,6 +183,24 @@ export async function installChallanImageRoutes(context) {
   await context.route('**/*img2/challans/**', handler);
   await context.route('**/*itmschallan.parivahan.*/**', handler);
   await context.route('**/*PushPhoto*', handler);
+}
+
+async function fetchThroughConfiguredProxy(url, referer) {
+  const ctx = await getProxyRequestContext();
+  if (!ctx) return null;
+  try {
+    const resp = await ctx.get(url, {
+      timeout: PROXY_FETCH_TIMEOUT,
+      headers: { Referer: referer, Accept: 'image/avif,image/webp,image/*,*/*;q=0.8' },
+    });
+    if (!resp.ok()) return null;
+    const body = Buffer.from(await resp.body());
+    const ct = String(resp.headers()['content-type'] || '').split(';')[0].toLowerCase();
+    if (!isUsableImage(body, ct)) return null;
+    return { body, contentType: ct.startsWith('image/') ? ct : sniffImageType(body) };
+  } catch {
+    return null;
+  }
 }
 
 async function tryFetchImage(route, url, timeout, headers) {
@@ -220,8 +290,14 @@ async function recoverViaProxy(page, missedImages, cache) {
     const originalUrl = img.abs || img.src;
     if (!originalUrl || /no_image/i.test(originalUrl)) return;
 
-    // Try to extract the real CDN URL from a no_image placeholder's parent context
-    // The portal sometimes replaces failed loads with no_image.png
+    const viaProxy = await fetchThroughConfiguredProxy(originalUrl, page.url());
+    if (viaProxy) {
+      cache.set(originalUrl, viaProxy);
+      await setImageSrc(page, img.index, viaProxy);
+      recovered += 1;
+      return;
+    }
+
     for (const pUrl of proxyUrls(originalUrl)) {
       try {
         const resp = await page.request.get(pUrl, {
