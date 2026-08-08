@@ -3,7 +3,25 @@ import { createLogger } from './logger.js';
 const log = createLogger();
 const caches = new WeakMap();
 
-const ROUTE_FETCH_TIMEOUT = 4000;
+const DIRECT_FETCH_TIMEOUT = 4000;
+const PROXY_FETCH_TIMEOUT = 8000;
+const IMAGE_SETTLE_MS = 8000;
+
+/**
+ * Build proxy URLs for an image. wsrv.nl runs on Cloudflare's edge network —
+ * its IPs aren't blocked by government CDNs, unlike VPS datacenter IPs.
+ */
+function proxyUrls(originalUrl) {
+  const encoded = encodeURIComponent(originalUrl);
+  return [
+    `https://wsrv.nl/?url=${encoded}`,
+    `https://images.weserv.nl/?url=${encoded}`,
+  ];
+}
+
+function isEvidenceUrl(url) {
+  return /img2\/challans|\/storage\/|evidence|vehicle|challan.?img|PushPhoto|itmschallan\.|echallan\./i.test(url);
+}
 
 /**
  * Record every image response on this browser context so we can embed
@@ -41,21 +59,25 @@ export function ensureImageCache(context) {
 }
 
 /**
- * Intercept evidence CDN requests with one host-swap fallback.
- * The route handler is the ONLY place we fetch images — inlinePageImages
- * only reads from cache, so every image that loads through this handler
- * gets automatically available for inlining.
+ * Intercept evidence CDN requests. Strategy per image:
+ * 1. Direct fetch to original URL (4s)
+ * 2. Host-swap fallback (.gov.in ↔ .nic.in) (4s)
+ * 3. wsrv.nl image proxy — Cloudflare edge bypasses CDN IP blocks (8s)
+ *
+ * All images load in parallel via Playwright route handlers, so the total
+ * added time is ~8s (the slowest single proxy call), not 8s × N images.
  */
 export async function installChallanImageRoutes(context) {
   ensureImageCache(context);
   await context.unroute('**/*img2/challans/**').catch(() => {});
   await context.unroute('**/*itmschallan.parivahan.*/**').catch(() => {});
+  await context.unroute('**/*echallan.parivahan.*/**/*PushPhoto*').catch(() => {});
 
   const handler = async (route) => {
     const original = route.request().url();
     if (
       !/\.(png|jpe?g|webp|gif)(\?|$)/i.test(original) &&
-      !/img2\/challans|\/storage\/|evidence|vehicle|challan.?img/i.test(original)
+      !isEvidenceUrl(original)
     ) {
       await route.continue().catch(() => {});
       return;
@@ -64,91 +86,181 @@ export async function installChallanImageRoutes(context) {
     const headers = route.request().headers();
     const referer =
       headers.referer || headers.Referer || 'https://echallan.parivahan.nic.in/challan/';
+    const fetchHeaders = {
+      ...headers,
+      referer,
+      Referer: referer,
+      accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+    };
 
-    const candidates = hostFallbackUrls(original).slice(0, 2);
-    for (const url of candidates) {
-      try {
-        const resp = await route.fetch({
-          url,
-          timeout: ROUTE_FETCH_TIMEOUT,
-          headers: {
-            ...headers,
-            referer,
-            Referer: referer,
-            accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          },
-        });
-        if (!resp.ok()) continue;
-        const body = await resp.body();
-        const ct = String(resp.headers()['content-type'] || '').toLowerCase();
-        if (!isUsableImage(body, ct)) continue;
-
-        const contentType = ct.split(';')[0].startsWith('image/') ? ct.split(';')[0] : sniffImageType(body);
-        const buf = Buffer.from(body);
-        rememberImage(ensureImageCache(context), original, { body: buf, contentType });
+    // --- Step 1 & 2: Direct + host-swap ---
+    const directCandidates = hostFallbackUrls(original);
+    for (const url of directCandidates) {
+      const result = await tryFetchImage(route, url, DIRECT_FETCH_TIMEOUT, fetchHeaders);
+      if (result) {
+        rememberImage(ensureImageCache(context), original, result);
         await route.fulfill({
           status: 200,
-          headers: { 'content-type': contentType, 'cache-control': 'public, max-age=60' },
-          body: buf,
+          headers: { 'content-type': result.contentType, 'cache-control': 'public, max-age=300' },
+          body: result.body,
         });
         return;
-      } catch {
-        // next candidate
       }
     }
 
+    // --- Step 3: Image proxy (wsrv.nl) ---
+    // wsrv.nl runs on Cloudflare — its IPs bypass government CDN blocks
+    for (const pUrl of proxyUrls(original)) {
+      const result = await tryFetchImage(route, pUrl, PROXY_FETCH_TIMEOUT, { accept: 'image/*' });
+      if (result) {
+        log.step('Evidence image via proxy', { original: shorten(original), bytes: result.body.length });
+        rememberImage(ensureImageCache(context), original, result);
+        await route.fulfill({
+          status: 200,
+          headers: { 'content-type': result.contentType, 'cache-control': 'public, max-age=300' },
+          body: result.body,
+        });
+        return;
+      }
+    }
+
+    // All strategies failed — let the browser show broken image
     await route.continue().catch(() => route.abort().catch(() => {}));
   };
 
   await context.route('**/*img2/challans/**', handler);
   await context.route('**/*itmschallan.parivahan.*/**', handler);
+  await context.route('**/*PushPhoto*', handler);
+}
+
+async function tryFetchImage(route, url, timeout, headers) {
+  try {
+    const resp = await route.fetch({ url, timeout, headers });
+    if (!resp.ok()) return null;
+    const body = await resp.body();
+    const ct = String(resp.headers()['content-type'] || '').toLowerCase();
+    if (!isUsableImage(body, ct)) return null;
+    const contentType = ct.split(';')[0].startsWith('image/') ? ct.split(';')[0] : sniffImageType(body);
+    return { body: Buffer.from(body), contentType };
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Inline cached images into the page as data: URIs for page.pdf().
- * ZERO network calls — only reads from the response cache populated
- * by installChallanImageRoutes during page load. This keeps inlining
- * under 1-2 seconds regardless of how many images are on the page.
+ * Inline images into the page as data: URIs for page.pdf().
+ *
+ * 1. Wait briefly for images to settle (route handler proxies run in parallel)
+ * 2. Inline every image found in the response cache
+ * 3. For evidence images NOT cached, try one last fetch through proxy
  */
 export async function inlinePageImages(page, challanNumber = '') {
   const cache = ensureImageCache(page.context());
   const started = Date.now();
 
+  // Let route-handler proxy fetches complete — they run in parallel during page load
+  await page
+    .waitForFunction(
+      () => [...document.images].every((img) => img.complete || !(img.getAttribute('src') || img.currentSrc)),
+      { timeout: IMAGE_SETTLE_MS }
+    )
+    .catch(() => {});
+
   const imgs = await page.evaluate(() =>
     [...document.images].map((img, index) => ({
       index,
       src: img.currentSrc || img.getAttribute('src') || '',
+      naturalWidth: img.naturalWidth || 0,
     }))
   ).catch(() => []);
 
   let inlined = 0;
+  const missed = [];
+
   for (const img of imgs) {
     if (!img.src || img.src.startsWith('data:')) continue;
-    if (/no_image/i.test(img.src)) continue;
+    if (/no_image/i.test(img.src)) {
+      if (isEvidenceUrl(img.src)) missed.push(img);
+      continue;
+    }
 
     let abs = img.src;
     try { abs = new URL(img.src, page.url()).href; } catch { /* keep */ }
 
     const entry = cache.get(abs) || cache.get(img.src);
-    if (!entry) continue;
+    if (entry) {
+      await setImageSrc(page, img.index, entry);
+      inlined += 1;
+    } else if (img.naturalWidth < 2 && isEvidenceUrl(abs)) {
+      missed.push({ ...img, abs });
+    }
+  }
 
-    const dataUrl = `data:${entry.contentType};base64,${entry.body.toString('base64')}`;
-    await page.evaluate(
-      ({ idx, src }) => {
-        const el = document.images[idx];
-        if (!el) return;
-        el.removeAttribute('srcset');
-        el.src = src;
-      },
-      { idx: img.index, src: dataUrl }
-    ).catch(() => {});
-    inlined += 1;
+  // Last-chance recovery for evidence images that the route handler missed
+  if (missed.length > 0) {
+    log.step('Recovering missing evidence images via proxy', { count: missed.length });
+    const recovered = await recoverViaProxy(page, missed, cache);
+    inlined += recovered;
   }
 
   log.step('Inlined challan images', {
-    total: imgs.length, inlined, cached: cache.size,
-    elapsedMs: Date.now() - started, challanNumber,
+    total: imgs.length, inlined, missed: missed.length,
+    cached: cache.size, elapsedMs: Date.now() - started, challanNumber,
   });
+}
+
+/**
+ * For each missed evidence image, try fetching through wsrv.nl using
+ * Playwright's request API. All fetches run in parallel with a 6s budget.
+ */
+async function recoverViaProxy(page, missedImages, cache) {
+  let recovered = 0;
+
+  const tasks = missedImages.map(async (img) => {
+    const originalUrl = img.abs || img.src;
+    if (!originalUrl || /no_image/i.test(originalUrl)) return;
+
+    // Try to extract the real CDN URL from a no_image placeholder's parent context
+    // The portal sometimes replaces failed loads with no_image.png
+    for (const pUrl of proxyUrls(originalUrl)) {
+      try {
+        const resp = await page.request.get(pUrl, {
+          timeout: 6000,
+          headers: { Accept: 'image/*' },
+        });
+        if (!resp.ok()) continue;
+        const body = Buffer.from(await resp.body());
+        const ct = String(resp.headers()['content-type'] || '').split(';')[0].toLowerCase();
+        if (!isUsableImage(body, ct)) continue;
+
+        const contentType = ct.startsWith('image/') ? ct : sniffImageType(body);
+        const entry = { body, contentType };
+        cache.set(originalUrl, entry);
+        await setImageSrc(page, img.index, entry);
+        recovered += 1;
+        log.step('Recovered evidence image', { index: img.index, bytes: body.length, proxy: shorten(pUrl) });
+        return;
+      } catch {
+        // next proxy
+      }
+    }
+  });
+
+  await Promise.allSettled(tasks);
+  return recovered;
+}
+
+async function setImageSrc(page, index, entry) {
+  const dataUrl = `data:${entry.contentType};base64,${entry.body.toString('base64')}`;
+  await page.evaluate(
+    ({ idx, src }) => {
+      const el = document.images[idx];
+      if (!el) return;
+      el.removeAttribute('srcset');
+      el.src = src;
+    },
+    { idx: index, src: dataUrl }
+  ).catch(() => {});
 }
 
 function hostFallbackUrls(originalSrc) {
@@ -202,4 +314,8 @@ function sniffImageType(buf) {
   if (buf[0] === 0x47 && buf[1] === 0x49) return 'image/gif';
   if (buf[0] === 0x52 && buf[1] === 0x49) return 'image/webp';
   return 'application/octet-stream';
+}
+
+function shorten(url) {
+  return String(url || '').slice(0, 120);
 }
