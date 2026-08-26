@@ -62,7 +62,8 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
             },
             body: JSON.stringify({
                 vehicleId: normalizedVehicleNumber
-            })
+            }),
+            signal: AbortSignal.timeout(25000)
         });
 
         const data = await response.json();
@@ -86,6 +87,12 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
 
     } catch (error) {
         console.error('[APIClub] Vehicle info error:', error);
+        if (error.name === 'TimeoutError') {
+            return res.status(504).json({
+                success: false,
+                message: 'The RTO service is taking too long to respond. Please try again.'
+            });
+        }
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch vehicle information from external API',

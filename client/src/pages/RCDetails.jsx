@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFeatures } from '../context/FeatureContext'
 import SearchLoadingOverlay from '../components/SearchLoadingOverlay'
-import VehicleRcResult from '../components/VehicleRcResult'
 import { fetchVehicleInfo } from '../utils/vehicleInfo'
-import { addRecentSearch, getRecentSearches, formatRecentSearchTime } from '../utils/recentSearches'
+import { openReportPending, completeReportWindow, failReportWindow } from '../utils/rcReport'
+import { getRecentSearches, formatRecentSearchTime } from '../utils/recentSearches'
 import './RCDetails.css'
+
+const VEHICLE_REGEX = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/
 
 const PREMIUM_FEATURES_LEFT = [
   'Full RC Details',
@@ -20,29 +22,29 @@ const PREMIUM_FEATURES_RIGHT = [
 ]
 
 export default function RCDetails() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isFeatureEnabled } = useFeatures()
 
   const [vehicleNumber, setVehicleNumber] = useState(() => searchParams.get('vehicle') || '')
-  const [vehicle, setVehicle] = useState(null)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [recentKey, setRecentKey] = useState(0)
+  const [premiumLoading, setPremiumLoading] = useState(false)
   const inputRef = useRef(null)
-  const lastFetchedRef = useRef(null)
 
   const rcEnabled = isFeatureEnabled('rc_details')
-  const recents = useMemo(() => getRecentSearches({ type: 'rc', limit: 3 }), [recentKey])
+  // Recents refresh on mount — coming back from the results page re-reads storage.
+  const recents = useMemo(() => getRecentSearches({ type: 'rc', limit: 3 }), [])
 
-  const runSearch = async (raw) => {
-    const trimmed = String(raw || '').trim().toUpperCase().replace(/\s/g, '')
+  const normalize = (raw) => String(raw || '').trim().toUpperCase().replace(/\s/g, '')
+
+  // Search validates here, then moves to the dedicated results page.
+  const handleSearch = () => {
+    const trimmed = normalize(vehicleNumber)
     if (!trimmed) {
       setError('Please enter a vehicle registration number')
       return
     }
-    const regex = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/
-    if (!regex.test(trimmed)) {
+    if (!VEHICLE_REGEX.test(trimmed)) {
       setError('Please enter a valid registration number (e.g. UP32AB1234)')
       return
     }
@@ -51,59 +53,52 @@ export default function RCDetails() {
       return
     }
     setError('')
-    setVehicle(null)
-    setLoading(true)
-    addRecentSearch(trimmed, 'rc')
-    setRecentKey((k) => k + 1)
-    try {
-      const result = await fetchVehicleInfo(trimmed)
-      setVehicle(result)
-      setVehicleNumber(trimmed)
-    } catch (err) {
-      setError(err.message || 'Network error. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // The ?vehicle= URL param drives the search, so shared links and retries
-  // always resolve on this same page.
-  useEffect(() => {
-    const v = searchParams.get('vehicle')
-    if (!v) return
-    if (lastFetchedRef.current === v) return
-    lastFetchedRef.current = v
-    runSearch(v)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
-
-  const searchFor = (number) => {
-    const trimmed = String(number || '').trim().toUpperCase().replace(/\s/g, '')
     setVehicleNumber(trimmed)
-    lastFetchedRef.current = null
-    setSearchParams(trimmed ? { vehicle: trimmed } : {})
-  }
-
-  const handleSearch = () => {
-    searchFor(vehicleNumber)
+    navigate(`/vehicle-info?vehicle=${encodeURIComponent(trimmed)}`)
   }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') handleSearch()
   }
 
-  const handleNewSearch = () => {
-    setVehicle(null)
+  const searchFor = (number) => {
+    const trimmed = normalize(number)
+    if (!trimmed) return
+    setVehicleNumber(trimmed)
+    navigate(`/vehicle-info?vehicle=${encodeURIComponent(trimmed)}`)
+  }
+
+  // Premium report: opens the new tab inside the click gesture (so popup
+  // blockers allow it), then fills the report once the fetch resolves.
+  const handlePremiumReport = async () => {
+    const trimmed = normalize(vehicleNumber)
+    if (!trimmed) {
+      setError('Please enter a vehicle registration number')
+      inputRef.current?.focus()
+      return
+    }
+    if (!VEHICLE_REGEX.test(trimmed)) {
+      setError('Please enter a valid registration number (e.g. UP32AB1234)')
+      return
+    }
     setError('')
-    setVehicleNumber('')
-    lastFetchedRef.current = null
-    setSearchParams({})
-    inputRef.current?.focus()
+    const reportWindow = openReportPending(trimmed)
+    if (!reportWindow) return
+    setPremiumLoading(true)
+    try {
+      const vehicle = await fetchVehicleInfo(trimmed)
+      completeReportWindow(reportWindow, vehicle)
+    } catch (err) {
+      failReportWindow(reportWindow, err.message || 'Network error. Please try again.')
+      setError(err.message || 'Network error. Please try again.')
+    } finally {
+      setPremiumLoading(false)
+    }
   }
 
   return (
     <div className="rc-details-page">
-      <SearchLoadingOverlay open={loading} type="rc" vehicleNumber={vehicleNumber} />
+      <SearchLoadingOverlay open={premiumLoading} type="rc" vehicleNumber={vehicleNumber} />
       <div className="rc-page-body">
         <div className="rc-page-inner">
           {/* Hero card */}
@@ -117,7 +112,7 @@ export default function RCDetails() {
                   Verified Vehicle Information
                 </div>
 
-                <h1 className="rc-hero-title">Check Your Vehicle RC Details</h1>
+                <h1 className="rc-hero-title">Check Your Vehicle <span className="accent">RC Details</span></h1>
                 <p className="rc-hero-subtitle">Enter your vehicle registration number to get instant RC details.</p>
 
                 <div className="rc-search-group">
@@ -145,8 +140,8 @@ export default function RCDetails() {
                   </button>
                 </div>
 
-                {error && !loading && <p className="rc-search-error">{error}</p>}
-                {!rcEnabled && !loading && (
+                {error && <p className="rc-search-error">{error}</p>}
+                {!rcEnabled && (
                   <p className="rc-search-error">RC Details lookup is temporarily unavailable. Please check back later.</p>
                 )}
               </div>
@@ -173,7 +168,7 @@ export default function RCDetails() {
                   </div>
                   <div className="rc-feature-sep" aria-hidden="true" />
                   <div className="rc-feature-item">
-                    <div className="rc-feature-item-icon green">
+                    <div className="rc-feature-item-icon red">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 2L4.8 13h6.4l-1.2 9L19.2 11h-6.4L13 2z" />
                       </svg>
@@ -185,7 +180,7 @@ export default function RCDetails() {
                   </div>
                   <div className="rc-feature-sep" aria-hidden="true" />
                   <div className="rc-feature-item">
-                    <div className="rc-feature-item-icon green">
+                    <div className="rc-feature-item-icon blue">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 2.8v5.4c0 4.5-2.9 8.6-7 9.8-4.1-1.2-7-5.3-7-9.8V5.8L12 3z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9.3 11.8l2 2 3.6-3.9" />
@@ -201,16 +196,8 @@ export default function RCDetails() {
             </div>
           </div>
 
-          {/* RC result — shown on the same page after a search */}
-          {vehicle && !loading && (
-            <div className="rc-result-section">
-              <VehicleRcResult vehicle={vehicle} onNewSearch={handleNewSearch} />
-            </div>
-          )}
-
           {/* Cards section */}
-          {!vehicle && !loading && (
-            <div className="rc-cards-section">
+          <div className="rc-cards-section">
               <div className="rc-recent-card">
                 <div className="rc-recent-header">
                   <div className="rc-recent-header-left">
@@ -232,7 +219,7 @@ export default function RCDetails() {
                 ) : (
                   recents.map((item, idx) => (
                     <div key={item.vehicleNumber} className="rc-recent-row">
-                      <div className={`rc-recent-icon ${idx % 2 === 0 ? 'blue' : 'green'}`}>
+                      <div className={`rc-recent-icon ${idx % 2 === 0 ? 'red' : 'green'}`}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 11l1.3-3.6A2 2 0 019.2 6h5.6a2 2 0 011.9 1.4L18 11" />
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 11h16a1 1 0 011 1v4h-2.2M3 16v-4a1 1 0 011-1m-1 5h2.2m13.6 0H7.2" />
@@ -304,7 +291,7 @@ export default function RCDetails() {
                       </div>
                     </div>
 
-                    <button type="button" className="rc-premium-cta" onClick={() => alert('Premium feature coming soon!')}>
+                    <button type="button" className="rc-premium-cta" onClick={handlePremiumReport} disabled={premiumLoading}>
                       Download Premium Report
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" />
@@ -344,13 +331,11 @@ export default function RCDetails() {
                 </div>
               </div>
             </div>
-          )}
 
           {/* Trust strip */}
-          {!vehicle && !loading && (
-            <div className="rc-trust-strip">
+          <div className="rc-trust-strip">
               <div className="rc-trust-item">
-                <div className="rc-trust-icon blue">
+                <div className="rc-trust-icon red">
                   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
                   </svg>
@@ -401,7 +386,6 @@ export default function RCDetails() {
                 </div>
               </div>
             </div>
-          )}
 
           <div className="rc-disclaimer">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

@@ -1,130 +1,15 @@
 import { useState } from 'react'
-
-const isInsuranceActive = (expiry) => {
-  if (!expiry || expiry === 'N/A') return false
-  try {
-    return new Date(expiry) > new Date()
-  } catch {
-    return false
-  }
-}
+import { isInsuranceActive, openRcReport } from '../utils/rcReport'
 
 /**
  * RC result card — vehicle identity, insurance bar, quick stats and
- * collapsible detail sections. Extracted from the old VehicleInfo page so
- * the redesigned RC Details page can show results inline.
+ * collapsible detail sections. "Download RC" opens the printable
+ * report in a new tab via utils/rcReport.
  */
 export default function VehicleRcResult({ vehicle, onNewSearch }) {
   if (!vehicle) return null
 
-  const handleDownloadRC = () => {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>RC Details - ${vehicle.number}</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Segoe UI', Inter, Arial, sans-serif; background: #f1f5f9; padding: 32px; color: #0f172a; }
-          .card { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 8px 24px -12px rgba(15,23,42,.15); overflow: hidden; }
-          .header { background: #fff; color: #0f172a; padding: 24px 28px; border-bottom: 1px solid #e2e8f0; }
-          .header .reg-no { font-size: 28px; font-weight: 800; letter-spacing: 2px; color: #0f172a; }
-          .header .model { font-size: 15px; font-weight: 600; margin-top: 4px; color: #64748b; }
-          .header .mfr { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-          .header .ind { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 48px; height: 40px; border-radius: 8px; background: #dc2626; color: #fff; font-size: 8px; font-weight: 700; letter-spacing: 1px; margin-right: 14px; vertical-align: middle; }
-          .insurance-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px; background: ${isInsuranceActive(vehicle.insuranceExpiry) ? '#ecfdf5' : '#fef2f2'}; border-bottom: 1px solid ${isInsuranceActive(vehicle.insuranceExpiry) ? '#bbf7d0' : '#fecaca'}; }
-          .ins-label { font-size: 14px; font-weight: 700; color: ${isInsuranceActive(vehicle.insuranceExpiry) ? '#047857' : '#dc2626'}; }
-          .ins-date { font-size: 12px; color: #64748b; }
-          .quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid #e2e8f0; }
-          .quick-item { padding: 20px 12px; text-align: center; border-right: 1px solid #f1f5f9; }
-          .quick-item:last-child { border-right: none; }
-          .quick-val { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
-          .quick-label { font-size: 10px; font-weight: 600; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; }
-          .section { padding: 0 28px; }
-          .section-title { font-size: 14px; font-weight: 700; color: #0f172a; padding: 18px 0 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px; }
-          .row { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid #f8fafc; }
-          .row:last-child { border-bottom: none; }
-          .label { color: #64748b; font-size: 13px; }
-          .value { color: #0f172a; font-size: 13px; font-weight: 600; text-align: right; max-width: 55%; word-break: break-word; }
-          .active { color: #047857; font-weight: 700; }
-          .expired { color: #dc2626; font-weight: 700; }
-          .foot { padding: 20px 28px; color: #94a3b8; font-size: 11px; text-align: center; border-top: 1px solid #f1f5f9; }
-          @media print { body { background: #fff; padding: 0; } .card { box-shadow: none; border: none; } }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="header">
-            <div style="display:flex;align-items:center;gap:14px;">
-              <div class="ind">IND</div>
-              <div>
-                <div class="reg-no">${vehicle.number}</div>
-                <div class="model">${vehicle.brandModel}</div>
-                <div class="mfr">${vehicle.brandName}</div>
-              </div>
-            </div>
-          </div>
-          <div class="insurance-bar">
-            <div>
-              <div class="ins-label">${isInsuranceActive(vehicle.insuranceExpiry) ? '✅ Insurance Active' : '❌ Insurance Expired'}</div>
-              <div class="ins-date">Valid till ${vehicle.insuranceExpiry}</div>
-            </div>
-          </div>
-          <div class="quick-grid">
-            <div class="quick-item"><div class="quick-val">${vehicle.fuelType}</div><div class="quick-label">Fuel Type</div></div>
-            <div class="quick-item"><div class="quick-val">${vehicle.seatingCapacity} Seats</div><div class="quick-label">Seating</div></div>
-            <div class="quick-item"><div class="quick-val">${vehicle.vehicleClass}</div><div class="quick-label">Class</div></div>
-            <div class="quick-item"><div class="quick-val">${vehicle.registrationDate}</div><div class="quick-label">Reg. Date</div></div>
-          </div>
-          <div class="section">
-            <div class="section-title">👤 Ownership Details</div>
-            <div class="row"><span class="label">Owner Name</span><span class="value">${vehicle.owner}</span></div>
-            <div class="row"><span class="label">Father's Name</span><span class="value">${vehicle.fatherName}</span></div>
-            <div class="row"><span class="label">Ownership Type</span><span class="value">Owner ${vehicle.ownerCount}</span></div>
-            <div class="row"><span class="label">Registration Authority</span><span class="value">${vehicle.rto}</span></div>
-            <div class="row"><span class="label">RC Status</span><span class="value ${vehicle.rcStatus === 'ACTIVE' ? 'active' : 'expired'}">${vehicle.rcStatus}</span></div>
-            <div class="row"><span class="label">Hypothecation</span><span class="value">${vehicle.isFinanced ? vehicle.financer : 'None'}</span></div>
-          </div>
-          <div class="section">
-            <div class="section-title">🚗 Vehicle Specifications</div>
-            <div class="row"><span class="label">Model</span><span class="value">${vehicle.brandModel}</span></div>
-            <div class="row"><span class="label">Manufacturer</span><span class="value">${vehicle.brandName}</span></div>
-            <div class="row"><span class="label">Vehicle Class</span><span class="value">${vehicle.vehicleClass}</span></div>
-            <div class="row"><span class="label">Body Type</span><span class="value">${vehicle.bodyType}</span></div>
-            <div class="row"><span class="label">Color</span><span class="value">${vehicle.color}</span></div>
-            <div class="row"><span class="label">Fuel Type</span><span class="value">${vehicle.fuelType}</span></div>
-            <div class="row"><span class="label">Engine Capacity</span><span class="value">${vehicle.cubicCapacity} cc</span></div>
-            <div class="row"><span class="label">Cylinders</span><span class="value">${vehicle.cylinders}</span></div>
-            <div class="row"><span class="label">Emission Norms</span><span class="value">${vehicle.norms}</span></div>
-            <div class="row"><span class="label">Chassis Number</span><span class="value">${vehicle.chassisNumber}</span></div>
-            <div class="row"><span class="label">Engine Number</span><span class="value">${vehicle.engineNumber}</span></div>
-          </div>
-          <div class="section">
-            <div class="section-title">🛡️ Insurance & Compliance</div>
-            <div class="row"><span class="label">Insurance Company</span><span class="value">${vehicle.insuranceCompany}</span></div>
-            <div class="row"><span class="label">Policy Number</span><span class="value">${vehicle.insurancePolicy}</span></div>
-            <div class="row"><span class="label">Insurance Valid Till</span><span class="value ${isInsuranceActive(vehicle.insuranceExpiry) ? 'active' : 'expired'}">${vehicle.insuranceExpiry}</span></div>
-            <div class="row"><span class="label">Fitness Valid Till</span><span class="value">${vehicle.fitUpTo}</span></div>
-            <div class="row"><span class="label">PUCC Valid Till</span><span class="value">${vehicle.puccUpto}</span></div>
-            <div class="row"><span class="label">Tax Paid Upto</span><span class="value">${vehicle.taxUpto}</span></div>
-          </div>
-          <div class="foot">Generated by ChallanOne RC Lookup · ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-        </div>
-      </body>
-      </html>
-    `
-
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
-      alert('Popup blocked. Please allow popups to download RC.')
-      return
-    }
-    printWindow.document.write(html)
-    printWindow.document.close()
-    printWindow.focus()
-    setTimeout(() => printWindow.print(), 250)
-  }
+  const handleDownloadRC = () => openRcReport(vehicle)
 
   return (
     <div className="surface-card overflow-hidden max-w-4xl mx-auto">

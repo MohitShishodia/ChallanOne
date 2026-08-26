@@ -14,6 +14,7 @@ import History from './pages/History'
 import About from './pages/About'
 import ServiceHistory from './pages/ServiceHistory'
 import RCDetails from './pages/RCDetails'
+import VehicleInfo from './pages/VehicleInfo'
 import './App.css'
 
 function App() {
@@ -33,11 +34,7 @@ function App() {
                     <PayChallan />
                   </ProtectedRoute>
                 } />
-                <Route path="/vehicle-info" element={
-                  <ProtectedRoute>
-                    <RCDetails />
-                  </ProtectedRoute>
-                } />
+                <Route path="/vehicle-info" element={<VehicleInfo />} />
                 <Route path="/support" element={<Support />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={

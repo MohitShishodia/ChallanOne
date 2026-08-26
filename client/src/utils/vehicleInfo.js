@@ -18,20 +18,47 @@ function formatDateString(dateStr) {
 
 /**
  * Fetch RC details from the external RTO API and map them into the shape used by the UI.
+ * Concurrent requests for the same number share one network call, and the
+ * request aborts after REQUEST_TIMEOUT_MS so the UI never hangs forever.
  * @param {string} number vehicle registration number
  * @returns {Promise<object>} mapped vehicle object
  * @throws {Error} with a user-facing message on failure
  */
-export async function fetchVehicleInfo(number) {
+const REQUEST_TIMEOUT_MS = 30000
+const inflightRequests = new Map()
+
+export function fetchVehicleInfo(number) {
   const trimmed = String(number || '').trim().toUpperCase()
-  if (!trimmed) throw new Error('Please enter a vehicle registration number')
+  if (!trimmed) return Promise.reject(new Error('Please enter a vehicle registration number'))
+
+  if (inflightRequests.has(trimmed)) return inflightRequests.get(trimmed)
+
+  const promise = doFetchVehicleInfo(trimmed).finally(() => {
+    inflightRequests.delete(trimmed)
+  })
+  inflightRequests.set(trimmed, promise)
+  return promise
+}
+
+async function doFetchVehicleInfo(trimmed) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   let data
   try {
-    const response = await fetch(`${API_BASE_URL}/api/external/vehicle/${encodeURIComponent(trimmed)}`)
+    const response = await fetch(
+      `${API_BASE_URL}/api/external/vehicle/${encodeURIComponent(trimmed)}`,
+      { signal: controller.signal }
+    )
     data = await response.json()
-  } catch {
-    throw new Error('Network error. Please try again.')
+  } catch (err) {
+    throw new Error(
+      err?.name === 'AbortError'
+        ? 'The request is taking longer than expected. Please try again.'
+        : 'Network error. Please try again.'
+    )
+  } finally {
+    clearTimeout(timer)
   }
 
   if (!(data.success && data.vehicle?.response)) {
