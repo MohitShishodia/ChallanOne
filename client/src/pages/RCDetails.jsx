@@ -9,6 +9,9 @@ import './RCDetails.css'
 
 const VEHICLE_REGEX = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/
 
+// Fictional demo numbers — valid format, but not real registered vehicles.
+const SAMPLE_NUMBERS = ['DL01CQ4821', 'MH12BT7709', 'KA03MN5560']
+
 const PREMIUM_FEATURES_LEFT = [
   'Full RC Details',
   'Owner & Registration Info',
@@ -138,6 +141,24 @@ export default function RCDetails() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
                     </svg>
                   </button>
+                </div>
+
+                <div className="rc-sample-row">
+                  <span className="rc-sample-label">Try a sample:</span>
+                  {SAMPLE_NUMBERS.map((sample) => (
+                    <button
+                      key={sample}
+                      type="button"
+                      className="rc-sample-chip"
+                      onClick={() => {
+                        setVehicleNumber(sample)
+                        setError('')
+                        inputRef.current?.focus()
+                      }}
+                    >
+                      {sample}
+                    </button>
+                  ))}
                 </div>
 
                 {error && <p className="rc-search-error">{error}</p>}
