@@ -34,9 +34,13 @@ echo "==> Restart API (PM2)"
 cd "$APP_DIR/server"
 # Stop crash loops from leftover node processes holding PORT
 PORT_TO_FREE="${PORT:-5000}"
-if pm2 describe challanone-api >/dev/null 2>&1; then
-  pm2 delete challanone-api >/dev/null 2>&1 || true
-fi
+# Remove legacy/duplicate PM2 apps that would fight for the API port
+# (PM2 respawns them after a plain kill, so they must be deleted by name)
+for APP_NAME in challanone-api challano; do
+  if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
+    pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
+  fi
+done
 # Kill anything still bound to the API port (orphans from previous crash loops)
 if command -v fuser >/dev/null 2>&1; then
   fuser -k "${PORT_TO_FREE}/tcp" >/dev/null 2>&1 || true
