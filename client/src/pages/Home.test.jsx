@@ -19,7 +19,7 @@ describe('Home page', () => {
     expect(screen.getByText(/Check Vehicle Challan/i)).toBeInTheDocument()
     const challanLinks = screen.getAllByRole('link', { name: /Check Challan/i })
     expect(challanLinks[0]).toHaveAttribute('href', '/pay-challan')
-    expect(screen.getByRole('link', { name: /Check RC Details/i })).toHaveAttribute('href', '/vehicle-info')
+    expect(screen.getByRole('link', { name: /Check RC Details/i })).toHaveAttribute('href', '/rc-details')
   })
 
   it('shows trust badge', () => {

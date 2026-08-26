@@ -10,10 +10,10 @@ import Support from './pages/Support'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
 import PaymentSuccess from './pages/PaymentSuccess'
-import VehicleInfo from './pages/VehicleInfo'
 import History from './pages/History'
 import About from './pages/About'
 import ServiceHistory from './pages/ServiceHistory'
+import RCDetails from './pages/RCDetails'
 import './App.css'
 
 function App() {
@@ -21,33 +21,39 @@ function App() {
     <AuthProvider>
       <FeatureProvider>
       <Router>
-        <AppShell>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/pay-challan" element={
-              <ProtectedRoute>
-                <PayChallan />
-              </ProtectedRoute>
-            } />
-            <Route path="/vehicle-info" element={
-              <ProtectedRoute>
-                <VehicleInfo />
-              </ProtectedRoute>
-            } />
-            <Route path="/support" element={<Support />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/history" element={<History />} />
-            <Route path="/service-history" element={<ServiceHistory />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
-          </Routes>
-          <WhatsAppButton />
-        </AppShell>
+        <Routes>
+          {/* All routes use the default AppShell (Navbar + Footer) */}
+          <Route path="*" element={
+            <AppShell>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/rc-details" element={<RCDetails />} />
+                <Route path="/pay-challan" element={
+                  <ProtectedRoute>
+                    <PayChallan />
+                  </ProtectedRoute>
+                } />
+                <Route path="/vehicle-info" element={
+                  <ProtectedRoute>
+                    <RCDetails />
+                  </ProtectedRoute>
+                } />
+                <Route path="/support" element={<Support />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/history" element={<History />} />
+                <Route path="/service-history" element={<ServiceHistory />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
+              </Routes>
+              <WhatsAppButton />
+            </AppShell>
+          } />
+        </Routes>
       </Router>
       </FeatureProvider>
     </AuthProvider>

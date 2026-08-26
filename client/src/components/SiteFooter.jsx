@@ -24,7 +24,7 @@ export default function SiteFooter() {
             <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Quick Links</h4>
             <div className="space-y-2.5">
               <Link to="/pay-challan" className="block text-[14px]">Check Challan</Link>
-              <Link to="/vehicle-info" className="block text-[14px]">RC Details</Link>
+              <Link to="/rc-details" className="block text-[14px]">RC Details</Link>
               <Link to="/service-history" className="block text-[14px]">Service History</Link>
               <Link to="/about" className="block text-[14px]">About Us</Link>
             </div>

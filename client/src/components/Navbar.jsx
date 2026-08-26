@@ -6,7 +6,7 @@ import BrandLogo from './BrandLogo'
 const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/pay-challan', label: 'Check Challan' },
-  { to: '/vehicle-info', label: 'RC Details' },
+  { to: '/rc-details', label: 'RC Details' },
   { to: '/service-history', label: 'Service History' },
   { to: '/about', label: 'About Us' },
   { to: '/support', label: 'Support' },
