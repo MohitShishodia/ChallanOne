@@ -1,105 +1,267 @@
 import { Link } from 'react-router-dom'
-import BrandLogo from '../components/BrandLogo'
-import PageTitleBar from '../components/PageTitleBar'
-import { useCmsPage } from '../hooks/useCmsPage'
-import { BRAND, whatsappUrl, WHATSAPP } from '../constants/brand'
+import './About.css'
 
-const defaultValues = [
-  { title: 'Trusted & Transparent', desc: 'Clear updates through every step of challan clearance.' },
-  { title: 'Expert Assistance', desc: 'Agents help with Parivahan OTP and settlement.' },
-  { title: 'Fast & Secure', desc: 'Check, pay, and track — all in one secure platform.' },
+/* Inline stroke icons (24x24) — same idiom as the rest of the client app */
+const icons = {
+  home: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10.5L12 3l9 7.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 9.5V20a1 1 0 001 1h12a1 1 0 001-1V9.5" />
+    </svg>
+  ),
+  arrow: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  ),
+  grid: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
+      <rect x="13" y="13" width="7" height="7" rx="1.5" />
+    </svg>
+  ),
+  shield: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 2.8v5.4c0 4.5-2.9 8.6-7 9.8-4.1-1.2-7-5.3-7-9.8V5.8L12 3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.3 11.8l2 2 3.6-3.9" />
+    </svg>
+  ),
+  bolt: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 2L4.8 13h6.4l-1.2 9L19.2 11h-6.4L13 2z" />
+    </svg>
+  ),
+  lock: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V8a4 4 0 018 0v3M12 14.5v2" />
+    </svg>
+  ),
+  headset: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 14.5v-2.75a8 8 0 0116 0v2.75" />
+      <rect x="3" y="13.5" width="4.5" height="6.5" rx="2.2" />
+      <rect x="16.5" y="13.5" width="4.5" height="6.5" rx="2.2" />
+    </svg>
+  ),
+  users: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  ),
+  receipt: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3h14v18l-2.3-1.6-2.35 1.6-2.35-1.6-2.35 1.6L7.3 19.4 5 21V3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8h6M9 12h6" />
+    </svg>
+  ),
+  clock: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5V12l3 2" />
+    </svg>
+  ),
+  landmark: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.5L12 3l9 6.5H3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5.5 9.5V17M10 9.5V17M14 9.5V17M18.5 9.5V17M4 17h16M3 21h18" />
+    </svg>
+  ),
+  database: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <ellipse cx="12" cy="5.5" rx="8" ry="3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 5.5v13c0 1.66 3.58 3 8 3s8-1.34 8-3v-13" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3" />
+    </svg>
+  ),
+  phone: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+      <path strokeLinecap="round" d="M11 18h2" />
+    </svg>
+  ),
+  card: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+      <path strokeLinecap="round" d="M2.5 10h19M6 15h4" />
+    </svg>
+  ),
+  checkCircle: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 12.2l2.4 2.4 4.6-5" />
+    </svg>
+  ),
+  car: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 11l1.3-3.6A2 2 0 019.2 6h5.6a2 2 0 011.9 1.4L18 11" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 11h16a1 1 0 011 1v4h-2.2M3 16v-4a1 1 0 011-1m-1 5h2.2m13.6 0H7.2" />
+      <path strokeLinecap="round" strokeWidth="2.4" d="M7.5 13.7h.01M16.5 13.7h.01" />
+    </svg>
+  ),
+}
+
+const MISSION_CARDS = [
+  { icon: icons.shield, title: 'Trusted & Reliable', desc: 'We provide verified data from official government sources you can trust.' },
+  { icon: icons.bolt, title: 'Fast & Convenient', desc: 'Check, pay, and track challans in just a few clicks, anytime, anywhere.' },
+  { icon: icons.lock, title: 'Secure & Private', desc: 'Your data is 100% safe with enterprise-grade security and privacy.' },
+  { icon: icons.headset, title: 'Here to Help', desc: 'Our support team is always ready to assist you at every step.' },
+]
+
+const STATS = [
+  { icon: icons.users, value: '1,20,000+', label: 'Happy Users', sub: 'Across India' },
+  { icon: icons.shield, value: '50L+', label: 'Challans Checked', sub: 'And Paid' },
+  { icon: icons.receipt, value: '25L+', label: 'Payments Processed', sub: 'Securely' },
+  { icon: icons.clock, value: '99.9%', label: 'Uptime', sub: 'Always Available' },
+]
+
+const WHY_ITEMS = [
+  { icon: icons.landmark, title: 'Government Integrated' },
+  { icon: icons.database, title: 'Accurate & Real-time Data' },
+  { icon: icons.phone, title: 'Mobile Friendly Experience' },
+  { icon: icons.card, title: 'Multiple Payment Options' },
+  { icon: icons.shield, title: 'Safe & Secure Transactions' },
 ]
 
 export default function About() {
-  const { page, loading } = useCmsPage('about-us')
-
-  const heroTitle = page?.title || BRAND.name
-  const tagline = BRAND.tagline
-
   return (
-    <div className="screen">
-      <div className="screen-content">
-        <PageTitleBar title="About Us" subtitle={page?.metaDescription || tagline} />
-
-        <section className="bg-gradient-to-br from-red-50/80 via-white to-white border-b border-slate-100">
-          <div className="container-main py-6 md:py-16">
-            <div className="flex flex-col md:flex-row items-center gap-5 md:gap-14">
-              <div className="shrink-0">
-                <img
-                  src={BRAND.logoSrc}
-                  alt={BRAND.name}
-                  className="h-24 w-auto md:h-36 max-w-[200px] md:max-w-[280px] object-contain"
-                />
-              </div>
-              <div className="text-center md:text-left max-w-2xl">
-                <h1 className="text-[20px] md:text-[36px] font-bold text-slate-900 leading-tight">
-                  {heroTitle}
-                </h1>
-                <p className="mt-2 text-[13px] md:text-[16px] text-slate-600 leading-relaxed">
-                  {tagline}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                  <Link to="/pay-challan" className="btn-primary">Check Challan</Link>
-                  <a href={whatsappUrl()} target="_blank" rel="noopener noreferrer" className="btn-secondary">
-                    Talk to Expert
-                  </a>
-                </div>
-              </div>
+    <div className="about-page">
+      {/* Hero */}
+      <section className="abt-hero">
+        <div className="abt-hero-dots" aria-hidden="true" />
+        <div className="container-main abt-hero-inner">
+          <div>
+            <span className="abt-crumb">
+              {icons.home}
+              About Us
+            </span>
+            <h1 className="abt-hero-title">About ChallanOne</h1>
+            <p className="abt-hero-lead">
+              India&apos;s leading platform for <span className="accent">online challan payment</span> and
+              vehicle information services.
+            </p>
+            <p className="abt-hero-sub">
+              We are committed to making vehicle compliance simple, fast, and hassle-free for every
+              Indian driver.
+            </p>
+            <div className="abt-hero-actions">
+              <Link to="/pay-challan" className="btn-primary">
+                Check Challan
+                {icons.arrow}
+              </Link>
+              <a href="#why-choose" className="btn-secondary">
+                {icons.grid}
+                Explore Services
+              </a>
             </div>
           </div>
-        </section>
+          <div className="abt-hero-art">
+            <img
+              src="/about_hero.png"
+              alt="Car with registration certificate and security shield"
+            />
+          </div>
+        </div>
+      </section>
 
-        <section className="section-spacing bg-white">
-          <div className="container-main">
-            {loading ? (
-              <div className="animate-pulse space-y-3">
-                <div className="h-4 bg-slate-100 rounded w-full" />
-                <div className="h-4 bg-slate-100 rounded w-5/6" />
-                <div className="h-4 bg-slate-100 rounded w-4/6" />
+      {/* Mission */}
+      <section className="abt-mission">
+        <div className="container-main">
+          <div className="abt-head">
+            <h2>Our Mission</h2>
+            <div className="abt-head-bar" aria-hidden="true" />
+            <p>
+              To empower every vehicle owner with accurate information and seamless digital solutions
+              for a smarter, more compliant India.
+            </p>
+          </div>
+          <div className="abt-mission-grid">
+            {MISSION_CARDS.map((card) => (
+              <div key={card.title} className="abt-mission-card">
+                <div className="abt-mission-icon">{card.icon}</div>
+                <h3>{card.title}</h3>
+                <p>{card.desc}</p>
               </div>
-            ) : page?.content ? (
-              <div
-                className="cms-content surface-card p-5 md:p-8 animate-fade-up"
-                dangerouslySetInnerHTML={{ __html: page.content }}
-              />
-            ) : (
-              <div className="cms-content animate-fade-up">
-                <p>
-                  Challan One is built for vehicle owners across India who need a reliable partner to check traffic challans,
-                  pay fines securely, and complete government OTP verification with expert support.
-                </p>
-              </div>
-            )}
+            ))}
+          </div>
+        </div>
+      </section>
 
-            <div className="grid sm:grid-cols-3 gap-3 md:gap-6 mt-8">
-              {defaultValues.map((v) => (
-                <div key={v.title} className="surface-card p-4 md:p-6 text-center">
-                  <h3 className="text-[14px] md:text-[16px] font-bold text-slate-900">{v.title}</h3>
-                  <p className="mt-1 text-[12px] md:text-[14px] text-slate-500 leading-relaxed">{v.desc}</p>
+      {/* Numbers */}
+      <section className="abt-numbers">
+        <div className="container-main">
+          <div className="abt-numbers-panel">
+            <div className="abt-head">
+              <h2>ChallanOne in Numbers</h2>
+              <div className="abt-head-bar" aria-hidden="true" />
+              <p>Our impact in simplifying vehicle compliance across India.</p>
+            </div>
+            <div className="abt-numbers-grid">
+              {STATS.map((stat) => (
+                <div key={stat.label} className="abt-number-card">
+                  <div className="abt-number-icon">{stat.icon}</div>
+                  <div className="abt-number-value">{stat.value}</div>
+                  <div className="abt-number-label">{stat.label}</div>
+                  <div className="abt-number-sub">{stat.sub}</div>
                 </div>
               ))}
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="section-spacing bg-slate-50">
-          <div className="container-main">
-            <div className="expert-cta text-center">
-              <BrandLogo linkTo={null} size="md" className="mx-auto mb-3" />
-              <h2 className="text-[18px] md:text-[24px] font-bold text-slate-900">Questions? We&apos;re here.</h2>
-              <p className="mt-2 text-[13px] md:text-[14px] text-slate-600">
-                Reach us on WhatsApp at {WHATSAPP.display} or visit support.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                <a href={whatsappUrl()} target="_blank" rel="noopener noreferrer" className="btn-primary">
-                  WhatsApp Us
-                </a>
-                <Link to="/support" className="btn-secondary">Support Center</Link>
-              </div>
-            </div>
+      {/* Why choose */}
+      <section className="abt-why" id="why-choose">
+        <div className="container-main">
+          <div className="abt-head">
+            <h2>Why Choose ChallanOne?</h2>
+            <div className="abt-head-bar" aria-hidden="true" />
           </div>
-        </section>
-      </div>
+          <div className="abt-why-grid">
+            {WHY_ITEMS.map((item) => (
+              <div key={item.title} className="abt-why-item">
+                <div className="abt-why-icon">{item.icon}</div>
+                <h3>{item.title}</h3>
+                <svg
+                  className="abt-why-check"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 12.2l2.4 2.4 4.6-5" />
+                </svg>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="abt-cta-wrap">
+        <div className="container-main">
+          <div className="abt-cta">
+            <div className="abt-cta-icon">{icons.car}</div>
+            <div className="abt-cta-body">
+              <h2>Ready to Get Started?</h2>
+              <p>
+                Check your challan, view RC details, and keep your vehicle compliant in just a few
+                clicks.
+              </p>
+            </div>
+            <Link to="/pay-challan" className="btn-primary">
+              Check Challan Now
+              {icons.arrow}
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
