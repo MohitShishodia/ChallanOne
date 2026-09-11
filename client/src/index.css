@@ -46,7 +46,7 @@
   }
   @media (min-width: 1280px) {
     .container-main {
-      @apply px-8;
+      @apply px-5;
     }
   }
   .container-narrow {
