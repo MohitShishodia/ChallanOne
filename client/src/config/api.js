@@ -13,16 +13,6 @@ export const API = {
     resetPassword: `${API_BASE_URL}/api/auth/reset-password`,
   },
   challan: (vehicleNumber) => `${API_BASE_URL}/api/challan/${encodeURIComponent(vehicleNumber)}`,
-  challanReceipt: {
-    auto: `${API_BASE_URL}/api/challan/receipt/auto`,
-    captcha: `${API_BASE_URL}/api/challan/receipt/captcha`,
-    refreshCaptcha: `${API_BASE_URL}/api/challan/receipt/captcha/refresh`,
-    fetch: `${API_BASE_URL}/api/challan/receipt`,
-    file: (receiptPath) =>
-      receiptPath?.startsWith('http')
-        ? receiptPath
-        : `${API_BASE_URL}${receiptPath?.startsWith('/') ? '' : '/'}${receiptPath || ''}`,
-  },
   vehicle: (vehicleNumber) => `${API_BASE_URL}/api/vehicle/${encodeURIComponent(vehicleNumber)}`,
   payment: {
     createOrder: `${API_BASE_URL}/api/payment/create-order`,

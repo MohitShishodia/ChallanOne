@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import DetailDrawer, { DetailRow } from './DetailDrawer'
-import ReceiptViewer from './ReceiptViewer'
 import { sumChallanFineAmounts } from '../utils/challanUtils'
 import { downloadChallansPdf } from '../utils/challanPdf'
 
@@ -70,43 +69,6 @@ function getChallanStateCode(challan) {
 
 function isCourtChallan(challan) {
   return Boolean(challan.isCourtChallan || challan.sentToRegCourt || challan.courtName)
-}
-
-function getChallanIdStatePrefix(challan) {
-  const identifiers = [challan.noticeId, challan.challanNumber, challan.id]
-    .filter(Boolean)
-    .map((value) => String(value).trim().toUpperCase())
-
-  for (const identifier of identifiers) {
-    const prefix = identifier.slice(0, 2)
-    if (/^[A-Z]{2}$/.test(prefix)) return prefix
-  }
-  return ''
-}
-
-function canOpenPortalPrint(challan, dataSource) {
-  if (dataSource === 'DELHI_OTP') return false
-  const prefix = getChallanIdStatePrefix(challan)
-  if (!prefix) return false
-  return prefix !== 'DL' && prefix !== 'UP'
-}
-
-function portalPrintDisabledReason(challan, dataSource, actionLabel) {
-  if (dataSource === 'DELHI_OTP') {
-    return `${actionLabel} is not available for Delhi challans`
-  }
-  const prefix = getChallanIdStatePrefix(challan)
-  if (prefix === 'DL' || prefix === 'UP') {
-    return `${actionLabel} is not available for Delhi and UP challans`
-  }
-  if (!prefix) {
-    return `${actionLabel} is unavailable until the challan state is identified`
-  }
-  return `${actionLabel} is unavailable`
-}
-
-function getChallanNumber(challan) {
-  return challan.noticeId || challan.challanNumber || challan.id
 }
 
 function formatAmount(amount) {
@@ -345,8 +307,6 @@ export default function ChallanResults({
 }) {
   const [drawer, setDrawer] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
-  const [receiptChallanNumber, setReceiptChallanNumber] = useState(null)
-  const [receiptVariant, setReceiptVariant] = useState('receipt')
   const [pdfLoading, setPdfLoading] = useState(false)
 
   const copyChallanId = async (id) => {
@@ -984,56 +944,6 @@ export default function ChallanResults({
                           {challan.displayType || 'E-Challan'}
                         </p>
                       </td>
-
-                      <td className="px-2 py-3.5 align-top">
-                        {isPaid ? (
-                          canOpenPortalPrint(challan, dataSource) ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDrawer(null)
-                                setReceiptVariant('receipt')
-                                setReceiptChallanNumber(getChallanNumber(challan))
-                              }}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-emerald-700"
-                              title="View payment receipt"
-                            >
-                              View Receipt
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled
-                              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-emerald-100 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-300"
-                              title={portalPrintDisabledReason(challan, dataSource, 'View Receipt')}
-                            >
-                              View Receipt
-                            </button>
-                          )
-                        ) : canOpenPortalPrint(challan, dataSource) ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDrawer(null)
-                              setReceiptVariant('pdf')
-                              setReceiptChallanNumber(getChallanNumber(challan))
-                            }}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-red px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-brand-red-dark"
-                            title="View challan PDF"
-                          >
-                            View PDF
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled
-                            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-rose-100 px-2.5 py-1.5 text-[11px] font-semibold text-rose-300"
-                            title={portalPrintDisabledReason(challan, dataSource, 'View PDF')}
-                          >
-                            View PDF
-                          </button>
-                        )}
-                      </td>
                     </tr>
                   )
                 })
@@ -1103,72 +1013,23 @@ export default function ChallanResults({
               <DetailRow label="Location" value={drawer.challan.location} />
             )}
             <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-              {drawer.challan.status === 'PAID' ? (
+              {drawer.challan.status !== 'PAID' && (
                 <button
                   type="button"
                   onClick={() => {
-                    if (!canOpenPortalPrint(drawer.challan, dataSource)) return
                     setDrawer(null)
-                    setReceiptVariant('receipt')
-                    setReceiptChallanNumber(getChallanNumber(drawer.challan))
+                    onPay?.(drawer.challan.id)
                   }}
-                  disabled={!canOpenPortalPrint(drawer.challan, dataSource)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-100 disabled:text-emerald-300"
-                  title={
-                    canOpenPortalPrint(drawer.challan, dataSource)
-                      ? 'View payment receipt'
-                      : portalPrintDisabledReason(drawer.challan, dataSource, 'View Receipt')
-                  }
+                  disabled={paymentLoading}
+                  className="btn-primary w-full disabled:opacity-50"
                 >
-                  View Receipt
+                  Pay Now
                 </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!canOpenPortalPrint(drawer.challan, dataSource)) return
-                      setDrawer(null)
-                      setReceiptVariant('pdf')
-                      setReceiptChallanNumber(getChallanNumber(drawer.challan))
-                    }}
-                    disabled={!canOpenPortalPrint(drawer.challan, dataSource)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-red px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-brand-red-dark disabled:cursor-not-allowed disabled:bg-rose-100 disabled:text-rose-300"
-                    title={
-                      canOpenPortalPrint(drawer.challan, dataSource)
-                        ? 'View challan PDF'
-                        : portalPrintDisabledReason(drawer.challan, dataSource, 'View PDF')
-                    }
-                  >
-                    View PDF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDrawer(null)
-                      onPay?.(drawer.challan.id)
-                    }}
-                    disabled={paymentLoading}
-                    className="btn-primary w-full disabled:opacity-50"
-                  >
-                    Pay Now
-                  </button>
-                </>
               )}
             </div>
           </div>
         )}
       </DetailDrawer>
-
-      <ReceiptViewer
-        open={Boolean(receiptChallanNumber)}
-        challanNumber={receiptChallanNumber}
-        variant={receiptVariant}
-        onClose={() => {
-          setReceiptChallanNumber(null)
-          setReceiptVariant('receipt')
-        }}
-      />
     </div>
   )
 }

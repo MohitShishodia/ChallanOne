@@ -42,11 +42,18 @@ bash /tmp/ChallanOne/deploy/setup-vps.sh
 nano /var/www/challanone/server/.env
 ```
 
-Paste production values (MongoDB, JWT, Razorpay, APIClub, ChallanWala), then:
+Paste production values (MongoDB Atlas, JWT, Razorpay, APIClub, ChallanWala), then:
 
 ```env
 PORT=5000
 NODE_ENV=production
+MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster.mongodb.net/challanone?retryWrites=true&w=majority
+JWT_SECRET=replace_with_long_random_secret
+ADMIN_JWT_SECRET=replace_with_long_random_admin_secret
+RAZORPAY_KEY_ID=rzp_live_or_test_key
+RAZORPAY_KEY_SECRET=replace_with_razorpay_secret
+APICLUB_API_KEY=replace_with_apiclub_key
+CHALLANWALA_TOKEN=replace_with_challanwala_token
 ```
 
 ## 4) Enable Nginx sites

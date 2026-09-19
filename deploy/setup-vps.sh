@@ -45,10 +45,6 @@ else
   echo "Repo already present at $APP_DIR"
 fi
 
-echo "==> Playwright system deps"
-cd "$APP_DIR/server"
-npx --yes playwright install-deps chromium || true
-
 echo ""
 echo "Setup base complete."
 echo "Next:"

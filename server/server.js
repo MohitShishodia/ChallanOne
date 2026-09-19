@@ -10,14 +10,12 @@ import { Server as SocketIOServer } from 'socket.io';
 // Customer-facing routes
 import authRoutes from './routes/auth.js';
 import challanRoutes from './routes/challan.js';
-import challanReceiptRoutes from './routes/challanReceipt.js';
 import vehicleRoutes from './routes/vehicle.js';
 import paymentRoutes from './routes/payment.js';
 import externalApiRoutes from './routes/externalApi.js';
 import delhiOtpChallanRoutes from './routes/delhiOtpChallan.js';
 import publicConfigRoutes from './routes/publicConfig.js';
 import supportRoutes from './routes/support.js';
-import { ensureReceiptsDir, RECEIPTS_DIR } from './services/echallanReceipt/paths.js';
 
 // Admin routes
 import adminAuthRoutes from './routes/admin/auth.js';
@@ -140,21 +138,8 @@ if (isPassenger) {
   });
 }
 
-// Saved government challan receipts (PDF/HTML)
-ensureReceiptsDir();
-app.use('/receipts', express.static(RECEIPTS_DIR, {
-  setHeaders(res, filePath) {
-    if (filePath.endsWith('.pdf')) {
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'inline');
-    }
-  }
-}));
-
 // Customer-facing routes
 app.use('/api/auth', authRoutes);
-// Mount receipt routes before /api/challan/:vehicleNumber
-app.use('/api/challan/receipt', challanReceiptRoutes);
 app.use('/api/challan', challanRoutes);
 app.use('/api/vehicle', vehicleRoutes);
 app.use('/api/payment', paymentRoutes);
