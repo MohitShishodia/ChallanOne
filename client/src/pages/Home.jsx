@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { whatsappUrl } from '../constants/brand'
-import { submitSupportMessage } from '../utils/supportApi'
 import HeroSearchWidget from '../components/HeroSearchWidget'
 import './Home.css'
 
@@ -126,24 +125,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ══════════════ FEATURES ══════════════ */}
-        <section className="sec">
-          <div className="container-main">
-            <div className="sec-head">
-              <h2 className="sec-title">Everything You Need, All in One Place</h2>
-              <p className="sec-sub">Powerful features to help you stay compliant and avoid penalties</p>
-            </div>
-            <div className="feat-grid">
-              {features.map((f) => (
-                <Link to={f.to} className="feat-card" key={f.title}>
-                  <span className={`feat-ic feat-ic--${f.tone}`}>{f.icon}</span>
-                  <p className="feat-title">{f.title}</p>
-                  <p className="feat-desc">{f.desc}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* ══════════════ SERVICES TABS ══════════════ */}
+        <ServiceTabsSection />
 
         {/* ══════════════ HOW IT WORKS ══════════════ */}
         <section className="sec sec--gray">
@@ -197,8 +180,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ══════════════ CONTACT ══════════════ */}
-        <ContactUsSection />
+
 
         {/* ══════════════ BOTTOM CTA BAR ══════════════ */}
         <section className="cta-bar">
@@ -263,14 +245,7 @@ const stats = [
   { num: '2.3 Seconds', label: 'Average Search Time', tone: 'amber', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="13" r="8" /><path strokeLinecap="round" d="M12 9v4l2.5 2M9 2h6" /></svg> },
 ]
 
-const features = [
-  { title: 'Check Challan', desc: 'Get real-time traffic challan details and pay online securely.', to: '/pay-challan', tone: 'red', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> },
-  { title: 'RC Details', desc: 'Access owner name, registration details, vehicle info & more.', to: '/rc-details', tone: 'blue', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" /></svg> },
-  { title: 'Service History', desc: 'View complete service and maintenance history of your vehicle.', to: '/service-history', tone: 'amber', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
-  { title: 'Insurance', desc: 'Check insurance validity and expiry date instantly.', to: '/vehicle-info', tone: 'green', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z" /></svg> },
-  { title: 'PUC Status', desc: 'Verify PUC certificate status and validity in one click.', to: '/vehicle-info', tone: 'amber', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3C7 3 4 8 4 12s3 9 8 9 8-5 8-9-3-9-8-9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 2" /></svg> },
-  { title: 'Fast Payments', desc: 'Pay challans securely using UPI, Cards, Net Banking & more.', to: '/pay-challan', tone: 'pink', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2" /><path strokeLinecap="round" d="M3 10h18" /></svg> },
-]
+/* features array removed – replaced by ServiceTabsSection */
 
 const howItWorks = [
   { num: 1, title: 'Enter Vehicle Number', desc: 'Enter your vehicle number and select state.', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4-4" /></svg> },
@@ -285,8 +260,153 @@ const testimonials = [
   { name: 'Amit Verma', city: 'Lucknow', color: '#059669', quote: 'Best platform to check RC details and pay challans online.' },
 ]
 
-/* ── Contact Us section ── */
-function ContactUsSection() {
+/* ── Service Tabs section ── */
+const serviceTabs = [
+  {
+    id: 'challan',
+    label: 'Check Challan',
+    to: '/pay-challan',
+    tone: 'red',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      </svg>
+    ),
+    headline: 'Check Traffic Challans Instantly',
+    description: 'Get real-time traffic challan details for any vehicle registered across India. View challan amount, offence details, court date and pay securely online in seconds.',
+    highlights: ['Real-time data from government servers', 'View fine amount & offence details', 'Pay via UPI, Cards, Net Banking', 'Download payment receipt instantly'],
+    badge: 'Most Popular',
+  },
+  {
+    id: 'rc',
+    label: 'RC Details',
+    to: '/rc-details',
+    tone: 'blue',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+      </svg>
+    ),
+    headline: 'Full RC & Registration Details',
+    description: 'Access complete vehicle registration certificate information including owner name, registration date, fuel type, engine & chassis number, and insurance validity.',
+    highlights: ['Owner name & address', 'Registration & expiry dates', 'Fuel type, engine & chassis no.', 'Insurance & PUC validity'],
+    badge: 'Detailed Report',
+  },
+  {
+    id: 'history',
+    label: 'Service History',
+    to: '/service-history',
+    tone: 'amber',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    headline: 'Complete Vehicle Service History',
+    description: 'View the full service and maintenance history of any vehicle. Track past ownership, accident records, odometer readings and service intervals for informed decisions.',
+    highlights: ['Past ownership timeline', 'Accident & flood history', 'Odometer & service records', 'Ideal for used-car buyers'],
+    badge: 'Smart Insights',
+  },
+]
+
+const toneConfig = {
+  red: { bg: '#fef2f2', color: '#dc2626', gradFrom: '#dc2626', gradTo: '#b91c1c', light: '#fff1f2' },
+  blue: { bg: '#eff6ff', color: '#2563eb', gradFrom: '#2563eb', gradTo: '#1d4ed8', light: '#dbeafe' },
+  amber: { bg: '#fffbeb', color: '#d97706', gradFrom: '#d97706', gradTo: '#b45309', light: '#fef3c7' },
+}
+
+function ServiceTabsSection() {
+  const [active, setActive] = useState('challan')
+  const tab = serviceTabs.find((t) => t.id === active)
+  const cfg = toneConfig[tab.tone]
+
+  return (
+    <section className="sec svc-tabs-sec">
+      <div className="container-main">
+        <div className="sec-head">
+          <h2 className="sec-title">Everything You Need, All in One Place</h2>
+          <p className="sec-sub">Choose a service below to learn more</p>
+        </div>
+
+        {/* Tab Pills */}
+        <div className="svc-tab-pills">
+          {serviceTabs.map((t) => {
+            const c = toneConfig[t.tone]
+            const isActive = t.id === active
+            return (
+              <button
+                key={t.id}
+                type="button"
+                className={`svc-tab-pill${isActive ? ' svc-tab-pill--active' : ''}`}
+                style={isActive ? { '--pill-color': c.color, '--pill-bg': c.bg } : {}}
+                onClick={() => setActive(t.id)}
+              >
+                <span className="svc-tab-pill-ic">{t.icon}</span>
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Content Panel */}
+        <div className="svc-panel" key={active}>
+          {/* Left – text */}
+          <div className="svc-panel-left">
+            <span className="svc-badge" style={{ background: cfg.light, color: cfg.color }}>
+              {tab.badge}
+            </span>
+            <h3 className="svc-headline">{tab.headline}</h3>
+            <p className="svc-desc">{tab.description}</p>
+            <ul className="svc-highlights">
+              {tab.highlights.map((h) => (
+                <li key={h} className="svc-highlight-item">
+                  <span className="svc-check" style={{ background: cfg.bg, color: cfg.color }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                  {h}
+                </li>
+              ))}
+            </ul>
+            <Link
+              to={tab.to}
+              className="svc-cta-btn"
+              style={{ '--btn-from': cfg.gradFrom, '--btn-to': cfg.gradTo }}
+            >
+              {tab.label} Now
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </div>
+
+          {/* Right – visual card */}
+          <div className="svc-panel-right">
+            <div className="svc-visual-card" style={{ '--card-color': cfg.color, '--card-bg': cfg.bg }}>
+              <div className="svc-visual-icon" style={{ background: cfg.bg, color: cfg.color }}>
+                {tab.icon}
+              </div>
+              <p className="svc-visual-title">{tab.headline}</p>
+              <div className="svc-visual-list">
+                {tab.highlights.map((h) => (
+                  <div key={h} className="svc-visual-row">
+                    <span className="svc-visual-dot" style={{ background: cfg.color }} />
+                    <span>{h}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="svc-visual-glow" style={{ background: cfg.bg }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ── (ContactUsSection removed from home page) ── */
+function _ContactUsSection_UNUSED() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)

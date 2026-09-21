@@ -12,6 +12,8 @@ import Profile from './pages/Profile'
 import PaymentSuccess from './pages/PaymentSuccess'
 import History from './pages/History'
 import About from './pages/About'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 import ServiceHistory from './pages/ServiceHistory'
 import RCDetails from './pages/RCDetails'
 import VehicleInfo from './pages/VehicleInfo'
@@ -45,6 +47,8 @@ function App() {
                 <Route path="/history" element={<History />} />
                 <Route path="/service-history" element={<ServiceHistory />} />
                 <Route path="/about" element={<About />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
               </Routes>
               <WhatsAppButton />

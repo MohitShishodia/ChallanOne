@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import './About.css'
+import './Legal.css'
 
 /* Inline stroke icons (24x24) — same idiom as the rest of the client app */
 const icons = {
@@ -243,7 +244,103 @@ export default function About() {
         </div>
       </section>
 
+      {/* Detailed About Sections (adapted from structured content) */}
+      <section style={{ background: '#f8fafc', padding: '48px 0' }}>
+        <div className="legal-container" style={{ paddingTop: 0, paddingBottom: 0 }}>
+          <article className="legal-article">
+
+            <section className="legal-section">
+              <header className="legal-section-header">
+                <span className="legal-num">1.</span>
+                <h2>Who we are</h2>
+              </header>
+              <div className="legal-body">
+                <p>
+                  CHALLANONE is committed to making traffic challan resolution simple and
+                  hassle-free for vehicle owners across India.
+                </p>
+                <p>
+                  ChallanOne helps vehicle owners across India look up, understand and settle their
+                  traffic challans without the queues, paperwork and confusion that usually come
+                  with it. You enter your vehicle number, we fetch your pending challans from
+                  government-verified data, and you pay a single, transparent fee to have them
+                  handled.
+                </p>
+              </div>
+            </section>
+
+            <section className="legal-section">
+              <header className="legal-section-header">
+                <span className="legal-num">2.</span>
+                <h2>What we do</h2>
+              </header>
+              <div className="legal-body">
+                <p>
+                  Ours is a <strong>service</strong>, not a government-payment passthrough. When
+                  you settle a challan through ChallanOne:
+                </p>
+                <ul>
+                  <li>You look up your challans and pay securely online via Razorpay.</li>
+                  <li>Our on-ground team and, where required, our lawyers take over the settlement with the relevant authority on your behalf.</li>
+                  <li>You receive digital confirmation and can track the status of every case from your account.</li>
+                </ul>
+              </div>
+            </section>
+
+            <section className="legal-section">
+              <header className="legal-section-header">
+                <span className="legal-num">3.</span>
+                <h2>Why drivers choose us</h2>
+              </header>
+              <div className="legal-body">
+                <ul>
+                  <li><strong>Government-verified data</strong> — your challans are pulled from official sources, not guesswork.</li>
+                  <li><strong>Lawyer-backed</strong> — complex and court matters are handled by qualified professionals.</li>
+                  <li><strong>Transparent pricing</strong> — the fee for each challan is shown before you pay; no hidden charges.</li>
+                  <li><strong>Secure payments</strong> — all transactions are processed over 256-bit SSL through Razorpay.</li>
+                </ul>
+              </div>
+            </section>
+
+            <section className="legal-section">
+              <header className="legal-section-header">
+                <span className="legal-num">4.</span>
+                <h2>Our promise</h2>
+              </header>
+              <div className="legal-body">
+                <p>
+                  We exist to make clearing a traffic fine as simple as sending a message. You
+                  shouldn&apos;t have to take a day off, visit an office, or decode legal jargon
+                  to stay on the right side of the law — that&apos;s our job, and we take it
+                  seriously.
+                </p>
+              </div>
+            </section>
+
+            <section className="legal-section">
+              <header className="legal-section-header">
+                <span className="legal-num">5.</span>
+                <h2>Reach us</h2>
+              </header>
+              <div className="legal-body">
+                <p>
+                  Questions or feedback? Visit our{' '}
+                  <Link to="/support" style={{ color: '#dc2626', fontWeight: 500 }}>Contact page</Link>{' '}
+                  or write to us directly:
+                </p>
+                <dl className="legal-dl" style={{ marginTop: 8 }}>
+                  <dt>Email</dt>
+                  <dd><a href="mailto:challanone1111@gmail.com">challanone1111@gmail.com</a></dd>
+                </dl>
+              </div>
+            </section>
+
+          </article>
+        </div>
+      </section>
+
       {/* CTA */}
+
       <section className="abt-cta-wrap">
         <div className="container-main">
           <div className="abt-cta">
