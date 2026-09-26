@@ -9,6 +9,11 @@ const STEPS = {
   ERROR: 'ERROR'
 }
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('authToken')
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
 export default function DelhiOtpFlow({ onChallansFound, onBack }) {
   const [step, setStep] = useState(STEPS.INPUT)
   const [vehicleNumber, setVehicleNumber] = useState('')
@@ -64,7 +69,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     try {
       const response = await fetch(API.delhiOtp.createRun, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           vehicleNumber: vehicleNumber.trim(),
           mobileNumber: mobileNumber.trim(),
@@ -100,7 +105,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     try {
       const response = await fetch(API.delhiOtp.submitAction(activeRunId), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           action: 'SUBMIT_MOBILE',
           payload: {
@@ -145,7 +150,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     try {
       const response = await fetch(API.delhiOtp.submitAction(runId), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           action: nextOtpAction,
           payload: { otp }
@@ -192,7 +197,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     try {
       const response = await fetch(API.delhiOtp.submitAction(runId), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ action: resendAction })
       })
 
@@ -216,7 +221,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
       try {
         await fetch(API.delhiOtp.submitAction(runId), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ action: cancelAction })
         })
       } catch { /* best-effort cancel */ }
@@ -231,7 +236,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     try {
       const response = await fetch(API.delhiOtp.getRun(runId), {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       })
 
       const data = await response.json()

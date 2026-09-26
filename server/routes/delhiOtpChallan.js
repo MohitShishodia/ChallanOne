@@ -22,8 +22,14 @@ import {
 } from '../utils/delhiOtpApi.js';
 import { logChallanSearch } from '../utils/searchLogger.js';
 import { syncRawChallans } from '../utils/challanSync.js';
+import { optionalUserAuth } from '../middleware/userAuth.js';
 
 const router = express.Router();
+
+// Optional auth: populate req.user when a JWT token is present so that
+// search logging can capture the calling user's email. Routes remain
+// accessible to anonymous callers.
+router.use(optionalUserAuth);
 
 const CHALLANWALA_BASE_URL = 'https://api.challanwala.com/api/v1/corporate-api/challan-otp';
 const CHALLANWALA_TOKEN = process.env.CHALLANWALA_TOKEN || '';

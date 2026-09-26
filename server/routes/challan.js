@@ -3,11 +3,12 @@ import VehicleModel from '../models/Vehicle.js';
 import ChallanModel from '../models/Challan.js';
 import { maskName, formatChallanDate, formatChallanTime, normalizeVehicleParam } from '../utils/challanHelpers.js';
 import { logChallanSearch } from '../utils/searchLogger.js';
+import { optionalUserAuth } from '../middleware/userAuth.js';
 
 const router = express.Router();
 
 // Get challans by vehicle number
-router.get('/:vehicleNumber', async (req, res) => {
+router.get('/:vehicleNumber', optionalUserAuth, async (req, res) => {
   const { vehicleNumber } = req.params;
   const normalizedNumber = normalizeVehicleParam(vehicleNumber);
 

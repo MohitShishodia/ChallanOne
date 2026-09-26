@@ -4,6 +4,7 @@ const challanSearchSchema = new mongoose.Schema({
   vehicle_number: { type: String, required: true, index: true },
   search_type:    { type: String, enum: ['ALL_CHALLANS', 'DELHI_OTP', 'DB_LOOKUP', 'RC_DETAILS'], required: true },
   user_id:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  user_email:     { type: String, default: null, index: true },
   ip_address:     { type: String },
   user_agent:     { type: String },
   status:         { type: String, enum: ['success', 'failed', 'no_results', 'rate_limited'], default: 'success' },
@@ -16,5 +17,6 @@ const challanSearchSchema = new mongoose.Schema({
 
 challanSearchSchema.index({ created_at: -1 });
 challanSearchSchema.index({ search_type: 1, created_at: -1 });
+challanSearchSchema.index({ user_email: 1, created_at: -1 });
 
 export default mongoose.models.ChallanSearch || mongoose.model('ChallanSearch', challanSearchSchema);
