@@ -20,6 +20,11 @@ import {
   getDefaultFilters,
 } from '../utils/challanSearchCache'
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('authToken')
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
 function EmptyResultsPanel() {
   return (
     <div className="surface-card flex flex-col items-center justify-center text-center px-6 py-16 md:py-24 min-h-[420px]">
@@ -108,7 +113,7 @@ export default function PayChallan() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ vehicleNumber: trimmed, forceRefresh: true })
       })
       const result = await response.json()

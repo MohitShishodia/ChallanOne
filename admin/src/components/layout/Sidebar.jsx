@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, Users, FileText, CreditCard, Settings,
   Bell, BookOpen, LifeBuoy, BarChart3, ShieldCheck, Wrench,
-  ChevronLeft, ChevronRight, Zap, Search
+  ChevronLeft, ChevronRight, Zap, Search, Activity, UserCheck
 } from 'lucide-react'
 
 const NAV_SECTIONS = [
@@ -28,6 +28,14 @@ const NAV_SECTIONS = [
     items: [
       { to: '/challan-searches', icon: Search, label: 'User Searches', permission: 'view_dashboard' },
       { to: '/reports', icon: BarChart3, label: 'Reports', permission: 'view_reports' }
+    ]
+  },
+  {
+    label: 'API Monitoring',
+    items: [
+      { to: '/api-usage', icon: Activity, label: 'API Usage Overview', permission: 'view_dashboard' },
+      { to: '/api-usage/rc-details-logs', icon: UserCheck, label: 'RC Details Logs', permission: 'view_dashboard' },
+      { to: '/api-usage/challan-logs', icon: FileText, label: 'Challan API Logs', permission: 'view_dashboard' }
     ]
   },
   {

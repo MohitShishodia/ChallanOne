@@ -31,6 +31,7 @@ import adminNotificationRoutes from './routes/admin/notifications.js';
 import adminCmsRoutes from './routes/admin/cms.js';
 import adminTicketRoutes from './routes/admin/tickets.js';
 import adminChallanSearchRoutes from './routes/admin/challanSearches.js';
+import adminApiUsageRoutes from './routes/admin/apiUsage.js';
 
 // Middleware
 import { apiLimiter } from './middleware/rateLimiter.js';
@@ -162,6 +163,7 @@ app.use('/api/admin/notifications', apiLimiter, adminNotificationRoutes);
 app.use('/api/admin/cms', apiLimiter, adminCmsRoutes);
 app.use('/api/admin/tickets', apiLimiter, adminTicketRoutes);
 app.use('/api/admin/challan-searches', apiLimiter, adminChallanSearchRoutes);
+app.use('/api/admin/api-usage', apiLimiter, adminApiUsageRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

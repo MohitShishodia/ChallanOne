@@ -10,7 +10,7 @@ import {
 import {
   Users, CreditCard, FileText, TrendingUp,
   ArrowUpRight, Wrench, LifeBuoy,
-  RefreshCw, Plus, Eye
+  RefreshCw, Plus, Eye, Activity, Search
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -81,6 +81,7 @@ export default function Dashboard() {
 
   const [searchStats, setSearchStats] = useState(null)
   const [recentSearches, setRecentSearches] = useState([])
+  const [apiUsageStats, setApiUsageStats] = useState(null)
 
   useEffect(() => {
     loadAll()
@@ -89,17 +90,18 @@ export default function Dashboard() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [statsRes, chartRes, challanRes, activityRes, searchStatsRes, searchesRes] = await Promise.all([
+      const [statsRes, chartRes, challanRes, activityRes, searchStatsRes, searchesRes, apiUsageRes] = await Promise.all([
         fetch(apiUrl('/api/admin/dashboard/stats'), { headers: authHeaders() }),
         fetch(apiUrl(`/api/admin/dashboard/revenue-chart?period=${period}`), { headers: authHeaders() }),
         fetch(apiUrl('/api/admin/dashboard/challan-stats'), { headers: authHeaders() }),
         fetch(apiUrl('/api/admin/dashboard/recent-activity?limit=10'), { headers: authHeaders() }),
         fetch(apiUrl('/api/admin/challan-searches/stats'), { headers: authHeaders() }),
-        fetch(apiUrl('/api/admin/challan-searches?limit=5'), { headers: authHeaders() })
+        fetch(apiUrl('/api/admin/challan-searches?limit=5'), { headers: authHeaders() }),
+        fetch(apiUrl('/api/admin/api-usage/stats'), { headers: authHeaders() })
       ])
 
-      const [statsData, chartData, challanData, activityData, searchStatsData, searchesData] = await Promise.all([
-        statsRes.json(), chartRes.json(), challanRes.json(), activityRes.json(), searchStatsRes.json(), searchesRes.json()
+      const [statsData, chartData, challanData, activityData, searchStatsData, searchesData, apiUsageData] = await Promise.all([
+        statsRes.json(), chartRes.json(), challanRes.json(), activityRes.json(), searchStatsRes.json(), searchesRes.json(), apiUsageRes.json()
       ])
 
       if (statsData.success) setStats(statsData.stats)
@@ -115,6 +117,7 @@ export default function Dashboard() {
       if (activityData.success) setActivity(activityData.activity)
       if (searchStatsData.success) setSearchStats(searchStatsData.stats)
       if (searchesData.success) setRecentSearches(searchesData.searches || [])
+      if (apiUsageData.success) setApiUsageStats(apiUsageData.stats)
     } catch (err) {
       console.error('Dashboard load error:', err)
     } finally {
@@ -518,6 +521,75 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* API Usage Monitoring */}
+      {apiUsageStats && (
+        <div className="card" style={{ marginTop: 24 }}>
+          <div className="card-header" style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="card-title">API Usage Monitoring</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/api-usage')}>
+              <Eye size={13} /> View Details
+            </button>
+          </div>
+          <div className="card-body">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-text-primary)' }}>{formatNumber(apiUsageStats.totalCalls)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Total API Calls</div>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#2563eb' }}>{formatNumber(apiUsageStats.todayCalls)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Today</div>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#7c3aed' }}>{formatNumber(apiUsageStats.byType?.RC_DETAILS || 0)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>RC Details</div>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b' }}>{formatNumber(apiUsageStats.byType?.ALL_CHALLANS || 0)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>All Challans</div>
+              </div>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 10, padding: '12px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444' }}>{formatNumber(apiUsageStats.rateLimitedCalls || 0)}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Rate Limited</div>
+              </div>
+            </div>
+
+            {apiUsageStats.topUsers && apiUsageStats.topUsers.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>Top Users by API Usage</div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)' }}>User</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)' }}>Total Calls</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apiUsageStats.topUsers.slice(0, 5).map((user, i) => (
+                        <tr key={user.userId} style={{ borderBottom: i < 4 ? '1px solid var(--color-border)' : 'none' }}>
+                          <td style={{ padding: '8px 12px' }}>
+                            <div style={{ fontWeight: 600 }}>{user.name || user.email}</div>
+                            <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{user.email}</div>
+                          </td>
+                          <td style={{ padding: '8px 12px', fontWeight: 600 }}>{formatNumber(user.callCount)}</td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/api-usage/user/${user.userId}`)}>
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

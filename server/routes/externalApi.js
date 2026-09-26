@@ -1,6 +1,8 @@
 import express from 'express';
 import { logChallanSearch } from '../utils/searchLogger.js';
 import { syncRawChallans } from '../utils/challanSync.js';
+import { userAuth } from '../middleware/userAuth.js';
+import { rcDetailsLimiter, challanApiLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
@@ -38,8 +40,9 @@ function setCachedChallan(vehicleNumber, payload) {
 /**
  * GET /api/external/vehicle/:vehicleNumber
  * Fetch vehicle RC details from APIClub rc_info endpoint.
+ * Rate limited: 10 calls per day per user
  */
-router.get('/vehicle/:vehicleNumber', async (req, res) => {
+router.get('/vehicle/:vehicleNumber', userAuth, rcDetailsLimiter, async (req, res) => {
     try {
         const { vehicleNumber } = req.params;
 
@@ -54,6 +57,7 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
 
         console.log(`[APIClub] Fetching vehicle info for: ${normalizedVehicleNumber}`);
 
+        const startTime = Date.now();
         const response = await fetch(`${APICLUB_BASE_URL}/rc_info`, {
             method: 'POST',
             headers: {
@@ -67,9 +71,19 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
         });
 
         const data = await response.json();
+        const responseTimeMs = Date.now() - startTime;
 
         if (!data || data.error || data.status === 'error') {
             console.error('APIClub error:', data?.message || data?.error || 'Unknown error');
+            // Log the failed attempt
+            await logChallanSearch(req, {
+                vehicleNumber: normalizedVehicleNumber,
+                searchType: 'RC_DETAILS',
+                status: 'failed',
+                responseTimeMs,
+                errorMessage: data?.message || 'External API error',
+                metadata: { source: 'APICLUB', externalResponse: data }
+            });
             return res.status(404).json({
                 success: false,
                 message: data?.message || 'Vehicle not found or external API error',
@@ -79,6 +93,15 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
 
         console.log(`[APIClub] Vehicle info fetched successfully for: ${normalizedVehicleNumber}`);
 
+        // Log successful call
+        await logChallanSearch(req, {
+            vehicleNumber: normalizedVehicleNumber,
+            searchType: 'RC_DETAILS',
+            status: 'success',
+            responseTimeMs,
+            metadata: { source: 'APICLUB' }
+        });
+
         return res.json({
             success: true,
             source: 'APICLUB_EXTERNAL',
@@ -87,12 +110,27 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
 
     } catch (error) {
         console.error('[APIClub] Vehicle info error:', error);
+        const responseTimeMs = error.responseTimeMs || 0;
         if (error.name === 'TimeoutError') {
+            await logChallanSearch(req, {
+                vehicleNumber: normalizedVehicleNumber,
+                searchType: 'RC_DETAILS',
+                status: 'failed',
+                responseTimeMs,
+                errorMessage: 'External API timeout'
+            });
             return res.status(504).json({
                 success: false,
                 message: 'The RTO service is taking too long to respond. Please try again.'
             });
         }
+        await logChallanSearch(req, {
+            vehicleNumber: normalizedVehicleNumber,
+            searchType: 'RC_DETAILS',
+            status: 'failed',
+            responseTimeMs,
+            errorMessage: error.message
+        });
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch vehicle information from external API',
@@ -105,8 +143,9 @@ router.get('/vehicle/:vehicleNumber', async (req, res) => {
  * POST /api/external/challan
  * Fetch challan information from ChallanWala API.
  * Body: { vehicleNumber }
+ * Rate limited: 50 calls per day per user
  */
-router.post('/challan', async (req, res) => {
+router.post('/challan', userAuth, challanApiLimiter, async (req, res) => {
     try {
         const { vehicleNumber } = req.body;
 
@@ -136,7 +175,7 @@ router.post('/challan', async (req, res) => {
 
         if (!data.success) {
             console.error('[ChallanWala] API error:', data.message);
-            logChallanSearch(req, {
+            await logChallanSearch(req, {
                 vehicleNumber: normalizedVehicleNumber,
                 searchType: 'ALL_CHALLANS',
                 status: 'failed',
@@ -168,7 +207,7 @@ router.post('/challan', async (req, res) => {
         // Respond immediately — sync/log in background (was blocking 60+ DB writes)
         res.json(payload);
 
-        logChallanSearch(req, {
+        await logChallanSearch(req, {
             vehicleNumber: normalizedVehicleNumber,
             searchType: 'ALL_CHALLANS',
             status: challansFound > 0 ? 'success' : 'no_results',
@@ -185,7 +224,7 @@ router.post('/challan', async (req, res) => {
 
     } catch (error) {
         console.error('[ChallanWala] Challan info error:', error);
-        logChallanSearch(req, {
+        await logChallanSearch(req, {
             vehicleNumber: req.body?.vehicleNumber || 'UNKNOWN',
             searchType: 'ALL_CHALLANS',
             status: 'failed',

@@ -18,6 +18,10 @@ import Notifications from './pages/notifications/Notifications'
 import RoleList from './pages/roles/RoleList'
 import Settings from './pages/settings/Settings'
 import ChallanSearches from './pages/challanSearches/ChallanSearches'
+import ApiUsageOverview from './pages/apiUsage/ApiUsageOverview'
+import RcDetailsLogs from './pages/apiUsage/RcDetailsLogs'
+import ChallanApiLogs from './pages/apiUsage/ChallanApiLogs'
+import UserApiUsage from './pages/apiUsage/UserApiUsage'
 
 // Protected route guard
 function RequireAuth({ children }) {
@@ -90,6 +94,12 @@ function AppRoutes() {
       <Route path="/roles" element={<RequireAuth><RoleList /></RequireAuth>} />
       <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
       <Route path="/challan-searches" element={<RequireAuth><ChallanSearches /></RequireAuth>} />
+      
+      {/* API Usage Monitoring */}
+      <Route path="/api-usage" element={<RequireAuth><ApiUsageOverview /></RequireAuth>} />
+      <Route path="/api-usage/rc-details-logs" element={<RequireAuth><RcDetailsLogs /></RequireAuth>} />
+      <Route path="/api-usage/challan-logs" element={<RequireAuth><ChallanApiLogs /></RequireAuth>} />
+      <Route path="/api-usage/user/:userId" element={<RequireAuth><UserApiUsage /></RequireAuth>} />
 
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

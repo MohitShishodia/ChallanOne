@@ -16,6 +16,11 @@ function formatDateString(dateStr) {
   }
 }
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('authToken')
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
 /**
  * Fetch RC details from the external RTO API and map them into the shape used by the UI.
  * Concurrent requests for the same number share one network call, and the
@@ -48,7 +53,10 @@ async function doFetchVehicleInfo(trimmed) {
   try {
     const response = await fetch(
       `${API_BASE_URL}/api/external/vehicle/${encodeURIComponent(trimmed)}`,
-      { signal: controller.signal }
+      { 
+        signal: controller.signal,
+        headers: getAuthHeaders()
+      }
     )
     data = await response.json()
   } catch (err) {
@@ -62,6 +70,10 @@ async function doFetchVehicleInfo(trimmed) {
   }
 
   if (!(data.success && data.vehicle?.response)) {
+    // Handle rate limit error
+    if (data.message?.includes('limit exceeded')) {
+      throw new Error(data.message)
+    }
     throw new Error(data.message || 'Vehicle not found')
   }
 

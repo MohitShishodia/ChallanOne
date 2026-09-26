@@ -8,7 +8,7 @@ export async function logChallanSearch(req, { vehicleNumber, searchType, status,
     const doc = await ChallanSearchModel.create({
       vehicle_number: vehicleNumber,
       search_type: searchType,
-      user_id: req.user?.id || null,
+      user_id: req.user?.userId || req.user?.id || null,
       ip_address: req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
       user_agent: req.headers['user-agent'] || null,
       status: status || 'success',
