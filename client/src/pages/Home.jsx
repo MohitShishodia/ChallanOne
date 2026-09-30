@@ -88,30 +88,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ══════════════ PARTNERS / TRUST BAR ══════════════ */}
-        <section className="partners">
-          <div className="container-main partners-inner">
-            <div className="partners-lead">
-              <p className="partners-lead-title">
-                Trusted by <span>1,20,000+</span> Vehicle Owners
-              </p>
-              <p className="partners-stars">★★★★★</p>
-            </div>
-            <div className="partners-logos">
-              {partners.map((p) => (
-                <span className="partner-logo" key={p.label}>
-                  <span className="dot">{p.icon}</span>
-                  {p.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* ══════════════ STATS ══════════════ */}
         <section className="stats-band">
           <div className="container-main">
-            <div className="stats-grid">
+            <div className="stats-grid stats-grid--single-row">
               {stats.map((s) => (
                 <div className="stat-card" key={s.label}>
                   <span className={`stat-ic stat-ic--${s.tone}`}>{s.icon}</span>
@@ -125,8 +105,98 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ══════════════ SERVICES TABS ══════════════ */}
-        <ServiceTabsSection />
+        {/* ══════════════ UNLOCK PREMIUM VEHICLE REPORTS ══════════════ */}
+        <section className="premium-report-sec">
+          <div className="container-main">
+            <div className="premium-report-card">
+              <div className="premium-report-content">
+                <div className="premium-report-head">
+                  <div className="premium-crown-chip" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                      <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="premium-title-wrap">
+                      <h3 className="premium-report-title">Unlock Premium Vehicle Reports</h3>
+                      <span className="premium-report-tag">Premium</span>
+                    </div>
+                    <p className="premium-report-sub">
+                      Get complete vehicle information and history with our advanced reports.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="premium-features-row">
+                  <span className="premium-feat-item premium-feat-item--blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="3" y="4" width="18" height="16" rx="2" />
+                      <line x1="7" y1="8" x2="11" y2="8" />
+                      <line x1="7" y1="12" x2="17" y2="12" />
+                      <line x1="7" y1="16" x2="14" y2="16" />
+                    </svg>
+                    Full RC Details
+                  </span>
+
+                  <span className="premium-feat-item premium-feat-item--red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="9" y1="15" x2="15" y2="15" />
+                      <line x1="9" y1="11" x2="11" y2="11" />
+                    </svg>
+                    Complete Challan PDF
+                  </span>
+
+                  <span className="premium-feat-item premium-feat-item--amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                    </svg>
+                    Vehicle Service History
+                  </span>
+
+                  <span className="premium-feat-item premium-feat-item--green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 2l9 5H3l9-5z" />
+                    </svg>
+                    Court Challan Tracking
+                  </span>
+
+                  <span className="premium-feat-item premium-feat-item--purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                    </svg>
+                    Vehicle Health Report
+                  </span>
+                </div>
+
+                <div className="premium-action-bar">
+                  <button type="button" className="premium-action-btn">
+                    Upgrade Now
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </button>
+                  <span className="premium-price-pill">
+                    ₹299 <span className="premium-price-unit">/ month</span>
+                  </span>
+                  <span className="premium-guarantee-text">
+                    Cancel anytime &bull; 7-day money back guarantee
+                  </span>
+                </div>
+              </div>
+
+              <div className="premium-report-visual">
+                <img
+                  src="/premium_report_banner.jpg"
+                  alt="Premium Vehicle Report Illustration"
+                  className="premium-visual-img"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* ══════════════ HOW IT WORKS ══════════════ */}
         <section className="sec sec--gray">

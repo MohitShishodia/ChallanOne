@@ -17,6 +17,7 @@ import Terms from './pages/Terms'
 import ServiceHistory from './pages/ServiceHistory'
 import RCDetails from './pages/RCDetails'
 import VehicleInfo from './pages/VehicleInfo'
+import ChallanSettlement from './pages/ChallanSettlement'
 import './App.css'
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
                 } />
                 <Route path="/vehicle-info" element={<VehicleInfo />} />
                 <Route path="/support" element={<Support />} />
+                <Route path="/challan-settlement" element={<ChallanSettlement />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={
                   <ProtectedRoute>

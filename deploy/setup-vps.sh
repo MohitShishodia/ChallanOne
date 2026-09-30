@@ -14,9 +14,9 @@ echo "==> Updating system"
 apt update && apt upgrade -y
 apt install -y curl git nginx ufw build-essential ca-certificates
 
-echo "==> Installing Node.js 20"
-if ! command -v node >/dev/null 2>&1; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+echo "==> Checking Node.js version (requires 20.19+ or 22.12+)"
+if ! command -v node >/dev/null 2>&1 || ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit((major === 20 && minor >= 19) || (major >= 22 && (major > 22 || minor >= 12)) ? 0 : 1)'; then
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt install -y nodejs
 fi
 node -v
