@@ -114,7 +114,7 @@ export default function PayChallan() {
       const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ vehicleNumber: trimmed, forceRefresh: true })
+        body: JSON.stringify({ vehicleNumber: trimmed, bypassCache: true })
       })
       const result = await response.json()
       if (result.success) {

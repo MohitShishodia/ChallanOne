@@ -147,7 +147,7 @@ router.get('/vehicle/:vehicleNumber', userAuth, rcDetailsLimiter, async (req, re
  */
 router.post('/challan', userAuth, challanApiLimiter, async (req, res) => {
     try {
-        const { vehicleNumber } = req.body;
+        const { vehicleNumber, bypassCache = false } = req.body;
 
         if (!vehicleNumber) {
             return res.status(400).json({
@@ -167,7 +167,10 @@ router.post('/challan', userAuth, challanApiLimiter, async (req, res) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${CHALLANWALA_TOKEN}`
             },
-            body: JSON.stringify({ rc_number: normalizedVehicleNumber })
+            body: JSON.stringify({
+                rc_number: normalizedVehicleNumber,
+                bypassCache: bypassCache === true
+            })
         });
 
         const data = await response.json();

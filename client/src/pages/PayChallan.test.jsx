@@ -175,7 +175,7 @@ describe('PayChallan page', () => {
     global.fetch = vi.fn((url, options) => {
       if (String(url).includes('/api/external/challan')) {
         const body = JSON.parse(options?.body || '{}')
-        expect(body.forceRefresh).toBe(true)
+        expect(body.bypassCache).toBe(true)
         return Promise.resolve({
           ok: true,
           json: async () => mockChallanApiResponse,
