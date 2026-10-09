@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { FeatureProvider } from './context/FeatureContext'
 import AppShell from './components/AppShell'
+import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/ProtectedRoute'
 import WhatsAppButton from './components/ui/WhatsAppButton'
 import Home from './pages/Home'
@@ -25,6 +26,7 @@ function App() {
     <AuthProvider>
       <FeatureProvider>
       <Router>
+        <ScrollToTop />
         <Routes>
           {/* All routes use the default AppShell (Navbar + Footer) */}
           <Route path="*" element={

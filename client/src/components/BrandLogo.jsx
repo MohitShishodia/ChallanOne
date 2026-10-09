@@ -3,10 +3,10 @@ import { BRAND } from '../constants/brand'
 
 export default function BrandLogo({ className = '', size = 'md', linkTo = '/', variant = 'default', showText = true }) {
   const sizes = {
-    sm: 'h-11 max-w-[140px]',
-    md: 'h-14 max-w-[175px]',
-    lg: 'h-[4.5rem] max-w-[220px]',
-    navbar: 'h-14 max-w-[170px] md:h-[4.5rem] md:max-w-[240px]',
+    sm: 'h-16 max-w-[192px]',
+    md: 'h-20 max-w-[224px]',
+    lg: 'h-24 max-w-[280px]',
+    navbar: 'h-24 max-w-[208px] md:h-24 md:max-w-[256px]',
   }
 
   const img = (

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { AuthProvider } from '../context/AuthContext'
 import Home from './Home'
 
 vi.mock('../components/Illustrations', () => ({
@@ -9,26 +10,24 @@ vi.mock('../components/Illustrations', () => ({
 }))
 
 describe('Home page', () => {
-  it('renders hero section and primary CTAs', () => {
+  it('renders the updated hero heading and search entry point', () => {
     render(
       <MemoryRouter>
-        <Home />
+        <AuthProvider><Home /></AuthProvider>
       </MemoryRouter>
     )
 
-    expect(screen.getByText(/Check Vehicle Challan/i)).toBeInTheDocument()
-    const challanLinks = screen.getAllByRole('link', { name: /Check Challan/i })
-    expect(challanLinks[0]).toHaveAttribute('href', '/pay-challan')
-    expect(screen.getByRole('link', { name: /Check RC Details/i })).toHaveAttribute('href', '/rc-details')
+    expect(screen.getByRole('heading', { name: /instantly/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Sign in to Get Started/i })).toBeInTheDocument()
   })
 
   it('shows trust badge', () => {
     render(
       <MemoryRouter>
-        <Home />
+        <AuthProvider><Home /></AuthProvider>
       </MemoryRouter>
     )
 
-    expect(screen.getByText("India's Most Trusted Platform")).toBeInTheDocument()
+    expect(screen.getByText("India's Most Trusted Vehicle Verification Platform")).toBeInTheDocument()
   })
 })

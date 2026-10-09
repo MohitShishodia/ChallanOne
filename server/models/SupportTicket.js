@@ -10,6 +10,7 @@ const supportTicketSchema = new mongoose.Schema({
   user_id:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   guest_name:  { type: String, default: null },
   guest_email: { type: String, default: null },
+  guest_phone: { type: String, default: null },
   source:      { type: String, default: 'website' },
   subject:     { type: String, required: true },
   description: { type: String, required: true },

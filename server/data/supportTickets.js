@@ -8,6 +8,7 @@ function formatTicket(ticket) {
     description: ticket.description,
     guestName: ticket.guest_name || null,
     guestEmail: ticket.guest_email || null,
+    guestPhone: ticket.guest_phone || null,
     source: ticket.source || 'website',
     priority: ticket.priority,
     status: ticket.status,
@@ -37,7 +38,8 @@ export async function getTickets({ status, priority, assignedTo, search, page = 
       { subject: { $regex: search, $options: 'i' } },
       { description: { $regex: search, $options: 'i' } },
       { guest_name: { $regex: search, $options: 'i' } },
-      { guest_email: { $regex: search, $options: 'i' } }
+      { guest_email: { $regex: search, $options: 'i' } },
+      { guest_phone: { $regex: search, $options: 'i' } },
     ];
 
     const skip = (page - 1) * limit;
@@ -96,6 +98,7 @@ export async function createTicket(ticketData) {
       user_id: ticketData.user_id || null,
       guest_name: ticketData.guest_name || null,
       guest_email: ticketData.guest_email || null,
+      guest_phone: ticketData.guest_phone || null,
       source: ticketData.source || 'website',
       subject: ticketData.subject,
       description: ticketData.description,

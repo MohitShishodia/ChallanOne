@@ -101,7 +101,7 @@ export default function TicketList() {
         <div>
           <div style={{ fontWeight: 600, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {row.guestEmail || row.user?.email || 'No email'}
+            {row.guestEmail || row.guestPhone || row.user?.email || 'No contact'}
             {row.source && ` · ${row.source}`}
           </div>
         </div>
@@ -186,7 +186,7 @@ export default function TicketList() {
             </div>
 
             {/* Description */}
-            {(ticketDetail.guestName || ticketDetail.guestEmail) && (
+            {(ticketDetail.guestName || ticketDetail.guestEmail || ticketDetail.guestPhone) && (
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
                 {ticketDetail.guestName && (
                   <span><strong>Name:</strong> {ticketDetail.guestName}</span>
@@ -197,13 +197,16 @@ export default function TicketList() {
                     <a href={`mailto:${ticketDetail.guestEmail}`}>{ticketDetail.guestEmail}</a>
                   </span>
                 )}
+                {ticketDetail.guestPhone && (
+                  <span><strong>Phone:</strong> <a href={`tel:${ticketDetail.guestPhone}`}>{ticketDetail.guestPhone}</a></span>
+                )}
                 {ticketDetail.source && <span><strong>Source:</strong> {ticketDetail.source}</span>}
               </div>
             )}
 
             <div style={{ background: 'var(--color-surface-2)', borderRadius: 8, padding: '12px 14px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-                {ticketDetail.guestEmail || ticketDetail.user?.email || 'Customer'} · {formatDateTime(ticketDetail.createdAt)}
+                {ticketDetail.guestEmail || ticketDetail.guestPhone || ticketDetail.user?.email || 'Customer'} · {formatDateTime(ticketDetail.createdAt)}
               </div>
               <p style={{ fontSize: 14, color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap' }}>{ticketDetail.description}</p>
             </div>

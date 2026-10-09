@@ -32,7 +32,7 @@ export default function Home() {
 
               <h1 className="hero-title">
                 Check Vehicle Challan, RC Details &amp; Service History{' '}
-                <span className="accent">in Seconds</span>
+                <span className="accent">instantly</span>
               </h1>
 
               <p className="hero-sub">

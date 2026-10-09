@@ -1099,13 +1099,13 @@
    UNLOCK PREMIUM VEHICLE REPORTS BANNER
    ══════════════════════════════════════ */
 .premium-report-sec {
-  padding: 32px 0;
+  padding: 16px 0 32px;
   background: #ffffff;
 }
 
 @media (min-width: 768px) {
   .premium-report-sec {
-    padding: 44px 0;
+    padding: 24px 0 44px;
   }
 }
 

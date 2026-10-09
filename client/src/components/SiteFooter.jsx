@@ -11,7 +11,7 @@ export default function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="container-main">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-[1.4fr_0.9fr_1.1fr_1fr_1fr] gap-6 md:gap-8 mb-6 md:mb-10">
           <div>
             <div className="mb-4">
               <BrandLogo linkTo="/" size="sm" variant="light" />

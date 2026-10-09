@@ -4,7 +4,7 @@ import { submitSupportMessage } from '../utils/supportApi'
 import { WHATSAPP, whatsappUrl } from '../constants/brand'
 
 export default function ChallanSettlement() {
-  const [formData, setFormData] = useState({ rcNumber: '', email: '', message: '' })
+  const [formData, setFormData] = useState({ rcNumber: '', mobileNumber: '' })
   const [submitted, setSubmitted] = useState(false)
   const [ticketId, setTicketId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,8 +20,7 @@ export default function ChallanSettlement() {
     try {
       const data = await submitSupportMessage({
         name: formData.rcNumber,
-        email: formData.email,
-        message: formData.message,
+        mobileNumber: formData.mobileNumber,
         source: 'challan-settlement',
       })
       setTicketId(data.ticketId || '')
@@ -63,7 +62,7 @@ export default function ChallanSettlement() {
                   <button
                     onClick={() => {
                       setSubmitted(false)
-                      setFormData({ rcNumber: '', email: '', message: '' })
+                      setFormData({ rcNumber: '', mobileNumber: '' })
                       setTicketId('')
                     }}
                     className="btn-primary mt-4"
@@ -89,28 +88,21 @@ export default function ChallanSettlement() {
                     />
                   </div>
                   <div>
-                    <label className="field-label">Email Address</label>
+                    <label className="field-label">Mobile Number</label>
                     <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="Enter your email"
+                      type="tel"
+                      name="mobileNumber"
+                      value={formData.mobileNumber}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        mobileNumber: e.target.value.replace(/\D/g, '').slice(0, 10),
+                      })}
+                      placeholder="Enter your 10-digit mobile number"
                       required
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      maxLength={10}
                       className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="field-label">Message</label>
-                    <textarea
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      rows={4}
-                      placeholder="Describe your challan settlement request..."
-                      required
-                      minLength={10}
-                      className="input-field resize-none"
                     />
                   </div>
                   <button type="submit" className="btn-primary w-full" disabled={loading}>

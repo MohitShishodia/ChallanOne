@@ -12,6 +12,7 @@ function emitSupportMessage(req, ticket) {
     subject: ticket.subject,
     guestName: ticket.guest_name,
     guestEmail: ticket.guest_email,
+    guestPhone: ticket.guest_phone,
     status: ticket.status,
     createdAt: ticket.created_at
   });
@@ -23,28 +24,38 @@ function emitSupportMessage(req, ticket) {
  */
 router.post('/contact', apiLimiter, async (req, res) => {
   try {
-    const { name, email, message, source } = req.body;
+    const { name, email, mobileNumber, message, source } = req.body;
+    const isSettlementRequest = source === 'challan-settlement';
 
     if (!name?.trim() || name.trim().length < 2) {
       return res.status(400).json({ success: false, message: 'Name is required' });
     }
-    if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ success: false, message: 'Valid email is required' });
-    }
-    if (!message?.trim() || message.trim().length < 10) {
-      return res.status(400).json({ success: false, message: 'Message must be at least 10 characters' });
+    if (isSettlementRequest) {
+      if (!/^\d{10}$/.test(String(mobileNumber || ''))) {
+        return res.status(400).json({ success: false, message: 'Valid 10-digit mobile number is required' });
+      }
+    } else {
+      if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, message: 'Valid email is required' });
+      }
+      if (!message?.trim() || message.trim().length < 10) {
+        return res.status(400).json({ success: false, message: 'Message must be at least 10 characters' });
+      }
     }
 
     const trimmedName = name.trim();
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedMessage = message.trim();
+    const trimmedEmail = email?.trim() ? email.trim().toLowerCase() : null;
+    const trimmedMessage = isSettlementRequest
+      ? `Challan settlement request for RC number ${trimmedName}. Contact number: ${mobileNumber}.`
+      : message.trim();
     const from = source || 'website';
 
     const result = await createTicket({
-      subject: `Message from ${trimmedName}`,
+      subject: isSettlementRequest ? `Challan settlement request - ${trimmedName}` : `Message from ${trimmedName}`,
       description: trimmedMessage,
       guest_name: trimmedName,
       guest_email: trimmedEmail,
+      guest_phone: isSettlementRequest ? mobileNumber : null,
       source: from,
       priority: 'medium'
     });
