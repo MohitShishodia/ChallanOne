@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { Fragment, useRef, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import BrandLogo from './BrandLogo'
 
@@ -7,10 +7,15 @@ const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/pay-challan', label: 'Check Challan' },
   { to: '/rc-details', label: 'RC Details' },
-  { to: '/service-history', label: 'Service History' },
   { to: '/about', label: 'About Us' },
   { to: '/challan-settlement', label: 'Challan Settlement' },
   { to: '/support', label: 'Support' },
+]
+
+const serviceLinks = [
+  { to: '/pay-challan', label: 'Check Challan' },
+  { to: '/rc-details', label: 'RC Details' },
+  { to: '/service-history', label: 'Service History' },
 ]
 
 export default function Navbar() {
@@ -54,11 +59,6 @@ export default function Navbar() {
     navigate('/')
   }
 
-  const isActive = (path) => {
-    if (path === '/') return pathname === '/'
-    return pathname.startsWith(path)
-  }
-
   return (
     <>
       <nav className="site-navbar">
@@ -67,13 +67,20 @@ export default function Navbar() {
 
           <div className="nav-links">
             {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`nav-link ${isActive(link.to) ? 'nav-link-active' : ''}`}
-              >
-                {link.label}
-              </Link>
+              <Fragment key={link.to}>
+                <Link
+                  to={link.to}
+                  className={`nav-link ${isActivePath(pathname, link.to) ? 'nav-link-active' : ''}`}
+                >
+                  {link.label}
+                </Link>
+                {link.to === '/rc-details' && (
+                  <ServicesMenu
+                    pathname={pathname}
+                    isActive={serviceLinks.some((service) => isActivePath(pathname, service.to))}
+                  />
+                )}
+              </Fragment>
             ))}
           </div>
 
@@ -149,18 +156,27 @@ export default function Navbar() {
             </div>
             <div className="p-2 space-y-0.5 overflow-y-auto flex-1">
               {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={closeMenu}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-[14px] font-medium transition ${
-                    isActive(link.to)
-                      ? 'bg-red-50 text-brand-red'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  {link.label}
-                </Link>
+                <Fragment key={link.to}>
+                  <Link
+                    to={link.to}
+                    onClick={closeMenu}
+                    className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-[14px] font-medium transition ${
+                      isActivePath(pathname, link.to)
+                        ? 'bg-red-50 text-brand-red'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                  {link.to === '/rc-details' && (
+                    <ServicesMenu
+                      mobile
+                      pathname={pathname}
+                      isActive={serviceLinks.some((service) => isActivePath(pathname, service.to))}
+                      onNavigate={closeMenu}
+                    />
+                  )}
+                </Fragment>
               ))}
             </div>
             <div className="border-t border-slate-100 p-2 shrink-0">
@@ -187,4 +203,62 @@ export default function Navbar() {
       )}
     </>
   )
+}
+
+function ServicesMenu({ pathname, isActive, mobile = false, onNavigate }) {
+  const detailsRef = useRef(null)
+  const summaryClassName = mobile
+    ? `flex cursor-pointer list-none items-center justify-between rounded-xl px-4 py-2.5 text-[14px] font-medium transition ${
+        isActive ? 'bg-red-50 text-brand-red' : 'text-slate-700 hover:bg-slate-50'
+      }`
+    : `nav-link flex cursor-pointer list-none items-center gap-1 ${
+        isActive ? 'nav-link-active' : ''
+      }`
+
+  const closeMenu = () => {
+    if (detailsRef.current) detailsRef.current.open = false
+    onNavigate?.()
+  }
+
+  return (
+    <details ref={detailsRef} className={mobile ? '' : 'relative'}>
+      <summary className={summaryClassName}>
+        Services
+        <svg className="h-4 w-4 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div className={mobile
+        ? 'ml-3 mt-1 space-y-0.5 border-l border-slate-200 pl-3'
+        : 'absolute left-0 top-full z-50 mt-1 min-w-48 rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl shadow-slate-900/10'
+      }>
+        {serviceLinks.map((link) => (
+          <Link
+            key={link.to}
+            to={link.to}
+            onClick={closeMenu}
+            className={mobile
+              ? `block rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${
+                  isActivePath(pathname, link.to)
+                    ? 'bg-red-50 text-brand-red'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`
+              : `block rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${
+                  isActivePath(pathname, link.to)
+                    ? 'bg-red-50 text-brand-red'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`
+            }
+          >
+            {link.label}
+          </Link>
+        ))}
+      </div>
+    </details>
+  )
+}
+
+function isActivePath(pathname, path) {
+  if (path === '/') return pathname === '/'
+  return pathname.startsWith(path)
 }

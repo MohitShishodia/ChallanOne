@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import DetailDrawer, { DetailRow } from './DetailDrawer'
 import { sumChallanFineAmounts } from '../utils/challanUtils'
 import { downloadChallansPdf } from '../utils/challanPdf'
+import './ChallanResults.css'
 
 const TABS = {
   ALL: 'all',
@@ -151,7 +152,7 @@ function ViolationIcon({ challan }) {
   const icons = {
     /* Speedometer with needle — speeding */
     speed: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="1.8" />
         <path d="M12 13l5-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         <circle cx="12" cy="13" r="1.6" fill="currentColor" />
@@ -161,14 +162,14 @@ function ViolationIcon({ challan }) {
     ),
     /* Judge gavel — court */
     court: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M20.5 20.25H3.5a.75.75 0 000 1.5h17a.75.75 0 000-1.5z" />
         <path d="M13.78 3.22a.75.75 0 00-1.06 0L4.97 10.97a.75.75 0 001.06 1.06l1.47-1.47 2.12 2.12-4.24 4.24a.75.75 0 001.06 1.06l4.24-4.24 2.12 2.12-1.47 1.47a.75.75 0 001.06 1.06l7.75-7.75a.75.75 0 000-1.06L13.78 3.22zm-1.59 2.12l5.63 5.63-2.12 2.12-5.63-5.63 2.12-2.12z" />
       </svg>
     ),
     /* Person with seatbelt */
     seatbelt: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <circle cx="12" cy="5" r="2.4" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21v-4c0-2.2 2-4 4.5-4s4.5 1.8 4.5 4v4" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M6.5 10.5l11 6" />
@@ -178,7 +179,7 @@ function ViolationIcon({ challan }) {
     ),
     /* Phone with ban circle */
     mobile: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="9" y="5.5" width="6" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.7" />
         <path d="M11.2 13.4h1.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
@@ -187,7 +188,7 @@ function ViolationIcon({ challan }) {
     ),
     /* Helmet */
     helmet: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 14.5A7.5 7.5 0 0112 7a7.5 7.5 0 017.5 7.5V17H4.5v-2.5z" />
         <path strokeLinecap="round" d="M3.5 17.5h17" />
         <path strokeLinecap="round" d="M12 7v3.5" />
@@ -196,7 +197,7 @@ function ViolationIcon({ challan }) {
     ),
     /* Traffic light */
     signal: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="7.5" y="2.5" width="9" height="19" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
         <circle cx="12" cy="7" r="1.6" fill="currentColor" />
         <circle cx="12" cy="12" r="1.6" fill="currentColor" />
@@ -205,7 +206,7 @@ function ViolationIcon({ challan }) {
     ),
     /* No entry / wrong way */
     noentry: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
         <path d="M6.5 12h11" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
       </svg>
@@ -219,7 +220,7 @@ function ViolationIcon({ challan }) {
     ),
     /* Drink glass */
     alcohol: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3h9l-1.4 6.2A4.8 4.8 0 0112 18a4.8 4.8 0 01-3.1-8.8L7.5 3z" />
         <path strokeLinecap="round" d="M12 18v3.5" />
         <path strokeLinecap="round" d="M9 21.5h6" />
@@ -227,7 +228,7 @@ function ViolationIcon({ challan }) {
     ),
     /* Triple riding — 3 people */
     triple: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <circle cx="8" cy="7" r="2" />
         <circle cx="12" cy="6.5" r="2" />
         <circle cx="16" cy="7" r="2" />
@@ -238,7 +239,7 @@ function ViolationIcon({ challan }) {
     ),
     /* Generic car / traffic */
     default: (
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 14l1.8-5.2A2 2 0 016.7 7.5h10.6a2 2 0 011.9 1.3L21 14v4.5a1 1 0 01-1 1h-1.2a1 1 0 01-1-1V17H6.2v1.5a1 1 0 01-1 1H4a1 1 0 01-1-1V14z" />
         <circle cx="7.2" cy="14.8" r="1.2" fill="currentColor" stroke="none" />
         <circle cx="16.8" cy="14.8" r="1.2" fill="currentColor" stroke="none" />
@@ -248,7 +249,7 @@ function ViolationIcon({ challan }) {
 
   return (
     <div
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1 ${styles[kind]}`}
+      className={`challan-violation-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 ${styles[kind]}`}
       title={labels[kind]}
       aria-label={labels[kind]}
     >
@@ -760,9 +761,9 @@ export default function ChallanResults({
           </div>
         </div>
 
-        {/* Table */}
-        <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[780px] table-fixed text-left">
+        {/* Challan list */}
+        <div className="challan-results-table-wrap w-full">
+          <table className="challan-results-table text-left">
             <thead className="border-b border-slate-100 bg-slate-50/80">
               <tr className="border-b border-slate-100">
                 <th className="w-9 px-2 py-3 md:px-3" />
@@ -788,7 +789,7 @@ export default function ChallanResults({
             </thead>
             <tbody>
               {filteredChallans.length === 0 ? (
-                <tr>
+                <tr className="challan-result-empty">
                   <td colSpan={7} className="px-6 py-16 text-center">
                     <div className="mx-auto flex max-w-sm flex-col items-center">
                       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
@@ -812,15 +813,14 @@ export default function ChallanResults({
                       ? challan.offenceDetails
                       : challan.type || 'Traffic Violation'
                   const hasCourt = isCourtChallan(challan)
+                  const stateCode = getChallanStateCode(challan)
 
                   return (
                     <tr
                       key={`${challan.id}-${challan.challanNumber || ''}`}
-                      className={`border-b border-slate-50 last:border-0 transition-colors ${
-                        isSelected ? 'bg-red-50/35' : 'hover:bg-slate-50/70'
-                      }`}
+                      className={`challan-result-card${isSelected ? ' is-selected' : ''}`}
                     >
-                      <td className="px-2 py-3.5 align-top md:px-3">
+                      <td className="challan-result-select px-2 py-3.5 align-top md:px-3">
                         {!isPaid ? (
                           <input
                             type="checkbox"
@@ -834,17 +834,16 @@ export default function ChallanResults({
                         )}
                       </td>
 
-                      <td className="px-2 py-3.5 align-top">
-                        <div className="flex items-start gap-2">
-                          <ViolationIcon challan={challan} />
-                          <div className="min-w-0 flex-1">
+                      <td className="challan-result-meta px-2 py-3.5 align-top">
+                        <div className="min-w-0 flex-1">
                             {(() => {
                               const challanId = challan.noticeId || challan.challanNumber || challan.id
                               const isCopied = copiedId === challanId
                               return (
                                 <div className="flex items-start gap-1.5">
-                                  <p className="min-w-0 break-all text-[13px] font-bold leading-snug text-slate-900">
-                                    {challanId}
+                                  <p className="min-w-0 break-all text-[13px] leading-snug text-slate-700">
+                                    <span className="font-medium text-slate-500">Challan No: </span>
+                                    <span className="font-bold text-slate-900">{challanId}</span>
                                   </p>
                                   <button
                                     type="button"
@@ -870,27 +869,41 @@ export default function ChallanResults({
                                 </div>
                               )
                             })()}
-                            <p className="mt-0.5 text-[12px] font-medium text-slate-700">{challan.date}</p>
-                            <p className="text-[11px] text-slate-400">{challan.time || '00:00'}</p>
-                            <p className="mt-1 flex items-start gap-1 text-[11px] leading-snug text-slate-500">
-                              <svg className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-slate-500">
+                              <svg className="h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v3m8-3v3M4 9h16M5 5h14a1 1 0 011 1v13H4V6a1 1 0 011-1z" />
+                              </svg>
+                              <span className="font-medium text-slate-700">{challan.date || '—'}</span>
+                              <span className="text-slate-300">|</span>
+                              <span>{challan.time || '00:00'}</span>
+                            </p>
+                            <p className="mt-1 flex items-start gap-1.5 text-[12px] leading-snug text-slate-500">
+                              <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-4.438 7-11a7 7 0 10-14 0c0 6.562 7 11 7 11z" />
                                 <circle cx="12" cy="10" r="2.25" />
                               </svg>
-                              <span className="line-clamp-2 break-words">{challan.location || '—'}</span>
+                              <span className="break-words">{challan.location || '—'}</span>
                             </p>
-                          </div>
                         </div>
                       </td>
 
-                      <td className="px-2 py-3.5 align-top">
+                      <td className="challan-result-status px-2 py-3.5 align-top">
                         <StatusBadge challan={challan} />
                       </td>
 
-                      <td className="px-2 py-3.5 align-top">
-                        <p className="text-[13px] font-semibold leading-snug text-slate-900 line-clamp-2">
-                          {violationTitle}
-                        </p>
+                      <td className="challan-result-violation px-2 py-3.5 align-top">
+                        <ViolationIcon challan={challan} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <p className="text-[14px] font-bold leading-snug text-slate-900">
+                              {violationTitle}
+                            </p>
+                            {stateCode !== 'OTHER' && (
+                              <span className="shrink-0 rounded-md bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700">
+                                {stateCode}
+                              </span>
+                            )}
+                          </div>
                         {challan.section && (
                           <p className="mt-0.5 text-[11px] text-slate-400">Section {challan.section}</p>
                         )}
@@ -908,9 +921,10 @@ export default function ChallanResults({
                         >
                           View Details
                         </button>
+                        </div>
                       </td>
 
-                      <td className="px-2 py-3.5 align-top">
+                      <td className="challan-result-court px-2 py-3.5 align-top">
                         {hasCourt ? (
                           <div>
                             <p className="text-[12px] font-semibold text-slate-800">
@@ -938,8 +952,8 @@ export default function ChallanResults({
                         )}
                       </td>
 
-                      <td className="px-2 py-3.5 align-top">
-                        <p className="text-[14px] font-bold text-brand-red">{formatAmount(challan.amount)}</p>
+                      <td className="challan-result-amount px-2 py-3.5 align-top">
+                        <p className="text-[16px] font-bold text-brand-red">{formatAmount(challan.amount)}</p>
                         <p className="mt-0.5 text-[10px] font-medium text-slate-400">
                           {challan.displayType || 'E-Challan'}
                         </p>

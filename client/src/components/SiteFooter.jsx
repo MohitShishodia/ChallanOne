@@ -33,6 +33,7 @@ export default function SiteFooter() {
             <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Support</h4>
             <div className="space-y-2.5">
               <Link to="/support" className="block text-[14px]">Help Center</Link>
+              <Link to="/support" className="block text-[14px]">Contact Support</Link>
               <a href="mailto:support@challanone.com" className="block text-[14px]">support@challanone.com</a>
               <a href={`tel:+${WHATSAPP.number}`} className="block text-[14px]">{WHATSAPP.display}</a>
             </div>
@@ -40,7 +41,7 @@ export default function SiteFooter() {
           <div>
             <h4 className="text-[13px] font-semibold text-white tracking-wider uppercase mb-4">Office</h4>
             <p className="text-[14px] leading-relaxed">
-              193, Tech Park, Sector 62,<br />Noida, UP - 201301
+              D-2, Ring Rd, Block D, Raja Garden,<br />New Delhi, Delhi, 110015
             </p>
           </div>
           <div>

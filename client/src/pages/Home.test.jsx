@@ -19,6 +19,9 @@ describe('Home page', () => {
 
     expect(screen.getByRole('heading', { name: /instantly/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Sign in to Get Started/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /ChallanOne app for checking challans/i })).toBeInTheDocument()
+    expect(document.querySelectorAll('.hero-image')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /show image/i })).not.toBeInTheDocument()
   })
 
   it('shows trust badge', () => {

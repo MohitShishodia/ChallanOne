@@ -1,20 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { whatsappUrl } from '../constants/brand'
 import HeroSearchWidget from '../components/HeroSearchWidget'
 import './Home.css'
 
 export default function Home() {
-  const [heroSlide, setHeroSlide] = useState(0)
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setHeroSlide((current) => (current + 1) % heroImages.length)
-    }, 4500)
-
-    return () => window.clearInterval(timer)
-  }, [])
-
   return (
     <div className="screen">
       <div className="screen-content home-wrap">
@@ -59,31 +49,12 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right - automatic image slider */}
-            <div className="hero-visual hero-slider animate-fade-up">
-              <div className="hero-slides">
-                {heroImages.map((image, index) => (
-                  <img
-                    key={image.src}
-                    src={image.src}
-                    alt={image.alt}
-                    className={`hero-slide${index === heroSlide ? ' hero-slide--active' : ''}`}
-                    aria-hidden={index !== heroSlide}
-                  />
-                ))}
-              </div>
-              <div className="hero-slider-dots" aria-label="Choose home page image">
-                {heroImages.map((image, index) => (
-                  <button
-                    key={image.src}
-                    type="button"
-                    className={`hero-slider-dot${index === heroSlide ? ' hero-slider-dot--active' : ''}`}
-                    aria-label={`Show image ${index + 1}`}
-                    aria-current={index === heroSlide ? 'true' : undefined}
-                    onClick={() => setHeroSlide(index)}
-                  />
-                ))}
-              </div>
+            <div className="hero-visual animate-fade-up">
+              <img
+                src="/file_00000000060481f49d1ef513516e54a3.png"
+                alt="ChallanOne app for checking challans, RC details, and service history"
+                className="hero-image"
+              />
             </div>
           </div>
         </section>
@@ -289,17 +260,6 @@ function CheckIcon() {
 }
 
 /* ── Data ── */
-const heroImages = [
-  {
-    src: '/car2.jpeg',
-    alt: 'Vehicle challan details displayed alongside a Maruti Suzuki Swift at India Gate',
-  },
-  {
-    src: '/WhatsApp%20Image%202026-07-17%20at%2022.41.19.jpeg',
-    alt: 'Vehicle registration certificate details displayed alongside a Maruti Suzuki Swift',
-  },
-]
-
 const partners = [
   { label: 'Ministry of Road Transport', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" /></svg> },
   { label: 'VAHAN e-Services', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13l2-5a2 2 0 012-1.5h10A2 2 0 0119 8l2 5v5a1 1 0 01-1 1h-1a1 1 0 01-1-1v-1H6v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-5z" /><circle cx="7.5" cy="15.5" r="1" /><circle cx="16.5" cy="15.5" r="1" /></svg> },
@@ -552,7 +512,7 @@ function _ContactUsSection_UNUSED() {
             <div className="surface-card p-5 space-y-4">
               <ContactRow label="Email" value="support@challanone.com" icon={<svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>} />
               <ContactRow label="Phone" value="+91 12345 67890" icon={<svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.04 11.04 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>} />
-              <ContactRow label="Office" value="193, Tech Park, Sector 62, Noida, UP - 201301" icon={<svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 11a3 3 0 100-6 3 3 0 000 6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7-7.5 11-7.5 11s-7.5-4-7.5-11a7.5 7.5 0 1115 0z" /></svg>} />
+              <ContactRow label="Office" value="D-2, Ring Rd, Block D, Raja Garden, New Delhi, Delhi, 110015" icon={<svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 11a3 3 0 100-6 3 3 0 000 6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7-7.5 11-7.5 11s-7.5-4-7.5-11a7.5 7.5 0 1115 0z" /></svg>} />
             </div>
             <div className="surface-card overflow-hidden">
               <MapPreview />

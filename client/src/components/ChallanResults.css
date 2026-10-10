@@ -1,0 +1,128 @@
+.challan-results-table-wrap {
+  overflow: visible;
+}
+
+.challan-results-table {
+  display: block;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+  table-layout: auto;
+}
+
+.challan-results-table thead {
+  display: none;
+}
+
+.challan-results-table tbody {
+  display: grid;
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
+
+.challan-result-card {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto;
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 6px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.challan-result-empty {
+  display: block;
+  padding: 28px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.challan-result-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.07);
+}
+
+.challan-result-card.is-selected {
+  border-color: #fca5a5;
+  background: #fffafa;
+}
+
+.challan-results-table tbody td {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.challan-result-empty td {
+  display: block;
+  padding: 0;
+}
+
+.challan-result-select {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  padding-top: 3px !important;
+}
+
+.challan-result-meta {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+}
+
+.challan-result-status {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.challan-result-violation {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.challan-result-court {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+.challan-result-amount {
+  grid-column: 3;
+  grid-row: 2 / span 3;
+  align-self: center;
+  text-align: right;
+}
+
+@media (max-width: 639px) {
+  .challan-results-table tbody {
+    padding: 10px;
+  }
+
+  .challan-result-card {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    column-gap: 8px;
+    padding: 13px 11px;
+  }
+
+  .challan-result-violation {
+    gap: 8px;
+  }
+
+  .challan-result-violation > :first-child {
+    width: 40px;
+    height: 40px;
+  }
+
+  .challan-result-amount {
+    align-self: start;
+  }
+}
