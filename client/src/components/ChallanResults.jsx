@@ -550,26 +550,6 @@ export default function ChallanResults({
 
         <button
           type="button"
-          onClick={() => updateFilters({ activeTab: TABS.PENDING })}
-          className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/80 px-3.5 py-3 text-left shadow-sm transition hover:bg-orange-50"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </span>
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-slate-500">Pending</p>
-            <p className="mt-0.5 text-[20px] font-extrabold leading-none text-slate-900">
-              {pendingChallans.length}
-              <span className="ml-1.5 text-[12px] font-bold text-brand-red">{formatAmount(totalDue)}</span>
-            </p>
-            <span className="mt-1 inline-block text-[11px] font-semibold text-brand-red">Pay Now →</span>
-          </div>
-        </button>
-
-        <button
-          type="button"
           onClick={() => updateFilters({ activeTab: TABS.PAID })}
           className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3.5 py-3 text-left shadow-sm transition hover:bg-emerald-50"
         >
@@ -584,7 +564,29 @@ export default function ChallanResults({
               {paidChallans.length}
               <span className="ml-1.5 text-[12px] font-bold text-emerald-600">{formatAmount(paidTotal)}</span>
             </p>
-            <span className="mt-1 inline-block text-[11px] font-semibold text-emerald-600">View Receipts →</span>
+            <span className="mt-1 inline-block text-[11px] font-semibold text-emerald-600">View Paid →</span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => updateFilters({ activeTab: TABS.PENDING })}
+          className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/80 px-3.5 py-3 text-left shadow-sm transition hover:bg-orange-50"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium text-slate-500">Pending</p>
+            <p className="mt-0.5 text-[20px] font-extrabold leading-none text-slate-900">
+              {pendingChallans.length}
+              <span className="ml-1.5 text-[12px] font-bold text-brand-red">{formatAmount(totalDue)}</span>
+            </p>
+            <span className="mt-1 inline-block text-[11px] font-semibold text-brand-red">
+              {pendingChallans.length > 0 ? 'Pay Now →' : 'No outstanding challans'}
+            </span>
           </div>
         </button>
 

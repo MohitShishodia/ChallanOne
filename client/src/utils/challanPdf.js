@@ -278,7 +278,6 @@ export function downloadChallansPdf(vehicle, challans = []) {
     doc.setFontSize(9.5)
     doc.text(`${index + 1}.  ${c.noticeId || c.challanNumber || c.id}`, margin + 5, y + 6)
 
-    // Status badge
     const badgeW = 18
     doc.setFillColor(...status.bg)
     drawRoundedRect(doc, pageWidth - margin - badgeW - 3, y + 2.5, badgeW, 6, 1.5, 'F')

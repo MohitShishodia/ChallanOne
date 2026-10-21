@@ -50,11 +50,18 @@ NODE_ENV=production
 MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster.mongodb.net/challanone?retryWrites=true&w=majority
 JWT_SECRET=replace_with_long_random_secret
 ADMIN_JWT_SECRET=replace_with_long_random_admin_secret
-RAZORPAY_KEY_ID=rzp_live_or_test_key
-RAZORPAY_KEY_SECRET=replace_with_razorpay_secret
+RAZORPAY_KEY_ID=rzp_live_replace_with_live_key_id
+RAZORPAY_KEY_SECRET=replace_with_live_razorpay_key_secret
+RAZORPAY_WEBHOOK_SECRET=replace_with_generated_webhook_secret
 APICLUB_API_KEY=replace_with_apiclub_key
 CHALLANWALA_TOKEN=replace_with_challanwala_token
 ```
+
+Use the matching **Live Mode** Key ID and Key Secret from the Razorpay Dashboard in
+the deployed server's environment variables. Production checkout rejects test-mode
+keys. Never place the Key Secret in the web or mobile app. Successful payments are
+recorded in Razorpay Dashboard automatically; configure the account's payment
+capture setting there so successful authorizations are captured.
 
 ## 4) Enable Nginx sites
 
@@ -88,6 +95,25 @@ certbot --nginx \
   -d api.challanone.com \
   -d admin.challanone.com
 ```
+
+## Configure Razorpay Live Webhook
+
+After the API domain has a valid HTTPS certificate and the updated backend is
+deployed, create a webhook in the Razorpay Dashboard while **Live Mode** is active:
+
+- Webhook URL: `https://api.challanone.com/api/payment/webhook`
+- Active events: `payment.captured` and `payment.failed`
+- Secret: generate a strong random value, set the same value as
+  `RAZORPAY_WEBHOOK_SECRET` in the VPS server `.env`, then restart the backend.
+
+For example, generate a secret on the VPS with `openssl rand -hex 32`. Enter it in
+the Razorpay webhook form and the server environment; never put it in frontend
+configuration or commit it. The webhook verifies Razorpay's signature over the
+raw request body and safely upserts the captured payment, so duplicate webhook
+deliveries do not create duplicate payment records. Failed attempts are also
+recorded for admin visibility, while a delayed failure event cannot downgrade a
+payment already recorded as successful. Keep the checkout payment signature
+verification enabled as well.
 
 ## 7) Verify
 

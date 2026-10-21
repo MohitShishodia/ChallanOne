@@ -135,7 +135,7 @@ ChallanOne/
    # Email Configuration - Brevo (formerly Sendinblue)
    BREVO_API_KEY=your_brevo_api_key_here
 
-   # Razorpay Configuration
+   # Razorpay Configuration (use matching test keys locally; live keys in production)
    RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXX
    RAZORPAY_KEY_SECRET=XXXXXXXXXXXXXXXX
 
@@ -150,6 +150,10 @@ ChallanOne/
    # Backend API URL
    VITE_API_URL=http://localhost:5000
    ```
+
+   In production, set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` on the backend
+   deployment to the matching Live Mode credentials from Razorpay Dashboard.
+   The secret must remain server-side; production checkout rejects test-mode keys.
 
 ### Running the Application
 

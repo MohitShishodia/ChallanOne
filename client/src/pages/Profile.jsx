@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
@@ -8,7 +8,7 @@ import { getPendingChallans, getUserPayments } from '../utils/userStorage'
 const TABS = [
   { id: 'account', label: 'My Account' },
   { id: 'bookings', label: 'My Bookings' },
-  { id: 'paid', label: 'Challans Paid' },
+  { id: 'payments', label: 'Payments Made' },
   { id: 'pending', label: 'Pending Challans' },
 ]
 
@@ -16,7 +16,12 @@ export default function Profile() {
   const { user, updateUser, logout } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') || 'account'
+  const requestedTab = searchParams.get('tab')
+  const activeTab = requestedTab === 'paid'
+    ? 'payments'
+    : !TABS.some((tab) => tab.id === requestedTab)
+    ? 'account'
+    : requestedTab
 
   const [form, setForm] = useState({ name: '', email: '' })
   const [saving, setSaving] = useState(false)
@@ -28,23 +33,21 @@ export default function Profile() {
     if (!user) navigate('/login')
   }, [user, navigate])
 
-  useEffect(() => {
-    if (user) {
-      setForm({ name: user.name || '', email: user.email || '' })
-      setPayments(getUserPayments())
-      setPending(getPendingChallans())
-      fetchReceipts()
-    }
-  }, [user])
-
-  const fetchReceipts = async () => {
+  const fetchReceipts = useCallback(async () => {
     if (!user?.email) return
     try {
-      const res = await fetch(`${API_BASE_URL}/api/payment/user-receipts?email=${encodeURIComponent(user.email)}`)
+      const token = localStorage.getItem('authToken')
+      const res = await fetch(`${API_BASE_URL}/api/payment/user-receipts`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       const data = await res.json()
       if (data.success && data.receipts?.length) {
         setPayments((prev) => {
-          const merged = [...data.receipts, ...prev]
+          const userEmail = user.email.toLowerCase()
+          const ownReceipts = data.receipts.filter(
+            (receipt) => receipt.userEmail?.toLowerCase() === userEmail
+          )
+          const merged = [...ownReceipts, ...prev]
           const seen = new Set()
           return merged.filter((p) => {
             if (seen.has(p.id)) return false
@@ -56,7 +59,18 @@ export default function Profile() {
     } catch {
       /* keep local */
     }
-  }
+  }, [user?.email])
+
+  useEffect(() => {
+    if (user) {
+      setForm({ name: user.name || '', email: user.email || '' })
+      setPayments(getUserPayments().filter(
+        (payment) => payment.userEmail?.toLowerCase() === user.email?.toLowerCase()
+      ))
+      setPending(getPendingChallans())
+    }
+    fetchReceipts()
+  }, [user, fetchReceipts])
 
   const setTab = (id) => setSearchParams({ tab: id })
 
@@ -220,24 +234,32 @@ export default function Profile() {
               )}
 
               {activeTab === 'bookings' && (
-                <TabPanel title="My Bookings" empty={payments.length === 0} emptyText="No bookings yet. Pay a challan to see orders here.">
+                <TabPanel title="My Bookings" empty={payments.length === 0} emptyText="No bookings yet. Make a payment to see your orders here.">
                   {payments.map((p) => (
                     <BookingRow key={p.id} payment={p} />
                   ))}
                 </TabPanel>
               )}
 
-              {activeTab === 'paid' && (
-                <TabPanel title="Challans Paid" empty={payments.length === 0} emptyText="No paid challans on record yet." cta="/pay-challan">
-                  {payments.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                      <div>
-                        <p className="font-semibold text-slate-900">{p.vehicleNumber}</p>
-                        <p className="text-[12px] text-slate-500">
-                          {p.challans?.length || 0} challan(s) · {p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-IN') : '—'}
-                        </p>
+              {activeTab === 'payments' && (
+                <TabPanel title="Payments Made" empty={payments.length === 0} emptyText="No payments yet." cta="/pay-challan">
+                  {payments.map((payment) => (
+                    <div key={payment.id} className="py-3 border-b border-slate-100 last:border-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-slate-900">{payment.vehicleNumber}</p>
+                          <p className="text-[12px] text-slate-500">
+                            {payment.challans?.length || 0} challan(s) · {payment.paidAt ? new Date(payment.paidAt).toLocaleDateString('en-IN') : '—'}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-brand-red font-bold">₹{payment.totalAmount?.toLocaleString()}</span>
                       </div>
-                      <span className="text-brand-red font-bold">₹{p.totalAmount?.toLocaleString()}</span>
+                      {payment.challans?.length > 0 && (
+                        <p className="mt-2 text-[12px] text-slate-600">
+                          Challans: {payment.challans.map((challan) => challan.noticeId || challan.challanNumber || challan.id).filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                      <p className="mt-1 text-[11px] text-slate-400">Payment received by ChallanOne; government challan settlement is separate.</p>
                     </div>
                   ))}
                 </TabPanel>
@@ -297,7 +319,6 @@ function BookingRow({ payment }) {
       </div>
       <div className="text-right shrink-0">
         <p className="font-bold text-brand-red">₹{payment.totalAmount?.toLocaleString()}</p>
-        <span className="pill pill-success text-[10px]">Completed</span>
       </div>
     </div>
   )

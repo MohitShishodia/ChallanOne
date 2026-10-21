@@ -10,7 +10,7 @@ export default function PostPaymentSteps({ orderId }) {
           </svg>
         </div>
         <h1 className="text-[22px] md:text-[26px] font-bold text-slate-900">Payment Successful</h1>
-        <p className="mt-1 text-[14px] text-slate-500">Follow these steps to complete your challan clearance</p>
+        <p className="mt-1 text-[14px] text-slate-500">Follow these steps for our team to assist with your challan</p>
         {orderId && (
           <p className="mt-2 text-[12px] text-slate-400">
             Order ID <span className="font-semibold text-slate-700">#{orderId}</span>

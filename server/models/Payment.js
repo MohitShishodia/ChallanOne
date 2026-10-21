@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const paymentSchema = new mongoose.Schema({
   vehicle_number:      { type: String },
+  user_email:          { type: String, lowercase: true, trim: true },
   challan_ids:         { type: [mongoose.Schema.Types.ObjectId], ref: 'Challan', default: [] },
   subtotal:            { type: Number, default: 0 },
   convenience_fee:     { type: Number, default: 0 },
@@ -16,5 +17,7 @@ const paymentSchema = new mongoose.Schema({
   paid_at:             { type: Date, default: Date.now },
   created_at:          { type: Date, default: Date.now }
 });
+
+paymentSchema.index({ razorpay_payment_id: 1 }, { unique: true, sparse: true });
 
 export default mongoose.models.Payment || mongoose.model('Payment', paymentSchema);

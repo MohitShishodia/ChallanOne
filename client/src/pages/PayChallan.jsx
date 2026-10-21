@@ -272,7 +272,9 @@ export default function PayChallan() {
       })
 
       const orderData = await orderResponse.json()
-      if (!orderData.success) throw new Error(orderData.message || 'Failed to create order')
+      if (!orderResponse.ok || !orderData.success) {
+        throw new Error(orderData.message || 'Failed to create order')
+      }
 
       const options = {
         key: orderData.key,
@@ -300,17 +302,17 @@ export default function PayChallan() {
               })
             })
             const verifyData = await verifyResponse.json()
-            if (verifyData.success) {
-              clearChallanSearchState()
-              navigate('/payment-success', {
-                state: { receipt: verifyData.receipt, vehicleNumber: data.vehicle.number }
-              })
-            } else {
-              alert('Payment verification failed. Please contact support.')
+            if (!verifyResponse.ok || !verifyData.success) {
+              throw new Error(verifyData.message || 'Payment verification failed')
             }
+            clearChallanSearchState()
+            navigate('/payment-success', {
+              state: { receipt: verifyData.receipt, vehicleNumber: data.vehicle.number }
+            })
           } catch (err) {
             console.error('Verification error:', err)
-            alert('Payment verification failed. Please contact support.')
+            alert(err.message || 'Payment verification failed. Please contact support.')
+            setPaymentLoading(false)
           }
         },
         prefill: { name: user.name || '', email: user.email || '', contact: user.phone || '' },
@@ -320,15 +322,15 @@ export default function PayChallan() {
 
       const rzp = new window.Razorpay(options)
       rzp.on('payment.failed', function (response) {
-        alert(`Payment failed: ${response.error.description}`)
+        alert(`Payment failed: ${response.error?.description || 'Please try again.'}`)
         setPaymentLoading(false)
       })
       rzp.open()
     } catch (err) {
       console.error('Payment error:', err)
       alert(err.message || 'Failed to initiate payment. Please try again.')
+      setPaymentLoading(false)
     }
-    setPaymentLoading(false)
   }
 
   const goBackToSelector = () => {

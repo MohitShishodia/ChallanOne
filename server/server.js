@@ -106,6 +106,7 @@ app.use(cors({
 // Explicitly handle preflight for all routes
 app.options('*', cors());
 
+app.use('/api/payment/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
 app.use(express.json());
 
 async function bootstrap() {

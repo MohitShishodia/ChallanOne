@@ -5,7 +5,7 @@ const recent = [
   { number: 'UP32AB1234', date: '13 May 2024, 10:30 AM', pillClass: 'pill-pending', pillLabel: '2 Pending' },
   { number: 'DL1CDC5678', date: '11 May 2024, 04:30 PM', pillClass: 'pill-success', pillLabel: 'No Challan' },
   { number: 'MH01EF9012', date: '02 May 2024, 09:00 AM', pillClass: 'pill-info',    pillLabel: 'RC Lookup' },
-  { number: 'KA01AB2345', date: '28 Apr 2024, 06:45 PM', pillClass: 'pill-success', pillLabel: 'Paid' },
+  { number: 'KA01AB2345', date: '28 Apr 2024, 06:45 PM', pillClass: 'pill-success', pillLabel: 'Lookup complete' },
 ]
 
 export default function History() {

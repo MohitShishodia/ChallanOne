@@ -14,12 +14,12 @@ const challan = {
   displayType: 'E-Challan',
 }
 
-function renderChallanResults() {
+function renderChallanResults(challans = [challan]) {
   return render(
     <ChallanResults
       data={{
         vehicle: { number: 'UP32AB1234' },
-        challans: [challan],
+        challans,
       }}
       selectedChallans={[]}
       onToggleChallan={vi.fn()}
@@ -46,5 +46,12 @@ describe('ChallanResults', () => {
     expect(container.querySelectorAll('.challan-result-card')).toHaveLength(1)
     expect(container.querySelector('.challan-violation-icon')).toHaveClass('h-12', 'w-12')
     expect(container.querySelector('.challan-violation-icon svg')).toHaveClass('h-6', 'w-6')
+  })
+
+  it('preserves external paid status and prevents paying a settled challan again', () => {
+    renderChallanResults([{ ...challan, status: 'PAID' }])
+
+    expect(screen.getAllByText('Paid').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Pay Now →')).not.toBeInTheDocument()
   })
 })

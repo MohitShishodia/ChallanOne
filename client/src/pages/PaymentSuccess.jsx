@@ -38,7 +38,6 @@ export default function PaymentSuccess() {
         .label{color:#64748b}.value{color:#0f172a;font-weight:600;}
         .total{background:#fef2f2;padding:18px;border-radius:12px;margin-top:18px;display:flex;justify-content:space-between;align-items:center;}
         .total-value{font-size:22px;font-weight:700;color:#dc2626;}
-        .badge{display:inline-block;background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:700;}
         @media print{body{padding:0;background:#fff;}.receipt{box-shadow:none;}}
       </style></head><body>
         <div class="receipt">
@@ -46,14 +45,13 @@ export default function PaymentSuccess() {
             <div class="logo">Challan One</div>
             <div class="icon"><svg width="26" fill="none" stroke="#16a34a" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
             <h1>Payment Successful</h1>
-            <p style="font-size:13px;color:#64748b;">Our agent will call you for OTP verification</p>
+            <p style="font-size:13px;color:#64748b;">Payment received by ChallanOne. Government challan settlement is separate.</p>
           </div>
           <div class="row"><span class="label">Receipt ID</span><span class="value">${receipt.id}</span></div>
           <div class="row"><span class="label">Payment ID</span><span class="value">${receipt.razorpayPaymentId}</span></div>
           <div class="row"><span class="label">Vehicle Number</span><span class="value">${receipt.vehicleNumber}</span></div>
           <div class="row"><span class="label">Date</span><span class="value">${formatDate(receipt.paidAt)}</span></div>
-          <div class="row"><span class="label">Status</span><span class="badge">PAID</span></div>
-          <div class="total"><span class="value">Total Paid</span><span class="total-value">₹${receipt.totalAmount?.toLocaleString()}</span></div>
+          <div class="total"><span class="value">Amount</span><span class="total-value">₹${receipt.totalAmount?.toLocaleString()}</span></div>
         </div>
       </body></html>`
     const w = window.open('', '_blank')
@@ -74,11 +72,13 @@ export default function PaymentSuccess() {
             <p className="text-[13px] text-slate-500 mt-0.5">
               {receipt.challans?.length || 0} challan(s) · {receipt.vehicleNumber}
             </p>
+            <p className="mt-2 text-[12px] text-slate-500">
+              This confirms your payment to ChallanOne. Government challan settlement is separate, and the challan status changes only when confirmed by the authority.
+            </p>
             <p className="mt-3 text-[28px] font-bold text-brand-red">₹ {receipt.totalAmount?.toLocaleString()}</p>
             <div className="mt-4 divide-y divide-slate-100 text-[13px]">
               <Row label="Receipt ID" value={receipt.id} />
               <Row label="Date" value={formatDate(receipt.paidAt)} />
-              <Row label="Status" value={<span className="pill pill-success">PAID</span>} />
             </div>
           </div>
 
