@@ -20,6 +20,8 @@ describe('client API config', () => {
   it('has payment endpoints', () => {
     expect(API.payment.createOrder).toContain('/api/payment/create-order')
     expect(API.payment.verify).toContain('/api/payment/verify')
+    expect(API.payment.premiumReportCreateOrder).toContain('/api/payment/premium-report/create-order')
+    expect(API.payment.premiumReportVerify).toContain('/api/payment/premium-report/verify')
   })
 
   it('API_BASE_URL is defined', () => {

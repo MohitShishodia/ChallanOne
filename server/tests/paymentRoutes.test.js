@@ -8,11 +8,28 @@ process.env.RAZORPAY_KEY_ID = 'rzp_test_payment_routes';
 process.env.RAZORPAY_KEY_SECRET = 'payment-route-test-secret';
 process.env.RAZORPAY_WEBHOOK_SECRET = 'payment-webhook-test-secret';
 
+let createdOrderOptions;
+let fetchedOrderNotes = {
+  product: 'challan',
+  vehicleNumber: 'DL01AB1234',
+  userEmail: 'payer@example.com'
+};
+let fetchedOrderOverrides = {};
+
 Razorpay.prototype.addResources = function addMockResources() {
   this.orders = {
+    create: async (options) => {
+      createdOrderOptions = options;
+      return { ...options, id: 'order_premium_test', receipt: options.receipt };
+    },
     fetch: async (orderId) => ({
       id: orderId,
-      notes: { vehicleNumber: 'DL01AB1234', userEmail: 'payer@example.com' }
+      amount: 500,
+      amount_paid: 500,
+      status: 'paid',
+      currency: 'INR',
+      notes: fetchedOrderNotes,
+      ...fetchedOrderOverrides
     })
   };
 };
@@ -58,6 +75,90 @@ describe('Razorpay payment routes', () => {
 
     assert.equal(response.status, 400);
     assert.equal(response.body.success, false);
+  });
+
+  it('creates premium report orders for exactly ₹5 without requiring a vehicle number', async () => {
+    const response = await request('POST', '/api/payment/premium-report/create-order', {
+      amount: 0.01
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.order.amount, 500);
+    assert.equal(response.body.order.currency, 'INR');
+    assert.equal(createdOrderOptions.amount, 500);
+    assert.equal(createdOrderOptions.notes.product, 'premium_report');
+    assert.equal(createdOrderOptions.notes.vehicleNumber, undefined);
+  });
+
+  it('verifies premium report payments and stores the fixed amount', async () => {
+    const originalFindOneAndUpdate = PaymentModel.findOneAndUpdate;
+    const originalFetchedOrderNotes = fetchedOrderNotes;
+    fetchedOrderNotes = {
+      product: 'premium_report',
+      userEmail: 'payer@example.com'
+    };
+    let savedUpdate;
+    PaymentModel.findOneAndUpdate = async (_filter, update) => {
+      savedUpdate = update;
+      return {};
+    };
+    const razorpay_order_id = 'order_premium_test';
+    const razorpay_payment_id = 'payment_premium_test';
+    const razorpay_signature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    try {
+      const response = await request('POST', '/api/payment/premium-report/verify', {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature
+      });
+
+      assert.equal(response.status, 200);
+      assert.equal(response.body.success, true);
+      assert.equal(savedUpdate.$set.payment_type, 'PREMIUM_REPORT');
+      assert.equal(savedUpdate.$set.total_amount, 5);
+    } finally {
+      PaymentModel.findOneAndUpdate = originalFindOneAndUpdate;
+      fetchedOrderNotes = originalFetchedOrderNotes;
+    }
+  });
+
+  it('rejects premium report payments when the Razorpay order is not fully paid', async () => {
+    const originalFindOneAndUpdate = PaymentModel.findOneAndUpdate;
+    const originalFetchedOrderNotes = fetchedOrderNotes;
+    const originalFetchedOrderOverrides = fetchedOrderOverrides;
+    fetchedOrderNotes = { product: 'premium_report', userEmail: 'payer@example.com' };
+    fetchedOrderOverrides = { amount_paid: 0, status: 'created' };
+    let savedPayment = false;
+    PaymentModel.findOneAndUpdate = async () => {
+      savedPayment = true;
+      return {};
+    };
+    const razorpay_order_id = 'order_premium_test';
+    const razorpay_payment_id = 'payment_unpaid_test';
+    const razorpay_signature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    try {
+      const response = await request('POST', '/api/payment/premium-report/verify', {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature
+      });
+
+      assert.equal(response.status, 400);
+      assert.equal(response.body.success, false);
+      assert.equal(savedPayment, false);
+    } finally {
+      PaymentModel.findOneAndUpdate = originalFindOneAndUpdate;
+      fetchedOrderNotes = originalFetchedOrderNotes;
+      fetchedOrderOverrides = originalFetchedOrderOverrides;
+    }
   });
 
   it('rejects payment verification when required signature fields are missing', async () => {

@@ -190,6 +190,13 @@
   font-weight: 600;
 }
 
+.rc-search-success {
+  margin-top: 12px;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* Sample numbers — fictional demo chips under the search bar */
 .rc-sample-row {
   display: flex;

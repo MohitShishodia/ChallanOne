@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config/api'
+import loadRazorpayScript from '../utils/loadRazorpayScript'
 import DelhiOtpFlow from '../components/DelhiOtpFlow'
 import ChallanResults, { ChallanResultsSkeleton } from '../components/ChallanResults'
 import PaymentSummaryPanel from '../components/PaymentSummaryPanel'
@@ -58,24 +59,6 @@ export default function PayChallan() {
   const [filters, setFilters] = useState(getDefaultFilters())
   const [fetchedAt, setFetchedAt] = useState(null)
   const [recentRefreshKey, setRecentRefreshKey] = useState(0)
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) return resolve(true)
-      const existing = document.querySelector('script[src*="checkout.razorpay.com"]')
-      if (existing) {
-        existing.onload = () => resolve(true)
-        existing.onerror = () => resolve(false)
-        return
-      }
-      const script = document.createElement('script')
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-      script.async = true
-      script.onload = () => resolve(true)
-      script.onerror = () => resolve(false)
-      document.body.appendChild(script)
-    })
-  }
 
   // Persist search state so navigating away and back restores results
   useEffect(() => {

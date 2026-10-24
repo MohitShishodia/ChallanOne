@@ -20,6 +20,7 @@ const razorpayConfigured =
 const razorpay = razorpayConfigured
   ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret })
   : null;
+const PREMIUM_REPORT_PRICE_PAISE = 500;
 
 function requireRazorpay(req, res, next) {
   if (!razorpayConfigured) {
@@ -113,6 +114,7 @@ router.post('/webhook', (req, res, next) => {
     await saveRazorpayPayment(payment.id, {
       vehicle_number: notes.vehicleNumber || undefined,
       user_email: notes.userEmail || undefined,
+      payment_type: notes.product === 'premium_report' ? 'PREMIUM_REPORT' : 'CHALLAN',
       total_amount: totalAmount,
       subtotal: totalAmount,
       convenience_fee: 0,
@@ -168,6 +170,85 @@ router.post('/create-order', requireRazorpay, async (req, res) => {
         success: false,
         message: isAuthenticationError ? 'Razorpay authentication failed' : 'Failed to create order'
       });
+  }
+});
+
+router.post('/premium-report/create-order', requireRazorpay, async (req, res) => {
+  try {
+    const receiptId = `PRM-${Date.now()}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+    const order = await razorpay.orders.create({
+      amount: PREMIUM_REPORT_PRICE_PAISE,
+      currency: 'INR',
+      receipt: receiptId,
+      notes: {
+        product: 'premium_report',
+        userEmail: String(req.body?.userEmail || '').trim().slice(0, 254)
+      }
+    });
+
+    return res.json({
+      success: true,
+      order: { id: order.id, amount: order.amount, currency: order.currency, receipt: order.receipt },
+      key: razorpayKeyId
+    });
+  } catch (error) {
+    console.error('Create premium report order error:', error);
+    const isAuthenticationError = error?.statusCode === 401 || error?.error?.statusCode === 401;
+    return res.status(isAuthenticationError ? 401 : 500).json({
+      success: false,
+      message: isAuthenticationError ? 'Razorpay authentication failed' : 'Failed to create order'
+    });
+  }
+});
+
+router.post('/premium-report/verify', requireRazorpay, async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+    if (
+      typeof razorpay_order_id !== 'string' || !razorpay_order_id.trim() ||
+      typeof razorpay_payment_id !== 'string' || !razorpay_payment_id.trim() ||
+      typeof razorpay_signature !== 'string' || !/^[a-f\d]{64}$/i.test(razorpay_signature)
+    ) {
+      return res.status(400).json({ success: false, message: 'Missing payment verification fields' });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', razorpayKeySecret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest();
+    if (!crypto.timingSafeEqual(Buffer.from(razorpay_signature, 'hex'), expectedSignature)) {
+      return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    }
+
+    const order = await razorpay.orders.fetch(razorpay_order_id);
+    if (
+      order.id !== razorpay_order_id ||
+      order.amount !== PREMIUM_REPORT_PRICE_PAISE ||
+      order.amount_paid !== PREMIUM_REPORT_PRICE_PAISE ||
+      order.status !== 'paid' ||
+      order.currency !== 'INR' ||
+      order.notes?.product !== 'premium_report'
+    ) {
+      return res.status(400).json({ success: false, message: 'Invalid premium report order' });
+    }
+
+    await saveRazorpayPayment(razorpay_payment_id, {
+      user_email: order.notes.userEmail || undefined,
+      payment_type: 'PREMIUM_REPORT',
+      subtotal: PREMIUM_REPORT_PRICE_PAISE / 100,
+      convenience_fee: 0,
+      total_amount: PREMIUM_REPORT_PRICE_PAISE / 100,
+      payment_method: 'Razorpay',
+      razorpay_order_id,
+      razorpay_signature,
+      status: 'SUCCESS',
+      paid_at: new Date()
+    });
+
+    return res.json({ success: true, message: 'Payment verified successfully' });
+  } catch (error) {
+    console.error('Premium report payment verification error:', error);
+    return res.status(500).json({ success: false, message: 'Payment verification failed' });
   }
 });
 

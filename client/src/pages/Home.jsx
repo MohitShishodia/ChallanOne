@@ -142,17 +142,17 @@ export default function Home() {
                 </div>
 
                 <div className="premium-action-bar">
-                  <button type="button" className="premium-action-btn">
-                    Upgrade Now
+                  <Link to="/rc-details" className="premium-action-btn">
+                    Get a Report
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M5 12h14M13 6l6 6-6 6" />
                     </svg>
-                  </button>
+                  </Link>
                   <span className="premium-price-pill">
-                    ₹299 <span className="premium-price-unit">/ month</span>
+                    ₹5 <span className="premium-price-unit">/ report</span>
                   </span>
                   <span className="premium-guarantee-text">
-                    Cancel anytime &bull; 7-day money back guarantee
+                    One-time payment &bull; Secure Razorpay checkout
                   </span>
                 </div>
               </div>

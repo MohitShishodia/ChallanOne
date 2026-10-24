@@ -19,6 +19,8 @@ export const API = {
     verify: `${API_BASE_URL}/api/payment/verify`,
     receipt: (receiptId) => `${API_BASE_URL}/api/payment/receipt/${receiptId}`,
     userReceipts: `${API_BASE_URL}/api/payment/user-receipts`,
+    premiumReportCreateOrder: `${API_BASE_URL}/api/payment/premium-report/create-order`,
+    premiumReportVerify: `${API_BASE_URL}/api/payment/premium-report/verify`,
   },
   delhiOtp: {
     createRun: `${API_BASE_URL}/api/delhi-otp/runs`,

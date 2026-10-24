@@ -1,10 +1,9 @@
 import { useState, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { API } from '../config/api'
 import { useFeatures } from '../context/FeatureContext'
-import SearchLoadingOverlay from '../components/SearchLoadingOverlay'
-import { fetchVehicleInfo } from '../utils/vehicleInfo'
-import { openReportPending, completeReportWindow, failReportWindow } from '../utils/rcReport'
 import { getRecentSearches, formatRecentSearchTime } from '../utils/recentSearches'
+import loadRazorpayScript from '../utils/loadRazorpayScript'
 import './RCDetails.css'
 
 const VEHICLE_REGEX = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/
@@ -31,7 +30,8 @@ export default function RCDetails() {
 
   const [vehicleNumber, setVehicleNumber] = useState(() => searchParams.get('vehicle') || '')
   const [error, setError] = useState('')
-  const [premiumLoading, setPremiumLoading] = useState(false)
+  const [paymentSuccess, setPaymentSuccess] = useState('')
+  const [paymentLoading, setPaymentLoading] = useState(false)
   const inputRef = useRef(null)
 
   const rcEnabled = isFeatureEnabled('rc_details')
@@ -71,37 +71,76 @@ export default function RCDetails() {
     navigate(`/vehicle-info?vehicle=${encodeURIComponent(trimmed)}`)
   }
 
-  // Premium report: opens the new tab inside the click gesture (so popup
-  // blockers allow it), then fills the report once the fetch resolves.
   const handlePremiumReport = async () => {
-    const trimmed = normalize(vehicleNumber)
-    if (!trimmed) {
-      setError('Please enter a vehicle registration number')
-      inputRef.current?.focus()
-      return
-    }
-    if (!VEHICLE_REGEX.test(trimmed)) {
-      setError('Please enter a valid registration number (e.g. UP32AB1234)')
-      return
-    }
     setError('')
-    const reportWindow = openReportPending(trimmed)
-    if (!reportWindow) return
-    setPremiumLoading(true)
+    setPaymentSuccess('')
+    setPaymentLoading(true)
     try {
-      const vehicle = await fetchVehicleInfo(trimmed)
-      completeReportWindow(reportWindow, vehicle)
+      const scriptLoaded = await loadRazorpayScript()
+      if (!scriptLoaded) throw new Error('Failed to load Razorpay. Check your connection and try again.')
+
+      const userStr = localStorage.getItem('user')
+      const user = userStr ? JSON.parse(userStr) : {}
+      const orderResponse = await fetch(API.payment.premiumReportCreateOrder, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: user.email || '' })
+      })
+      const orderData = await orderResponse.json()
+      if (!orderResponse.ok || !orderData.success) {
+        throw new Error(orderData.message || 'Failed to create payment order')
+      }
+
+      const options = {
+        key: orderData.key,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: 'ChallanOne',
+        description: 'Premium vehicle report',
+        order_id: orderData.order.id,
+        handler: async (response) => {
+          try {
+            const verifyResponse = await fetch(API.payment.premiumReportVerify, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            })
+            const verifyData = await verifyResponse.json()
+            if (!verifyResponse.ok || !verifyData.success) {
+              throw new Error(verifyData.message || 'Payment verification failed')
+            }
+            setPaymentSuccess('Payment successful. ₹5 payment verified.')
+          } catch (err) {
+            setError(err.message || 'Payment verification failed.')
+          } finally {
+            setPaymentLoading(false)
+          }
+        },
+        prefill: { name: user.name || '', email: user.email || '', contact: user.phone || '' },
+        theme: { color: '#dc2626' },
+        modal: {
+          ondismiss: () => setPaymentLoading(false)
+        }
+      }
+      const razorpay = new window.Razorpay(options)
+      razorpay.on('payment.failed', (response) => {
+        const message = response.error?.description || 'Payment failed. Please try again.'
+        setError(message)
+        setPaymentLoading(false)
+      })
+      razorpay.open()
     } catch (err) {
-      failReportWindow(reportWindow, err.message || 'Network error. Please try again.')
-      setError(err.message || 'Network error. Please try again.')
-    } finally {
-      setPremiumLoading(false)
+      setError(err.message || 'Unable to start payment. Please try again.')
+      setPaymentLoading(false)
     }
   }
 
   return (
     <div className="rc-details-page">
-      <SearchLoadingOverlay open={premiumLoading} type="rc" vehicleNumber={vehicleNumber} />
       <div className="rc-page-body">
         <div className="rc-page-inner">
           {/* Hero card */}
@@ -162,6 +201,7 @@ export default function RCDetails() {
                 </div>
 
                 {error && <p className="rc-search-error">{error}</p>}
+                {paymentSuccess && <p className="rc-search-success" role="status">{paymentSuccess}</p>}
                 {!rcEnabled && (
                   <p className="rc-search-error">RC Details lookup is temporarily unavailable. Please check back later.</p>
                 )}
@@ -312,8 +352,8 @@ export default function RCDetails() {
                       </div>
                     </div>
 
-                    <button type="button" className="rc-premium-cta" onClick={handlePremiumReport} disabled={premiumLoading}>
-                      Download Premium Report
+                    <button type="button" className="rc-premium-cta" onClick={handlePremiumReport} disabled={paymentLoading}>
+                      Download Premium Report · ₹5
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14 2H6a2 2 0 00-2 2v16M18 14V4a2 2 0 00-2-2h-2" />
