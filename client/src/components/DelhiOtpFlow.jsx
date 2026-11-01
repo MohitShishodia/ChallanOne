@@ -14,7 +14,7 @@ function getAuthHeaders() {
   return token ? { 'Authorization': `Bearer ${token}` } : {}
 }
 
-export default function DelhiOtpFlow({ onChallansFound, onBack }) {
+export default function DelhiOtpFlow({ onChallansFound, onBack, onCancel, initialRun = null }) {
   const [step, setStep] = useState(STEPS.INPUT)
   const [vehicleNumber, setVehicleNumber] = useState('')
   const [mobileNumber, setMobileNumber] = useState('')
@@ -101,7 +101,10 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
     setLoading(false)
   }
 
-  const submitMobileAction = async (activeRunId) => {
+  const submitMobileAction = async (
+    activeRunId,
+    { vehicleNumber: activeVehicleNumber, mobileNumber: activeMobileNumber } = {}
+  ) => {
     try {
       const response = await fetch(API.delhiOtp.submitAction(activeRunId), {
         method: 'POST',
@@ -109,8 +112,8 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
         body: JSON.stringify({
           action: 'SUBMIT_MOBILE',
           payload: {
-            mobileNumber: mobileNumber.trim(),
-            vehicleNumber: vehicleNumber.trim(),
+            mobileNumber: (activeMobileNumber ?? mobileNumber).trim(),
+            vehicleNumber: (activeVehicleNumber ?? vehicleNumber).trim(),
           }
         })
       })
@@ -136,6 +139,37 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
       setError(err.message || 'Network error during mobile submission')
     }
   }
+
+  useEffect(() => {
+    if (!initialRun) return
+
+    const initialVehicleNumber = initialRun.vehicleNumber || ''
+    const initialMobileNumber = initialRun.mobileNumber || ''
+    setVehicleNumber(initialVehicleNumber)
+    setMobileNumber(initialMobileNumber)
+    setRunId(initialRun.runId)
+    applyChallengeActions(initialRun)
+
+    if (isOtpStep(initialRun.nextAction) || isOtpStep(initialRun.nextOtpAction)) {
+      setStep(STEPS.OTP)
+      startResendCooldown()
+      return
+    }
+
+    const submitInitialMobile = async () => {
+      setStep(STEPS.LOADING)
+      setLoading(true)
+      await submitMobileAction(initialRun.runId, {
+        vehicleNumber: initialVehicleNumber,
+        mobileNumber: initialMobileNumber
+      })
+      setLoading(false)
+    }
+
+    submitInitialMobile()
+  // The initial run is immutable for this mounted flow; helper callbacks capture its form values.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRun])
 
   const handleSubmitOtp = async (e) => {
     e.preventDefault()
@@ -227,6 +261,7 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
       } catch { /* best-effort cancel */ }
     }
     resetFlow()
+    onCancel?.()
   }
 
   const pollRunStatus = async () => {
@@ -433,7 +468,12 @@ export default function DelhiOtpFlow({ onChallansFound, onBack }) {
           <h3 className="text-[17px] font-bold text-slate-900">Something went wrong</h3>
           <p className="text-[14px] text-slate-600">{error || 'An unexpected error occurred'}</p>
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <button onClick={resetFlow} className="btn-primary flex-1">Try Again</button>
+            <button
+              onClick={initialRun ? onCancel : resetFlow}
+              className="btn-primary flex-1"
+            >
+              Try Again
+            </button>
             <button onClick={onBack} className="btn-ghost flex-1">Back to Options</button>
           </div>
         </div>

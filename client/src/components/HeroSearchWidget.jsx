@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { API } from '../config/api'
+import { API, API_BASE_URL } from '../config/api'
+import { transformExternalChallans } from '../utils/challanUtils'
 import './HeroSearchWidget.css'
 
 /* ── Service tabs (3 tabs only) ── */
@@ -43,8 +44,9 @@ const SERVICE_TABS = [
 
 /* ── Challan type dropdown options ── */
 const CHALLAN_OPTIONS = [
-  { id: 'all', label: 'Fetch All Challans' },
-  { id: 'delhi', label: 'Delhi OTP Based Challans' },
+  { id: 'delhi', label: 'Delhi Traffic Challans' },
+  { id: 'external', label: 'e-Challan / Parivahan' },
+  { id: 'all', label: 'All Challans (Recommended)' },
 ]
 
 export default function HeroSearchWidget() {
@@ -70,6 +72,13 @@ export default function HeroSearchWidget() {
   const [nextOtpAction, setNextOtpAction] = useState('SUBMIT_FETCH_OTP')
   const [resendAction, setResendAction] = useState('RESEND_FETCH_OTP')
   const [cancelAction, setCancelAction] = useState('CANCEL_RUN')
+  const [externalChallans, setExternalChallans] = useState([])
+  const [externalError, setExternalError] = useState(null)
+  const [externalFetchStatus, setExternalFetchStatus] = useState('idle')
+  const [verifiedDelhiChallans, setVerifiedDelhiChallans] = useState(null)
+  const [combinedChallans, setCombinedChallans] = useState([])
+  const externalChallansRef = useRef([])
+  const externalFetchStatusRef = useRef('idle')
   const cooldownRef = useRef(null)
   const pollRef = useRef(null)
 
@@ -129,6 +138,13 @@ export default function HeroSearchWidget() {
     setNextOtpAction('SUBMIT_FETCH_OTP')
     setResendAction('RESEND_FETCH_OTP')
     setCancelAction('CANCEL_RUN')
+    setExternalChallans([])
+    setExternalError(null)
+    setExternalFetchStatus('idle')
+    setVerifiedDelhiChallans(null)
+    setCombinedChallans([])
+    externalChallansRef.current = []
+    externalFetchStatusRef.current = 'idle'
     if (pollRef.current) clearTimeout(pollRef.current)
     if (cooldownRef.current) clearInterval(cooldownRef.current)
   }
@@ -149,16 +165,12 @@ export default function HeroSearchWidget() {
       })
 
       const data = await response.json()
-
-      if (!data.success) {
-        setDelhiError(data.message || 'Failed to initiate Delhi OTP flow')
-        setIsLoading(false)
-        return
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to initiate Delhi OTP flow')
       }
 
       setRunId(data.runId)
       applyChallengeActions(data)
-
       if (data.nextAction === 'SUBMIT_MOBILE') {
         await submitMobileAction(data.runId)
       } else if (isOtpStep(data.nextAction) || isOtpStep(data.nextOtpAction)) {
@@ -169,9 +181,131 @@ export default function HeroSearchWidget() {
       }
     } catch (err) {
       setDelhiError(err.message || 'Network error. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAllChallansSubmit = async () => {
+    setDelhiError(null)
+    setExternalError(null)
+    setExternalChallans([])
+    setExternalFetchStatus('loading')
+    externalFetchStatusRef.current = 'loading'
+    externalChallansRef.current = []
+    setVerifiedDelhiChallans(null)
+    setCombinedChallans([])
+    setIsLoading(true)
+    setDelhiStep('loading')
+
+    const token = localStorage.getItem('authToken')
+    const externalRequest = fetch(`${API_BASE_URL}/api/external/challan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        vehicleNumber: vehicleNumber.trim().toUpperCase(),
+        bypassCache: true
+      })
+    }).then(async (response) => {
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to fetch e-Challan/Parivahan records')
+      }
+      return transformExternalChallans(result)
+    })
+
+    const delhiRequest = fetch(API.delhiOtp.createRun, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        vehicleNumber: vehicleNumber.trim(),
+        mobileNumber: mobileNumber.trim()
+      })
+    }).then(async (response) => {
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to initiate Delhi OTP flow')
+      }
+      return result
+    })
+
+    externalRequest.then((result) => {
+      externalChallansRef.current = result.challans
+      setExternalChallans(result.challans)
+      externalFetchStatusRef.current = 'complete'
+      setExternalFetchStatus('complete')
+      if (!result.hasRawChallans) {
+        setExternalError('No e-Challan/Parivahan records were found')
+      }
+    }).catch((error) => {
+      setExternalError(error?.message || 'Failed to fetch e-Challan/Parivahan records')
+      externalFetchStatusRef.current = 'complete'
+      setExternalFetchStatus('complete')
+    })
+
+    let data
+    try {
+      data = await delhiRequest
+    } catch (error) {
+      setDelhiError(error?.message || 'Failed to initiate Delhi OTP flow')
+      setDelhiStep('error')
+      setIsLoading(false)
+      return
+    }
+
+    setRunId(data.runId)
+    applyChallengeActions(data)
+    if (data.nextAction === 'SUBMIT_MOBILE' ||
+        (!isOtpStep(data.nextAction) && !isOtpStep(data.nextOtpAction))) {
+      await submitMobileAction(data.runId)
+    } else {
+      setDelhiStep('otp')
+      startResendCooldown()
     }
     setIsLoading(false)
   }
+
+  const combineVerifiedChallans = (delhiChallans, externalRecords) => {
+    const seen = new Set()
+    const unique = [...(delhiChallans || []), ...(externalRecords || [])].filter((challan) => {
+      const id = String(
+        challan.noticeId || challan.challanNumber || challan.id || ''
+      ).trim().toUpperCase()
+      if (!id || seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+    setCombinedChallans(unique)
+    setDelhiStep('results')
+  }
+
+  const handleDelhiCompleted = (data) => {
+    if (challanMode === 'all') {
+      const delhiChallans = data.challans || []
+      setVerifiedDelhiChallans(delhiChallans)
+      if (externalFetchStatusRef.current === 'loading') {
+        setDelhiStep('loading')
+      } else {
+        combineVerifiedChallans(delhiChallans, externalChallansRef.current)
+      }
+      return
+    }
+    navigate(`/pay-challan?vehicle=${encodeURIComponent(vehicleNumber.trim())}`)
+  }
+
+  useEffect(() => {
+    if (
+      challanMode === 'all' &&
+      verifiedDelhiChallans &&
+      externalFetchStatus !== 'loading'
+    ) {
+      combineVerifiedChallans(verifiedDelhiChallans, externalChallans)
+    }
+  // combine only after the external source settles, using its latest results
+  }, [challanMode, verifiedDelhiChallans, externalFetchStatus, externalChallans])
 
   const submitMobileAction = async (activeRunId) => {
     try {
@@ -193,8 +327,7 @@ export default function HeroSearchWidget() {
       }
       applyChallengeActions(data)
       if (data.isTerminal && data.status === 'COMPLETED') {
-        // Redirect to pay-challan page — DelhiOtpFlow there will show results
-        navigate(`/pay-challan?vehicle=${encodeURIComponent(vehicleNumber.trim())}`)
+        handleDelhiCompleted(data)
       } else if (isOtpStep(data.nextAction) || isOtpStep(data.nextOtpAction)) {
         setDelhiStep('otp')
         startResendCooldown()
@@ -241,7 +374,7 @@ export default function HeroSearchWidget() {
       applyChallengeActions(data)
 
       if (data.isTerminal && data.status === 'COMPLETED') {
-        navigate(`/pay-challan?vehicle=${encodeURIComponent(vehicleNumber.trim())}`)
+        handleDelhiCompleted(data)
       } else if (data.isTerminal) {
         setDelhiError(data.failureReason || `Run ended with status: ${data.status}`)
         setDelhiStep('error')
@@ -303,7 +436,7 @@ export default function HeroSearchWidget() {
       }
       if (data.isTerminal) {
         if (data.status === 'COMPLETED') {
-          navigate(`/pay-challan?vehicle=${encodeURIComponent(vehicleNumber.trim())}`)
+          handleDelhiCompleted(data)
         } else {
           setDelhiError(data.failureReason || `Run ended: ${data.status}`)
           setDelhiStep('error')
@@ -326,7 +459,7 @@ export default function HeroSearchWidget() {
     const trimmed = vehicleNumber.trim().toUpperCase()
     if (!trimmed) return
 
-    // Challan tab + Delhi mode → start Delhi OTP flow inline
+    // Delhi-only searches continue through OTP verification on the homepage.
     if (activeTab === 'challan' && challanMode === 'delhi') {
       if (!mobileNumber.trim() || mobileNumber.trim().length < 10) {
         setDelhiError('Please enter a valid 10-digit mobile number')
@@ -336,11 +469,23 @@ export default function HeroSearchWidget() {
       return
     }
 
+    if (activeTab === 'challan' && challanMode === 'all') {
+      if (!/^[6-9]\d{9}$/.test(mobileNumber.trim())) {
+        setDelhiError('Please enter a valid 10-digit mobile number for OTP verification')
+        return
+      }
+      handleAllChallansSubmit()
+      return
+    }
+
     setIsLoading(true)
 
     switch (activeTab) {
       case 'challan':
-        navigate(`/pay-challan?vehicle=${encodeURIComponent(trimmed)}`)
+        navigate(
+          `/pay-challan?vehicle=${encodeURIComponent(trimmed)}&source=${challanMode === 'external' ? 'external' : 'all'}`,
+          challanMode === 'all' ? { state: { mobileNumber: mobileNumber.trim() } } : undefined
+        )
         break
       case 'rc':
         navigate(`/vehicle-info?vehicle=${encodeURIComponent(trimmed)}`)
@@ -383,8 +528,64 @@ export default function HeroSearchWidget() {
     )
   }
 
+  if (activeTab === 'challan' && challanMode === 'all' && delhiStep === 'results') {
+    return (
+      <div className="hsw-root">
+        <section className="hsw-results-section" aria-live="polite">
+          <div className="hsw-results-header">
+            <div>
+              <h3 className="hsw-results-title">Challan Results</h3>
+              <p className="hsw-results-subtitle">
+                {combinedChallans.length} challan{combinedChallans.length === 1 ? '' : 's'} found for {vehicleNumber.trim().toUpperCase()}
+              </p>
+            </div>
+            <button type="button" onClick={resetDelhiFlow} className="hsw-results-back">
+              Check another vehicle
+            </button>
+          </div>
+
+          {externalError && (
+            <p className="hsw-results-warning">
+              e-Challan/Parivahan: {externalError}
+            </p>
+          )}
+
+          {combinedChallans.length === 0 ? (
+            <p className="hsw-results-empty">
+              No challans were found from the selected sources.
+            </p>
+          ) : (
+            <div className="hsw-results-list">
+              {combinedChallans.map((challan, index) => (
+                <article
+                  className="hsw-result-card"
+                  key={`${challan.noticeId || challan.challanNumber || challan.id}-${index}`}
+                >
+                  <div className="hsw-result-card-top">
+                    <strong>{challan.noticeId || challan.challanNumber || challan.id || 'Challan'}</strong>
+                    <span className={`hsw-result-status ${challan.status === 'PAID' ? 'is-paid' : ''}`}>
+                      {challan.status || 'PENDING'}
+                    </span>
+                  </div>
+                  <p className="hsw-result-offence">
+                    {challan.offenceDetails || challan.description || challan.type || 'Traffic violation'}
+                  </p>
+                  <div className="hsw-result-meta">
+                    <span>{challan.location || challan.description || 'Location unavailable'}</span>
+                    <span>{challan.date || 'Date unavailable'}</span>
+                    <strong>₹{Number(challan.amount || 0).toLocaleString('en-IN')}</strong>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    )
+  }
+
   /* ── Delhi OTP step: show OTP entry ── */
-  if (activeTab === 'challan' && challanMode === 'delhi' && delhiStep === 'otp') {
+  if (activeTab === 'challan' && (challanMode === 'delhi' || challanMode === 'all') && delhiStep === 'otp') {
     return (
       <div className="hsw-root">
         <div className="hsw-otp-section">
@@ -445,12 +646,14 @@ export default function HeroSearchWidget() {
   }
 
   /* ── Delhi loading state ── */
-  if (activeTab === 'challan' && challanMode === 'delhi' && delhiStep === 'loading') {
+  if (activeTab === 'challan' && (challanMode === 'delhi' || challanMode === 'all') && delhiStep === 'loading') {
     return (
       <div className="hsw-root">
         <div className="hsw-loading-section">
           <div className="hsw-loading-spinner" />
-          <p className="hsw-loading-text">Verifying & fetching challans...</p>
+          <p className="hsw-loading-text">
+            {challanMode === 'all' ? 'Fetching all challans and sending OTP...' : 'Verifying & fetching challans...'}
+          </p>
           <p className="hsw-loading-sub">Please wait</p>
         </div>
       </div>
@@ -458,7 +661,7 @@ export default function HeroSearchWidget() {
   }
 
   /* ── Delhi error state ── */
-  if (activeTab === 'challan' && challanMode === 'delhi' && delhiStep === 'error') {
+  if (activeTab === 'challan' && (challanMode === 'delhi' || challanMode === 'all') && delhiStep === 'error') {
     return (
       <div className="hsw-root">
         <div className="hsw-error-section">
@@ -538,16 +741,19 @@ export default function HeroSearchWidget() {
               </div>
             </div>
 
-            {/* Delhi OTP: mobile number just below vehicle number */}
-            {activeTab === 'challan' && challanMode === 'delhi' && (
+            {/* Mobile number is required for Delhi OTP and combined challan searches. */}
+            {activeTab === 'challan' && (challanMode === 'delhi' || challanMode === 'all') && (
               <div className="hsw-field">
-                <label className="hsw-label">Mobile Number *</label>
+                <label className="hsw-label" htmlFor="hsw-mobile-number">
+                  {challanMode === 'all' ? 'Registered Mobile Number *' : 'Mobile Number *'}
+                </label>
                 <div className="hsw-input-wrap">
                   <svg className="hsw-input-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <rect x="5" y="2" width="10" height="16" rx="2" />
                     <path strokeLinecap="round" d="M9 15h2" />
                   </svg>
                   <input
+                    id="hsw-mobile-number"
                     type="tel"
                     placeholder="10-digit mobile number"
                     value={mobileNumber}
@@ -559,6 +765,9 @@ export default function HeroSearchWidget() {
                   />
                 </div>
                 {delhiError && <p className="hsw-error">{delhiError}</p>}
+                {challanMode === 'all' && (
+                  <p className="hsw-otp-subtitle">We’ll fetch both sources and send an OTP to verify Delhi challans.</p>
+                )}
               </div>
             )}
           </div>
@@ -577,6 +786,7 @@ export default function HeroSearchWidget() {
                     const next = e.target.value
                     setChallanMode(next)
                     if (next !== 'delhi') resetDelhiFlow()
+                    setDelhiError(null)
                   }}
                   aria-label="Choose Challans"
                 >
@@ -608,11 +818,19 @@ export default function HeroSearchWidget() {
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                   <path d="M12 2a10 10 0 019.95 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 </svg>
-                {activeTab === 'challan' && challanMode === 'delhi' ? 'Sending OTP...' : 'Checking...'}
+                {activeTab === 'challan' && challanMode === 'delhi'
+                  ? 'Sending OTP...'
+                  : activeTab === 'challan' && challanMode === 'all'
+                    ? 'Starting both searches...'
+                    : 'Checking...'}
               </>
             ) : (
               <>
-                {activeTab === 'challan' && challanMode === 'delhi' ? 'Send OTP & Check' : 'Check Now'}
+                {activeTab === 'challan' && challanMode === 'delhi'
+                  ? 'Send OTP & Check'
+                  : activeTab === 'challan' && challanMode === 'all'
+                    ? 'Fetch All & Send OTP'
+                    : 'Check Now'}
                 <svg className="hsw-arrow" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>

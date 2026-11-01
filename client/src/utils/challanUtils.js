@@ -1,6 +1,7 @@
 export const FLOW_TYPES = {
   SELECT: 'SELECT',
   DELHI_OTP: 'DELHI_OTP',
+  EXTERNAL_CHALLANS: 'EXTERNAL_CHALLANS',
   ALL_CHALLANS: 'ALL_CHALLANS'
 };
 
@@ -12,7 +13,7 @@ export function getChallanDisplayType({ courtChallan, challanType }) {
 }
 
 /** No challans are excluded; all challans are shown to the user. */
-export function shouldExcludeChallan(_challan) {
+export function shouldExcludeChallan() {
   return false;
 }
 

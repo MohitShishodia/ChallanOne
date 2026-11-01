@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { API_BASE_URL } from '../config/api'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { API, API_BASE_URL } from '../config/api'
 import loadRazorpayScript from '../utils/loadRazorpayScript'
 import DelhiOtpFlow from '../components/DelhiOtpFlow'
 import ChallanResults, { ChallanResultsSkeleton } from '../components/ChallanResults'
@@ -16,6 +16,7 @@ import {
 import { savePendingChallans } from '../utils/userStorage'
 import { addRecentSearch } from '../utils/recentSearches'
 import {
+  loadChallanSearchState,
   saveChallanSearchState,
   clearChallanSearchState,
   getDefaultFilters,
@@ -24,6 +25,19 @@ import {
 function getAuthHeaders() {
   const token = localStorage.getItem('authToken')
   return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
+async function requestExternalChallans(vehicleNumber) {
+  const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ vehicleNumber, bypassCache: true })
+  })
+  const result = await response.json()
+  if (!response.ok || !result.success) {
+    throw new Error(result.message || 'Failed to fetch e-Challan/Parivahan records')
+  }
+  return transformExternalChallans(result)
 }
 
 function EmptyResultsPanel() {
@@ -45,20 +59,34 @@ function EmptyResultsPanel() {
 export default function PayChallan() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { isFeatureEnabled } = useFeatures()
-  const autoFetchDone = useRef(false)
+  const [cachedSearch] = useState(() => loadChallanSearchState())
   const allChallansSnapshot = useRef(null)
+  const queryVehicle = searchParams.get('vehicle')
+  const querySource = searchParams.get('source')
+  const queryMobile = location.state?.mobileNumber || ''
+  const autoFetchKey = useRef('')
 
-  const [flowType, setFlowType] = useState(FLOW_TYPES.ALL_CHALLANS)
-  const [vehicleNumber, setVehicleNumber] = useState(searchParams.get('vehicle') || '')
+  const [flowType, setFlowType] = useState(
+    querySource === 'external'
+      ? FLOW_TYPES.EXTERNAL_CHALLANS
+      : queryVehicle
+        ? FLOW_TYPES.ALL_CHALLANS
+        : cachedSearch?.flowType || FLOW_TYPES.ALL_CHALLANS
+  )
+  const [vehicleNumber, setVehicleNumber] = useState(queryVehicle || cachedSearch?.vehicleNumber || '')
+  const [mobileNumber, setMobileNumber] = useState(queryMobile)
   const [loading, setLoading] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [data, setData] = useState(null)
+  const [data, setData] = useState(queryVehicle ? null : cachedSearch?.data || null)
   const [error, setError] = useState(null)
-  const [selectedChallans, setSelectedChallans] = useState([])
-  const [filters, setFilters] = useState(getDefaultFilters())
-  const [fetchedAt, setFetchedAt] = useState(null)
+  const [selectedChallans, setSelectedChallans] = useState(cachedSearch?.selectedChallans || [])
+  const [filters, setFilters] = useState(cachedSearch?.filters || getDefaultFilters())
+  const [fetchedAt, setFetchedAt] = useState(queryVehicle ? null : cachedSearch?.fetchedAt || null)
   const [recentRefreshKey, setRecentRefreshKey] = useState(0)
+  const [combinedRun, setCombinedRun] = useState(null)
+  const [combinedExternalData, setCombinedExternalData] = useState(null)
 
   // Persist search state so navigating away and back restores results
   useEffect(() => {
@@ -75,58 +103,97 @@ export default function PayChallan() {
     saveChallanSearchState({
       data,
       vehicleNumber: data.vehicle?.number || vehicleNumber,
-      flowType: FLOW_TYPES.ALL_CHALLANS,
+      flowType,
       selectedChallans,
       filters,
       fetchedAt: fetchedAt || Date.now(),
     })
   }, [data, vehicleNumber, flowType, selectedChallans, filters, fetchedAt])
 
-  const fetchChallans = async (number) => {
+  const fetchAllSources = async (number, mobile = mobileNumber) => {
     const trimmed = String(number || '').trim().toUpperCase()
     if (!trimmed) {
       setError('Please enter a vehicle number')
       return
     }
+    const trimmedMobile = mobile.trim()
+    if (!/^[6-9]\d{9}$/.test(trimmedMobile)) {
+      setError('Enter a valid 10-digit mobile number to verify Delhi challans')
+      return
+    }
+    if (!isFeatureEnabled('delhi_otp_challan')) {
+      setError('Fetch All Challans is temporarily unavailable because Delhi OTP verification is disabled')
+      return
+    }
 
     setLoading(true)
     setError(null)
+    setCombinedRun(null)
+    setCombinedExternalData(null)
+    setData(null)
     addRecentSearch(trimmed, 'challan')
     setRecentRefreshKey((k) => k + 1)
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/external/challan`, {
+
+    const createDelhiRun = async () => {
+      const response = await fetch(API.delhiOtp.createRun, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ vehicleNumber: trimmed, bypassCache: true })
+        body: JSON.stringify({ vehicleNumber: trimmed, mobileNumber: trimmedMobile })
       })
       const result = await response.json()
-      if (result.success) {
-        const transformed = transformExternalChallans(result)
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to start Delhi OTP verification')
+      }
+      return result
+    }
 
-        if (!transformed.hasRawChallans) {
-          setError(result.message || 'No challans found')
-          setData(null)
-          setFetchedAt(null)
-          clearChallanSearchState()
-          setLoading(false)
-          return
-        }
+    try {
+      const [externalResult, delhiResult] = await Promise.allSettled([
+        requestExternalChallans(trimmed),
+        createDelhiRun()
+      ])
+      const externalData = externalResult.status === 'fulfilled' ? externalResult.value : null
+      const externalError = externalResult.status === 'rejected'
+        ? externalResult.reason?.message || 'Failed to fetch e-Challan/Parivahan records'
+        : null
 
-        setData(transformed)
+      setVehicleNumber(trimmed)
+      setMobileNumber(trimmedMobile)
+      setCombinedExternalData(externalData)
+      setError(externalError ? `e-Challan/Parivahan: ${externalError}` : null)
+
+      if (delhiResult.status === 'fulfilled') {
+        setCombinedRun({
+          ...delhiResult.value,
+          vehicleNumber: trimmed,
+          mobileNumber: trimmedMobile
+        })
         setSelectedChallans([])
         setFilters(getDefaultFilters())
         setFetchedAt(Date.now())
-        setVehicleNumber(trimmed)
+        return
+      }
+
+      const delhiError = delhiResult.reason?.message || 'Failed to start Delhi OTP verification'
+      if (externalData?.hasRawChallans) {
+        setData(externalData)
+        setSelectedChallans([])
+        setFilters(getDefaultFilters())
+        setFetchedAt(Date.now())
+        setError(`Delhi OTP: ${delhiError}`)
         allChallansSnapshot.current = {
-          data: transformed,
+          data: externalData,
           selectedChallans: [],
           filters: getDefaultFilters(),
           fetchedAt: Date.now(),
           vehicleNumber: trimmed,
         }
       } else {
-        setError(result.message || 'No challans found')
-        setData(null)
+        setError(
+          externalError
+            ? `e-Challan/Parivahan: ${externalError}. Delhi OTP: ${delhiError}`
+            : `Delhi OTP: ${delhiError}. No e-Challan/Parivahan challans were found.`
+        )
         setFetchedAt(null)
         clearChallanSearchState()
       }
@@ -135,23 +202,96 @@ export default function PayChallan() {
       setData(null)
       setFetchedAt(null)
       clearChallanSearchState()
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => {
     const vehicle = searchParams.get('vehicle')
-    if (!vehicle || autoFetchDone.current) return
-    autoFetchDone.current = true
+    if (!vehicle) return
     setVehicleNumber(vehicle)
-    setFlowType(FLOW_TYPES.ALL_CHALLANS)
+    setMobileNumber(location.state?.mobileNumber || '')
+    setFlowType(searchParams.get('source') === 'external'
+      ? FLOW_TYPES.EXTERNAL_CHALLANS
+      : FLOW_TYPES.ALL_CHALLANS)
+  }, [searchParams, location.state])
 
-    fetchChallans(vehicle)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  useEffect(() => {
+    const vehicle = searchParams.get('vehicle')
+    const source = searchParams.get('source')
+    const mobile = location.state?.mobileNumber || ''
+    if (source !== 'all' || !vehicle || !/^[6-9]\d{9}$/.test(mobile)) return
+
+    const key = `${vehicle.trim().toUpperCase()}:${mobile}`
+    if (autoFetchKey.current === key) return
+    autoFetchKey.current = key
+    fetchAllSources(vehicle, mobile)
+  // The URL parameters identify one explicit homepage submission.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, location.state])
+
+  const fetchExternalOnly = async (number) => {
+    const trimmed = String(number || '').trim().toUpperCase()
+    if (!trimmed) {
+      setError('Please enter a vehicle number')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setCombinedRun(null)
+    setCombinedExternalData(null)
+    addRecentSearch(trimmed, 'challan')
+    setRecentRefreshKey((k) => k + 1)
+
+    try {
+      const transformed = await requestExternalChallans(trimmed)
+      setVehicleNumber(trimmed)
+      setSelectedChallans([])
+      setFilters(getDefaultFilters())
+      setFetchedAt(Date.now())
+      if (transformed.hasRawChallans) {
+        setData(transformed)
+      } else {
+        setData(null)
+        setError('No e-Challan/Parivahan challans found')
+        setFetchedAt(null)
+        clearChallanSearchState()
+      }
+    } catch (err) {
+      setError(err?.message || 'Failed to fetch e-Challan/Parivahan records')
+      setData(null)
+      setFetchedAt(null)
+      clearChallanSearchState()
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleDelhiChallansFound = ({ challans, vehicleNumber: vNum }) => {
-    if (challans.length === 0) return
+    const isCombinedSearch = Boolean(combinedRun)
+    const fetchedChallans = isCombinedSearch
+      ? [...challans, ...(combinedExternalData?.challans || [])]
+      : challans
+    const seenChallans = new Set()
+    const mergedChallans = fetchedChallans.filter((challan) => {
+      const identifier = String(
+        challan.noticeId || challan.challanNumber || challan.id || ''
+      ).trim().toUpperCase()
+      if (!identifier || seenChallans.has(identifier)) return false
+      seenChallans.add(identifier)
+      return true
+    })
+    if (mergedChallans.length === 0) {
+      setError('No challans found from either source')
+      setCombinedRun(null)
+      setCombinedExternalData(null)
+      setData(null)
+      setFetchedAt(null)
+      clearChallanSearchState()
+      return
+    }
 
     const trimmed = String(vNum || '').trim().toUpperCase()
     if (trimmed) {
@@ -161,25 +301,30 @@ export default function PayChallan() {
 
     const transformedVehicle = {
       number: vNum,
-      owner: challans[0]?.accusedName || 'Owner',
+      owner: mergedChallans[0]?.accusedName || 'Owner',
       vehicleType: 'Private Vehicle',
       isVerified: true,
     }
 
-    const pending = challans.filter((c) => c.status !== 'PAID')
+    const pending = mergedChallans.filter((c) => c.status !== 'PAID')
 
     setData({
       success: true,
-      dataSource: 'DELHI_OTP',
+      dataSource: isCombinedSearch ? 'COMBINED' : 'DELHI_OTP',
       vehicle: transformedVehicle,
-      challans,
+      challans: mergedChallans,
       pendingCount: pending.length,
-      paidCount: challans.length - pending.length
+      paidCount: mergedChallans.length - pending.length
     })
     setSelectedChallans([])
     setFilters(getDefaultFilters())
     setFetchedAt(Date.now())
     setVehicleNumber(vNum)
+    if (isCombinedSearch) {
+      setFlowType(FLOW_TYPES.ALL_CHALLANS)
+      setCombinedRun(null)
+      setCombinedExternalData(null)
+    }
     if (pending.length > 0) {
       savePendingChallans(vNum, pending)
     }
@@ -219,7 +364,11 @@ export default function PayChallan() {
       setError('Fetch All Challans is temporarily unavailable')
       return
     }
-    fetchChallans(vehicleNumber.trim())
+    if (flowType === FLOW_TYPES.EXTERNAL_CHALLANS) {
+      fetchExternalOnly(vehicleNumber.trim())
+      return
+    }
+    fetchAllSources(vehicleNumber.trim())
   }
 
   const handlePayment = async (idsOrSingle) => {
@@ -329,12 +478,24 @@ export default function PayChallan() {
 
   const handleRefresh = () => {
     if (!data?.vehicle?.number) return
-    fetchChallans(data.vehicle.number)
+    if (flowType === FLOW_TYPES.EXTERNAL_CHALLANS) {
+      fetchExternalOnly(data.vehicle.number)
+    } else {
+      fetchAllSources(data.vehicle.number)
+    }
+  }
+
+  const cancelCombinedSearch = () => {
+    setCombinedRun(null)
+    setCombinedExternalData(null)
+    setError(null)
   }
 
   const showResult = data && !loading
-  const allEnabled = isFeatureEnabled('fetch_all_challans')
+  const allEnabled = isFeatureEnabled('fetch_all_challans') && isFeatureEnabled('delhi_otp_challan')
+  const externalEnabled = isFeatureEnabled('fetch_all_challans')
   const delhiEnabled = isFeatureEnabled('delhi_otp_challan')
+  const isVehicleSearchFlow = flowType !== FLOW_TYPES.DELHI_OTP
 
   const selectedPendingChallans = useMemo(() => {
     if (!data?.challans) return []
@@ -344,7 +505,7 @@ export default function PayChallan() {
   return (
     <div className="relative flex min-h-screen flex-col bg-slate-50">
       <SearchLoadingOverlay
-        open={flowType === FLOW_TYPES.ALL_CHALLANS && loading}
+        open={isVehicleSearchFlow && loading}
         type="challan"
         vehicleNumber={vehicleNumber}
       />
@@ -379,29 +540,56 @@ export default function PayChallan() {
                           setError(null)
                         }}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && flowType === FLOW_TYPES.ALL_CHALLANS) {
+                          if (e.key === 'Enter' && isVehicleSearchFlow) {
                             handleCheckNow(e)
                           }
                         }}
-                        disabled={flowType === FLOW_TYPES.DELHI_OTP || loading}
+                        disabled={!isVehicleSearchFlow || loading || Boolean(combinedRun)}
                         className="input-field !py-2.5 text-[14px] font-bold tracking-wide uppercase disabled:opacity-60"
                       />
                     </label>
-                    {flowType === FLOW_TYPES.ALL_CHALLANS && (
-                      <SearchLoadingButton
-                        onClick={handleCheckNow}
-                        loading={loading}
-                        loadingLabel="Searching…"
-                        disabled={!vehicleNumber.trim() || !allEnabled}
-                        className="!py-2.5 text-[13px]"
-                      >
-                        <span className="inline-flex items-center justify-center gap-2">
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-                          </svg>
-                          Search Vehicle
-                        </span>
-                      </SearchLoadingButton>
+                    {isVehicleSearchFlow && (
+                      <>
+                        {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                          <label className="block">
+                          <span className="mb-1 block text-[12px] font-medium text-slate-600">Registered Mobile Number</span>
+                          <input
+                            type="tel"
+                            inputMode="numeric"
+                            autoComplete="tel-national"
+                            placeholder="10-digit mobile number"
+                            value={mobileNumber}
+                            onChange={(e) => {
+                              setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
+                              setError(null)
+                            }}
+                            disabled={loading || Boolean(combinedRun)}
+                            className="input-field !py-2.5 text-[14px] tracking-wide disabled:opacity-60"
+                          />
+                          </label>
+                        )}
+                        {!combinedRun && (
+                          <SearchLoadingButton
+                            onClick={handleCheckNow}
+                            loading={loading}
+                            loadingLabel={flowType === FLOW_TYPES.ALL_CHALLANS ? 'Searching both sources…' : 'Searching…'}
+                            disabled={!vehicleNumber.trim() || (flowType === FLOW_TYPES.ALL_CHALLANS ? !allEnabled : !externalEnabled)}
+                            className="!py-2.5 text-[13px]"
+                          >
+                            <span className="inline-flex items-center justify-center gap-2">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                              </svg>
+                              {flowType === FLOW_TYPES.ALL_CHALLANS ? 'Search All Challans' : 'Search e-Challan'}
+                            </span>
+                          </SearchLoadingButton>
+                        )}
+                        {flowType === FLOW_TYPES.ALL_CHALLANS && (
+                          <p className="text-[11px] leading-relaxed text-slate-500">
+                            e-Challan/Parivahan and Delhi challans are fetched together. Delhi records require OTP verification.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -412,17 +600,14 @@ export default function PayChallan() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (!allEnabled || loading) return
+                        if (!allEnabled || loading || combinedRun) return
                         setFlowType(FLOW_TYPES.ALL_CHALLANS)
                         setError(null)
-                        const number =
-                          allChallansSnapshot.current?.vehicleNumber || vehicleNumber
-                        if (number) {
-                          setVehicleNumber(number)
-                          fetchChallans(number)
-                        }
+                        setCombinedRun(null)
+                        setCombinedExternalData(null)
+                        setData(null)
                       }}
-                      disabled={!allEnabled || loading}
+                      disabled={!allEnabled || loading || Boolean(combinedRun)}
                       aria-pressed={flowType === FLOW_TYPES.ALL_CHALLANS}
                       className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
                         flowType === FLOW_TYPES.ALL_CHALLANS
@@ -441,12 +626,39 @@ export default function PayChallan() {
                           <span className="h-2 w-2 rounded-full bg-brand-red" />
                         )}
                       </span>
-                      Fetch All Challans
+                      All Challans (Recommended)
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        if (!delhiEnabled || loading) return
+                        if (!externalEnabled || loading || combinedRun) return
+                        setFlowType(FLOW_TYPES.EXTERNAL_CHALLANS)
+                        setError(null)
+                        setCombinedRun(null)
+                        setCombinedExternalData(null)
+                        setData(null)
+                      }}
+                      disabled={!externalEnabled || loading || Boolean(combinedRun)}
+                      aria-pressed={flowType === FLOW_TYPES.EXTERNAL_CHALLANS}
+                      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
+                        flowType === FLOW_TYPES.EXTERNAL_CHALLANS
+                          ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      } ${!externalEnabled || loading || combinedRun ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                        flowType === FLOW_TYPES.EXTERNAL_CHALLANS ? 'border-blue-500' : 'border-slate-300'
+                      }`}>
+                        {flowType === FLOW_TYPES.EXTERNAL_CHALLANS && (
+                          <span className="h-2 w-2 rounded-full bg-blue-500" />
+                        )}
+                      </span>
+                      e-Challan / Parivahan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!delhiEnabled || loading || combinedRun) return
                         if (data && data.dataSource !== 'DELHI_OTP') {
                           allChallansSnapshot.current = {
                             data,
@@ -460,9 +672,11 @@ export default function PayChallan() {
                         setError(null)
                         setSelectedChallans([])
                         setData(null)
+                        setCombinedRun(null)
+                        setCombinedExternalData(null)
                         setLoading(false)
                       }}
-                      disabled={!delhiEnabled || loading}
+                      disabled={!delhiEnabled || loading || Boolean(combinedRun)}
                       aria-pressed={flowType === FLOW_TYPES.DELHI_OTP}
                       className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition ${
                         flowType === FLOW_TYPES.DELHI_OTP
@@ -481,11 +695,11 @@ export default function PayChallan() {
                           <span className="h-2 w-2 rounded-full bg-orange-500" />
                         )}
                       </span>
-                      Delhi Challan (OTP Required)
+                      Delhi Traffic Challans
                     </button>
                   </div>
 
-                  {error && flowType === FLOW_TYPES.ALL_CHALLANS && (
+                  {error && isVehicleSearchFlow && (
                     <p className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[12px] text-rose-600">
                       {error}
                     </p>
@@ -493,7 +707,7 @@ export default function PayChallan() {
                 </div>
               </aside>
 
-              {flowType === FLOW_TYPES.ALL_CHALLANS && (
+              {isVehicleSearchFlow && (
                 <RecentSearches
                   type="challan"
                   refreshKey={recentRefreshKey}
@@ -501,7 +715,9 @@ export default function PayChallan() {
                     if (loading) return
                     setVehicleNumber(number)
                     setError(null)
-                    fetchChallans(number)
+                    flowType === FLOW_TYPES.EXTERNAL_CHALLANS
+                      ? fetchExternalOnly(number)
+                      : fetchAllSources(number)
                   }}
                 />
               )}
@@ -516,18 +732,35 @@ export default function PayChallan() {
                     onBack={() => {
                       setFlowType(FLOW_TYPES.ALL_CHALLANS)
                       setError(null)
-                      const number =
-                        allChallansSnapshot.current?.vehicleNumber || vehicleNumber
-                      if (number) {
-                        setVehicleNumber(number)
-                        fetchChallans(number)
+                      setCombinedRun(null)
+                      setCombinedExternalData(null)
+                      if (allChallansSnapshot.current) {
+                        const snapshot = allChallansSnapshot.current
+                        setData(snapshot.data)
+                        setSelectedChallans(snapshot.selectedChallans)
+                        setFilters(snapshot.filters)
+                        setFetchedAt(snapshot.fetchedAt)
+                        setVehicleNumber(snapshot.vehicleNumber)
+                        allChallansSnapshot.current = null
                       }
                     }}
                   />
                 </div>
               )}
 
-              {flowType === FLOW_TYPES.ALL_CHALLANS && loading && (
+              {flowType === FLOW_TYPES.ALL_CHALLANS && combinedRun && !showResult && (
+                <div className="surface-card p-4 md:p-6">
+                  <DelhiOtpFlow
+                    key={combinedRun.runId}
+                    initialRun={combinedRun}
+                    onChallansFound={handleDelhiChallansFound}
+                    onBack={cancelCombinedSearch}
+                    onCancel={cancelCombinedSearch}
+                  />
+                </div>
+              )}
+
+              {isVehicleSearchFlow && loading && (
                 <div className="surface-card min-h-[420px] opacity-40">
                   <ChallanResultsSkeleton vehicleNumber={vehicleNumber} />
                 </div>
@@ -550,7 +783,7 @@ export default function PayChallan() {
                 />
               )}
 
-              {flowType === FLOW_TYPES.ALL_CHALLANS && !loading && !showResult && (
+              {isVehicleSearchFlow && !loading && !showResult && (
                 <EmptyResultsPanel />
               )}
             </main>
