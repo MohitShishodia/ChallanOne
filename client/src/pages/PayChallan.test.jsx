@@ -12,6 +12,7 @@ vi.mock('../components/DelhiOtpFlow', () => ({
   default: ({ onBack, onChallansFound, initialRun }) => (
     <div data-testid="delhi-otp-flow">
       {initialRun && <span>Delhi verification started</span>}
+      {initialRun?.nextAction === 'SUBMIT_FETCH_OTP' && <input placeholder="Enter OTP" />}
       <button type="button" onClick={onBack}>Back to Options</button>
       <button
         type="button"
@@ -86,6 +87,43 @@ describe('PayChallan page', () => {
     expect(screen.getByText('e-Challan / Parivahan')).toBeInTheDocument()
     expect(screen.getByText('Delhi Traffic Challans')).toBeInTheDocument()
     expect(screen.getByText('Vehicle Search')).toBeInTheDocument()
+  })
+
+  it('renders combined challans passed from the homepage without another search', () => {
+    renderWithRouter(<PayChallan />, {
+      route: '/pay-challan?vehicle=UP32AB1234',
+      path: '/pay-challan',
+      state: {
+        challanSearchResult: {
+          success: true,
+          dataSource: 'COMBINED',
+          vehicle: {
+            number: 'UP32AB1234',
+            owner: 'Test Owner',
+            vehicleType: 'Private Vehicle',
+            isVerified: true
+          },
+          challans: [{
+            id: 'HOME-001',
+            noticeId: 'HOME-001',
+            offenceDetails: 'Signal violation',
+            amount: 500,
+            status: 'PENDING',
+            date: '01 May 2024',
+            time: '10:00',
+            location: 'Lucknow',
+            displayType: 'E-Challan',
+            isCourtChallan: false,
+            courtFee: 0
+          }],
+          pendingCount: 1,
+          paidCount: 0
+        }
+      }
+    })
+
+    expect(screen.getByText('HOME-001')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('UP32AB1234')).toBeInTheDocument()
   })
 
   it('shows Delhi OTP flow when Delhi State Challan is selected', async () => {
@@ -181,6 +219,35 @@ describe('PayChallan page', () => {
     expect(screen.getByText('Signal violation')).toBeInTheDocument()
     expect(screen.getAllByText('Payment Summary').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Pay Securely').length).toBeGreaterThan(0)
+  })
+
+  it('shows the Delhi OTP before the external challan request finishes', async () => {
+    let resolveExternalRequest
+    const externalResponse = new Promise((resolve) => {
+      resolveExternalRequest = resolve
+    })
+    globalThis.fetch = vi.fn((url) => {
+      if (String(url).includes('/api/external/challan')) return externalResponse
+      if (String(url).includes('/api/delhi-otp/runs')) {
+        return Promise.resolve({ ok: true, json: async () => mockDelhiRun })
+      }
+      return httpFetch(url)
+    })
+
+    const user = userEvent.setup()
+    renderWithRouter(<PayChallan />, { route: '/pay-challan', path: '/pay-challan' })
+
+    await user.click(screen.getByText('All Challans (Recommended)'))
+    await user.type(screen.getByPlaceholderText(/DL8CAF1234/i), 'UP32AB1234')
+    await user.type(screen.getByPlaceholderText(/10-digit mobile number/i), '9876543210')
+    await user.click(screen.getByRole('button', { name: /Search All Challans/i }))
+
+    expect(await screen.findByPlaceholderText('Enter OTP')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Simulate Delhi Results/i }))
+    expect(screen.queryByText('NT-001')).not.toBeInTheDocument()
+    resolveExternalRequest({ ok: true, json: async () => mockChallanApiResponse })
+    expect(await screen.findByText('NT-001')).toBeInTheDocument()
+    expect(screen.getByText('NT-DL-001')).toBeInTheDocument()
   })
 
   it('shows an error when both sources return no challans', async () => {

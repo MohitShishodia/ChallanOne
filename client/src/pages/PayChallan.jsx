@@ -63,14 +63,18 @@ export default function PayChallan() {
   const { isFeatureEnabled } = useFeatures()
   const [cachedSearch] = useState(() => loadChallanSearchState())
   const allChallansSnapshot = useRef(null)
+  const combinedRequestId = useRef(0)
   const queryVehicle = searchParams.get('vehicle')
   const querySource = searchParams.get('source')
   const queryMobile = location.state?.mobileNumber || ''
+  const navigationResult = location.state?.challanSearchResult || null
   const autoFetchKey = useRef('')
 
   const [flowType, setFlowType] = useState(
     querySource === 'external'
       ? FLOW_TYPES.EXTERNAL_CHALLANS
+      : navigationResult
+        ? FLOW_TYPES.ALL_CHALLANS
       : queryVehicle
         ? FLOW_TYPES.ALL_CHALLANS
         : cachedSearch?.flowType || FLOW_TYPES.ALL_CHALLANS
@@ -79,14 +83,24 @@ export default function PayChallan() {
   const [mobileNumber, setMobileNumber] = useState(queryMobile)
   const [loading, setLoading] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [data, setData] = useState(queryVehicle ? null : cachedSearch?.data || null)
+  const [data, setData] = useState(
+    navigationResult || (queryVehicle ? null : cachedSearch?.data || null)
+  )
   const [error, setError] = useState(null)
-  const [selectedChallans, setSelectedChallans] = useState(cachedSearch?.selectedChallans || [])
-  const [filters, setFilters] = useState(cachedSearch?.filters || getDefaultFilters())
-  const [fetchedAt, setFetchedAt] = useState(queryVehicle ? null : cachedSearch?.fetchedAt || null)
+  const [selectedChallans, setSelectedChallans] = useState(
+    navigationResult ? [] : cachedSearch?.selectedChallans || []
+  )
+  const [filters, setFilters] = useState(
+    navigationResult ? getDefaultFilters() : cachedSearch?.filters || getDefaultFilters()
+  )
+  const [fetchedAt, setFetchedAt] = useState(
+    navigationResult ? Date.now() : queryVehicle ? null : cachedSearch?.fetchedAt || null
+  )
   const [recentRefreshKey, setRecentRefreshKey] = useState(0)
   const [combinedRun, setCombinedRun] = useState(null)
   const [combinedExternalData, setCombinedExternalData] = useState(null)
+  const [combinedExternalStatus, setCombinedExternalStatus] = useState('idle')
+  const [verifiedDelhiResults, setVerifiedDelhiResults] = useState(null)
 
   // Persist search state so navigating away and back restores results
   useEffect(() => {
@@ -127,9 +141,12 @@ export default function PayChallan() {
     }
 
     setLoading(true)
+    const requestId = ++combinedRequestId.current
     setError(null)
     setCombinedRun(null)
     setCombinedExternalData(null)
+    setCombinedExternalStatus('loading')
+    setVerifiedDelhiResults(null)
     setData(null)
     addRecentSearch(trimmed, 'challan')
     setRecentRefreshKey((k) => k + 1)
@@ -147,34 +164,40 @@ export default function PayChallan() {
       return result
     }
 
-    try {
-      const [externalResult, delhiResult] = await Promise.allSettled([
-        requestExternalChallans(trimmed),
-        createDelhiRun()
-      ])
-      const externalData = externalResult.status === 'fulfilled' ? externalResult.value : null
-      const externalError = externalResult.status === 'rejected'
-        ? externalResult.reason?.message || 'Failed to fetch e-Challan/Parivahan records'
-        : null
+    const externalResultPromise = requestExternalChallans(trimmed).then(
+      (externalData) => ({ externalData, externalError: null }),
+      (externalFailure) => ({
+        externalData: null,
+        externalError: externalFailure?.message || 'Failed to fetch e-Challan/Parivahan records'
+      })
+    )
 
+    try {
+      const delhiRun = await createDelhiRun()
+      setVehicleNumber(trimmed)
+      setMobileNumber(trimmedMobile)
+      setCombinedRun({
+        ...delhiRun,
+        vehicleNumber: trimmed,
+        mobileNumber: trimmedMobile
+      })
+      setSelectedChallans([])
+      setFilters(getDefaultFilters())
+      setFetchedAt(Date.now())
+      externalResultPromise.then(({ externalData, externalError }) => {
+        if (requestId !== combinedRequestId.current) return
+        setCombinedExternalData(externalData)
+        setCombinedExternalStatus('complete')
+        setError(externalError ? `e-Challan/Parivahan: ${externalError}` : null)
+      })
+    } catch (delhiFailure) {
+      const { externalData, externalError } = await externalResultPromise
       setVehicleNumber(trimmed)
       setMobileNumber(trimmedMobile)
       setCombinedExternalData(externalData)
-      setError(externalError ? `e-Challan/Parivahan: ${externalError}` : null)
+      setCombinedExternalStatus('complete')
 
-      if (delhiResult.status === 'fulfilled') {
-        setCombinedRun({
-          ...delhiResult.value,
-          vehicleNumber: trimmed,
-          mobileNumber: trimmedMobile
-        })
-        setSelectedChallans([])
-        setFilters(getDefaultFilters())
-        setFetchedAt(Date.now())
-        return
-      }
-
-      const delhiError = delhiResult.reason?.message || 'Failed to start Delhi OTP verification'
+      const delhiError = delhiFailure?.message || 'Failed to start Delhi OTP verification'
       if (externalData?.hasRawChallans) {
         setData(externalData)
         setSelectedChallans([])
@@ -197,11 +220,6 @@ export default function PayChallan() {
         setFetchedAt(null)
         clearChallanSearchState()
       }
-    } catch (err) {
-      setError(err?.message || 'Failed to fetch challans. Please try again.')
-      setData(null)
-      setFetchedAt(null)
-      clearChallanSearchState()
     } finally {
       setLoading(false)
     }
@@ -239,6 +257,7 @@ export default function PayChallan() {
     }
 
     setLoading(true)
+    combinedRequestId.current += 1
     setError(null)
     setCombinedRun(null)
     setCombinedExternalData(null)
@@ -269,10 +288,9 @@ export default function PayChallan() {
     }
   }
 
-  const handleDelhiChallansFound = ({ challans, vehicleNumber: vNum }) => {
-    const isCombinedSearch = Boolean(combinedRun)
+  const completeChallanSearch = (challans, vNum, externalData = null, isCombinedSearch = false) => {
     const fetchedChallans = isCombinedSearch
-      ? [...challans, ...(combinedExternalData?.challans || [])]
+      ? [...challans, ...(externalData?.challans || [])]
       : challans
     const seenChallans = new Set()
     const mergedChallans = fetchedChallans.filter((challan) => {
@@ -284,9 +302,11 @@ export default function PayChallan() {
       return true
     })
     if (mergedChallans.length === 0) {
-      setError('No challans found from either source')
+      setError(isCombinedSearch ? 'No challans found from either source' : 'No challans found')
       setCombinedRun(null)
       setCombinedExternalData(null)
+      setCombinedExternalStatus('idle')
+      setVerifiedDelhiResults(null)
       setData(null)
       setFetchedAt(null)
       clearChallanSearchState()
@@ -324,11 +344,32 @@ export default function PayChallan() {
       setFlowType(FLOW_TYPES.ALL_CHALLANS)
       setCombinedRun(null)
       setCombinedExternalData(null)
+      setCombinedExternalStatus('idle')
+      setVerifiedDelhiResults(null)
     }
     if (pending.length > 0) {
       savePendingChallans(vNum, pending)
     }
   }
+
+  const handleDelhiChallansFound = ({ challans, vehicleNumber: vNum }) => {
+    if (combinedRun) {
+      setVerifiedDelhiResults({ challans, vehicleNumber: vNum })
+      return
+    }
+
+    completeChallanSearch(challans, vNum)
+  }
+
+  useEffect(() => {
+    if (!combinedRun || !verifiedDelhiResults || combinedExternalStatus !== 'complete') return
+    completeChallanSearch(
+      verifiedDelhiResults.challans,
+      verifiedDelhiResults.vehicleNumber,
+      combinedExternalData,
+      true
+    )
+  }, [combinedRun, verifiedDelhiResults, combinedExternalStatus, combinedExternalData])
 
   useEffect(() => {
     if (!data?.vehicle?.number || !data?.challans) return
@@ -486,6 +527,7 @@ export default function PayChallan() {
   }
 
   const cancelCombinedSearch = () => {
+    combinedRequestId.current += 1
     setCombinedRun(null)
     setCombinedExternalData(null)
     setError(null)
@@ -764,6 +806,15 @@ export default function PayChallan() {
                 <div className="surface-card min-h-[420px] opacity-40">
                   <ChallanResultsSkeleton vehicleNumber={vehicleNumber} />
                 </div>
+              )}
+
+              {showResult && data.sourceErrors?.external && (
+                <p
+                  role="status"
+                  className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800"
+                >
+                  e-Challan/Parivahan: {data.sourceErrors.external}
+                </p>
               )}
 
               {showResult && (

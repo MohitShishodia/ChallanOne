@@ -220,6 +220,26 @@ function ServicesMenu({ pathname, isActive, mobile = false, onNavigate }) {
     onNavigate?.()
   }
 
+  useEffect(() => {
+    const handleOutsidePointerDown = (event) => {
+      if (detailsRef.current?.open && !detailsRef.current.contains(event.target)) {
+        detailsRef.current.open = false
+      }
+    }
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && detailsRef.current?.open) {
+        detailsRef.current.open = false
+      }
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsidePointerDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [])
+
   return (
     <details ref={detailsRef} className={mobile ? '' : 'relative'}>
       <summary className={summaryClassName}>

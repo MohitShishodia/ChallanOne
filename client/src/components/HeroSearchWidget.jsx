@@ -76,8 +76,6 @@ export default function HeroSearchWidget() {
   const [externalError, setExternalError] = useState(null)
   const [externalFetchStatus, setExternalFetchStatus] = useState('idle')
   const [verifiedDelhiChallans, setVerifiedDelhiChallans] = useState(null)
-  const [combinedChallans, setCombinedChallans] = useState([])
-  const externalChallansRef = useRef([])
   const externalFetchStatusRef = useRef('idle')
   const cooldownRef = useRef(null)
   const pollRef = useRef(null)
@@ -142,8 +140,6 @@ export default function HeroSearchWidget() {
     setExternalError(null)
     setExternalFetchStatus('idle')
     setVerifiedDelhiChallans(null)
-    setCombinedChallans([])
-    externalChallansRef.current = []
     externalFetchStatusRef.current = 'idle'
     if (pollRef.current) clearTimeout(pollRef.current)
     if (cooldownRef.current) clearInterval(cooldownRef.current)
@@ -192,9 +188,7 @@ export default function HeroSearchWidget() {
     setExternalChallans([])
     setExternalFetchStatus('loading')
     externalFetchStatusRef.current = 'loading'
-    externalChallansRef.current = []
     setVerifiedDelhiChallans(null)
-    setCombinedChallans([])
     setIsLoading(true)
     setDelhiStep('loading')
 
@@ -233,7 +227,6 @@ export default function HeroSearchWidget() {
     })
 
     externalRequest.then((result) => {
-      externalChallansRef.current = result.challans
       setExternalChallans(result.challans)
       externalFetchStatusRef.current = 'complete'
       setExternalFetchStatus('complete')
@@ -268,28 +261,12 @@ export default function HeroSearchWidget() {
     setIsLoading(false)
   }
 
-  const combineVerifiedChallans = (delhiChallans, externalRecords) => {
-    const seen = new Set()
-    const unique = [...(delhiChallans || []), ...(externalRecords || [])].filter((challan) => {
-      const id = String(
-        challan.noticeId || challan.challanNumber || challan.id || ''
-      ).trim().toUpperCase()
-      if (!id || seen.has(id)) return false
-      seen.add(id)
-      return true
-    })
-    setCombinedChallans(unique)
-    setDelhiStep('results')
-  }
-
   const handleDelhiCompleted = (data) => {
     if (challanMode === 'all') {
       const delhiChallans = data.challans || []
       setVerifiedDelhiChallans(delhiChallans)
       if (externalFetchStatusRef.current === 'loading') {
         setDelhiStep('loading')
-      } else {
-        combineVerifiedChallans(delhiChallans, externalChallansRef.current)
       }
       return
     }
@@ -302,10 +279,51 @@ export default function HeroSearchWidget() {
       verifiedDelhiChallans &&
       externalFetchStatus !== 'loading'
     ) {
-      combineVerifiedChallans(verifiedDelhiChallans, externalChallans)
+      const seen = new Set()
+      const combinedChallans = [...verifiedDelhiChallans, ...externalChallans].filter((challan) => {
+        const id = String(
+          challan.noticeId || challan.challanNumber || challan.id || ''
+        ).trim().toUpperCase()
+        if (!id || seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
+      const pending = combinedChallans.filter((challan) => challan.status !== 'PAID')
+      const vehicle = vehicleNumber.trim().toUpperCase()
+      const combinedResult = {
+        success: true,
+        dataSource: 'COMBINED',
+        vehicle: {
+          number: vehicle,
+          owner: combinedChallans.find((challan) => challan.accusedName)?.accusedName || 'Owner',
+          vehicleType: 'Private Vehicle',
+          isVerified: true
+        },
+        challans: combinedChallans,
+        pendingCount: pending.length,
+        paidCount: combinedChallans.length - pending.length,
+        sourceErrors: externalError ? { external: externalError } : {}
+      }
+      navigate(
+        `/pay-challan?vehicle=${encodeURIComponent(vehicle)}`,
+        {
+          state: {
+            challanSearchResult: combinedResult,
+            mobileNumber: mobileNumber.trim()
+          }
+        }
+      )
     }
-  // combine only after the external source settles, using its latest results
-  }, [challanMode, verifiedDelhiChallans, externalFetchStatus, externalChallans])
+  }, [
+    challanMode,
+    verifiedDelhiChallans,
+    externalFetchStatus,
+    externalChallans,
+    externalError,
+    vehicleNumber,
+    mobileNumber,
+    navigate
+  ])
 
   const submitMobileAction = async (activeRunId) => {
     try {
@@ -524,62 +542,6 @@ export default function HeroSearchWidget() {
             Login / Sign Up
           </button>
         </div>
-      </div>
-    )
-  }
-
-  if (activeTab === 'challan' && challanMode === 'all' && delhiStep === 'results') {
-    return (
-      <div className="hsw-root">
-        <section className="hsw-results-section" aria-live="polite">
-          <div className="hsw-results-header">
-            <div>
-              <h3 className="hsw-results-title">Challan Results</h3>
-              <p className="hsw-results-subtitle">
-                {combinedChallans.length} challan{combinedChallans.length === 1 ? '' : 's'} found for {vehicleNumber.trim().toUpperCase()}
-              </p>
-            </div>
-            <button type="button" onClick={resetDelhiFlow} className="hsw-results-back">
-              Check another vehicle
-            </button>
-          </div>
-
-          {externalError && (
-            <p className="hsw-results-warning">
-              e-Challan/Parivahan: {externalError}
-            </p>
-          )}
-
-          {combinedChallans.length === 0 ? (
-            <p className="hsw-results-empty">
-              No challans were found from the selected sources.
-            </p>
-          ) : (
-            <div className="hsw-results-list">
-              {combinedChallans.map((challan, index) => (
-                <article
-                  className="hsw-result-card"
-                  key={`${challan.noticeId || challan.challanNumber || challan.id}-${index}`}
-                >
-                  <div className="hsw-result-card-top">
-                    <strong>{challan.noticeId || challan.challanNumber || challan.id || 'Challan'}</strong>
-                    <span className={`hsw-result-status ${challan.status === 'PAID' ? 'is-paid' : ''}`}>
-                      {challan.status || 'PENDING'}
-                    </span>
-                  </div>
-                  <p className="hsw-result-offence">
-                    {challan.offenceDetails || challan.description || challan.type || 'Traffic violation'}
-                  </p>
-                  <div className="hsw-result-meta">
-                    <span>{challan.location || challan.description || 'Location unavailable'}</span>
-                    <span>{challan.date || 'Date unavailable'}</span>
-                    <strong>₹{Number(challan.amount || 0).toLocaleString('en-IN')}</strong>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
       </div>
     )
   }

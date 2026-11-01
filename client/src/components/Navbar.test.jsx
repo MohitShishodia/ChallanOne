@@ -25,6 +25,21 @@ describe('Navbar', () => {
     expect(screen.getAllByRole('link', { name: 'RC Details' })).toHaveLength(2)
   })
 
+  it('closes the desktop Services menu on outside click and Escape', () => {
+    renderWithRouter(<Navbar />)
+
+    const servicesDetails = screen.getByText('Services').closest('details')
+    fireEvent.click(screen.getByText('Services'))
+    expect(servicesDetails).toHaveAttribute('open')
+
+    fireEvent.pointerDown(document.body)
+    expect(servicesDetails).not.toHaveAttribute('open')
+
+    fireEvent.click(screen.getByText('Services'))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(servicesDetails).not.toHaveAttribute('open')
+  })
+
   it('opens Services in the mobile navigation drawer', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     renderWithRouter(<Navbar />)

@@ -3,9 +3,17 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
 import { FeatureProvider } from '../context/FeatureContext'
 
-export function renderWithRouter(ui, { route = '/', path = '/' } = {}) {
+export function renderWithRouter(ui, { route = '/', path = '/', state = null } = {}) {
+  const initialEntry = typeof route === 'string'
+    ? {
+        pathname: route.split('?')[0],
+        search: route.includes('?') ? `?${route.split('?')[1]}` : '',
+        state
+      }
+    : route
+
   return render(
-    <MemoryRouter initialEntries={[route]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <AuthProvider>
         <FeatureProvider>
           <Routes>

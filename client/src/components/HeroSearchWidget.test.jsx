@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import HeroSearchWidget from './HeroSearchWidget'
 
@@ -11,6 +11,22 @@ vi.mock('../context/AuthContext', () => ({
 afterEach(() => {
   vi.unstubAllGlobals()
 })
+
+function CombinedResultsRoute() {
+  const { state } = useLocation()
+  const result = state?.challanSearchResult
+
+  return (
+    <section>
+      <h1>Challan Results</h1>
+      <p>{result?.vehicle.number}</p>
+      <p>{result?.dataSource}</p>
+      {result?.challans.map((challan) => (
+        <p key={challan.noticeId}>{challan.noticeId}</p>
+      ))}
+    </section>
+  )
+}
 
 describe('HeroSearchWidget challan sources', () => {
   it('offers all three challan sources and asks for a mobile for combined search', () => {
@@ -28,7 +44,7 @@ describe('HeroSearchWidget challan sources', () => {
     expect(screen.getByRole('button', { name: /Fetch All & Send OTP/i })).toBeInTheDocument()
   })
 
-  it('fetches both sources, verifies OTP, and shows combined results on the homepage', async () => {
+  it('fetches both sources, verifies OTP, and navigates to combined results', async () => {
     let resolveExternalRequest
     const externalResponse = new Promise((resolve) => {
       resolveExternalRequest = resolve
@@ -82,7 +98,10 @@ describe('HeroSearchWidget challan sources', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <HeroSearchWidget />
+        <Routes>
+          <Route path="/" element={<HeroSearchWidget />} />
+          <Route path="/pay-challan" element={<CombinedResultsRoute />} />
+        </Routes>
       </MemoryRouter>
     )
 
@@ -123,8 +142,9 @@ describe('HeroSearchWidget challan sources', () => {
     })
 
     expect(await screen.findByText('Challan Results')).toBeInTheDocument()
+    expect(screen.getByText('COMBINED')).toBeInTheDocument()
+    expect(screen.getByText('UP32AB1234')).toBeInTheDocument()
     expect(screen.getByText('EXT-1')).toBeInTheDocument()
     expect(screen.getByText('DL-1')).toBeInTheDocument()
-    expect(screen.queryByText('Choose Challans')).not.toBeInTheDocument()
   })
 })
