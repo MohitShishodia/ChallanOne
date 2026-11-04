@@ -7,9 +7,9 @@ const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/pay-challan', label: 'Check Challan' },
   { to: '/rc-details', label: 'RC Details' },
-  { to: '/about', label: 'About Us' },
   { to: '/challan-settlement', label: 'Challan Settlement' },
   { to: '/support', label: 'Support' },
+  { to: '/about', label: 'About Us' },
 ]
 
 const serviceLinks = [

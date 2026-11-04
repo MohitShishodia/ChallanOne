@@ -12,6 +12,9 @@ describe('Navbar', () => {
     renderWithRouter(<Navbar />)
 
     const headerLinks = Array.from(document.querySelector('.nav-links').children)
+    const navigationOrder = ['Services', 'Challan Settlement', 'Support', 'About Us']
+      .map((label) => headerLinks.findIndex((element) => element.textContent.includes(label)))
+    expect(navigationOrder).toEqual([...navigationOrder].sort((a, b) => a - b))
     expect(headerLinks.findIndex((element) => element.textContent.includes('RC Details')))
       .toBeLessThan(headerLinks.findIndex((element) => element.textContent.includes('Services')))
 

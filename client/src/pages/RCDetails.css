@@ -197,40 +197,6 @@
   font-weight: 600;
 }
 
-/* Sample numbers — fictional demo chips under the search bar */
-.rc-sample-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 46px;
-}
-
-.rc-sample-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.rc-sample-chip {
-  padding: 11px 20px;
-  background: #fff;
-  border: 1px dashed #fca5a5;
-  border-radius: 999px;
-  color: #b91c1c;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.9px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-  font-family: inherit;
-}
-
-.rc-sample-chip:hover {
-  background: #fef2f2;
-  border-color: #dc2626;
-}
-
 /* Feature strip — floating white bar under hero illustration */
 .rc-feature-strip {
   display: flex;

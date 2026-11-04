@@ -219,6 +219,9 @@ describe('PayChallan page', () => {
     expect(screen.getByText('Signal violation')).toBeInTheDocument()
     expect(screen.getAllByText('Payment Summary').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Pay Securely').length).toBeGreaterThan(0)
+    for (const paymentMethod of ['Mastercard', 'Net Banking', 'RuPay', 'UPI', 'VISA']) {
+      expect(screen.getAllByText(paymentMethod).length).toBeGreaterThan(0)
+    }
   })
 
   it('shows the Delhi OTP before the external challan request finishes', async () => {

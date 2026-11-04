@@ -9,9 +9,9 @@ function formatAmount(amount) {
 const PAYMENT_LOGOS = [
   { name: 'UPI', label: 'UPI' },
   { name: 'VISA', label: 'VISA' },
-  { name: 'MC', label: 'Mastercard' },
+  { name: 'Mastercard', label: 'Mastercard' },
   { name: 'RuPay', label: 'RuPay' },
-  { name: 'NB', label: 'Net Banking' },
+  { name: 'Net Banking', label: 'Net Banking' },
 ]
 
 export default function PaymentSummaryPanel({
@@ -126,10 +126,16 @@ export default function PaymentSummaryPanel({
             {PAYMENT_LOGOS.map((logo) => (
               <span
                 key={logo.name}
-                className="inline-flex h-7 min-w-[40px] items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-1.5 text-[9px] font-bold tracking-wide text-slate-600"
+                className="inline-flex min-h-7 items-center justify-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-[9px] font-bold tracking-wide text-slate-600"
                 title={logo.label}
               >
-                {logo.name}
+                {logo.name === 'Mastercard' && (
+                  <span className="inline-flex -space-x-1" aria-hidden="true">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/90" />
+                  </span>
+                )}
+                {logo.label}
               </span>
             ))}
           </div>
