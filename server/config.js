@@ -5,11 +5,13 @@ export const emailConfig = {
   fromName: 'Challan One'
 };
 
-// Fast2SMS configuration for SMS OTP
-export const smsConfig = {
-  apiKey: process.env.FAST2SMS_API_KEY || 'U159aajln4HoRwDFudNkZKD029uQnwCO6SpAGbfH5oQFG9hEA2lj8xxNWF54',
-  senderId: 'CHALAN',
-  route: 'otp'
+// MSG91 OTP Widget configuration for registration SMS
+export const msg91WidgetConfig = {
+  authKey: process.env.MSG91_AUTH_KEY,
+  widgetId: process.env.MSG91_WIDGET_ID,
+  widgetToken: process.env.MSG91_WIDGET_TOKEN,
+  countryCode: process.env.MSG91_COUNTRY_CODE || '91',
+  expiryMinutes: Number(process.env.MSG91_OTP_EXPIRY_MINUTES) || 15
 };
 
 // JWT configuration (customer-facing)
@@ -37,4 +39,3 @@ export const adminConfig = {
   maxPageSize: 100,
   bcryptSaltRounds: 12
 };
-

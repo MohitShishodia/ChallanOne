@@ -1,20 +1,50 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { jwtConfig, otpConfig } from '../config.js';
+import { jwtConfig, otpConfig, msg91WidgetConfig } from '../config.js';
 import { generateOtp, storeOtp, verifyOtp } from '../utils/otpStore.js';
-import { sendEmailOtp } from '../utils/sendOtp.js';
+import {
+  sendEmailOtp,
+  sendMsg91WidgetOtp,
+  verifyMsg91WidgetOtp,
+  verifyMsg91WidgetAccessToken
+} from '../utils/sendOtp.js';
+import { msg91AccessTokenMatchesPhone } from '../utils/msg91Identity.js';
 import { createUser, verifyUserCredentials, updateUserLogin, getUser, userExists, updateUserProfile } from '../data/users.js';
 import { userAuth } from '../middleware/userAuth.js';
+import { smsOtpSendLimiter, smsOtpVerifyLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-// Temporary storage for pending registrations (email -> {password, name, phone})
+// Pending registrations are discarded after the OTP expires.
 const pendingRegistrations = new Map();
+
+router.get('/registration-widget-config', (req, res) => {
+  if (!msg91WidgetConfig.widgetId || !msg91WidgetConfig.widgetToken) {
+    return res.status(503).json({
+      success: false,
+      message: 'MSG91 OTP Widget is not configured on the server.'
+    });
+  }
+
+  return res.json({
+    success: true,
+    widgetId: msg91WidgetConfig.widgetId,
+    tokenAuth: msg91WidgetConfig.widgetToken,
+    expiresIn: msg91WidgetConfig.expiryMinutes * 60
+  });
+});
 
 // Send OTP endpoint
 router.post('/send-otp', async (req, res) => {
   try {
     const { email, password, isLogin } = req.body;
+
+    if (!isLogin) {
+      return res.status(400).json({
+        success: false,
+        message: 'New accounts must be verified by SMS. Use /send-registration-otp.'
+      });
+    }
 
     // Validate email
     if (!email) {
@@ -40,23 +70,12 @@ router.post('/send-otp', async (req, res) => {
       });
     }
 
-    // For login - verify credentials first
-    if (isLogin) {
-      const verification = await verifyUserCredentials(email, password);
-      if (!verification.success) {
-        return res.status(400).json({
-          success: false,
-          message: verification.message
-        });
-      }
-    } else {
-      // For signup - check if user already exists
-      if (await userExists(email)) {
-        return res.status(400).json({
-          success: false,
-          message: 'An account with this email already exists. Please login instead.'
-        });
-      }
+    const verification = await verifyUserCredentials(email, password);
+    if (!verification.success) {
+      return res.status(400).json({
+        success: false,
+        message: verification.message
+      });
     }
 
     // Generate OTP
@@ -64,11 +83,6 @@ router.post('/send-otp', async (req, res) => {
 
     // Store OTP
     storeOtp(email, otp, otpConfig.expiryMinutes);
-
-    // Store password temporarily for signup verification
-    if (!isLogin) {
-      pendingRegistrations.set(email, { password });
-    }
 
     // Send OTP via email
     const result = await sendEmailOtp(email, otp);
@@ -94,121 +108,190 @@ router.post('/send-otp', async (req, res) => {
   }
 });
 
-// Direct login endpoint (no OTP required)
-router.post('/login', async (req, res) => {
+router.post('/send-registration-otp', smsOtpSendLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const phone = typeof req.body.phone === 'string' ? req.body.phone.replace(/\D/g, '') : '';
 
-    // Validate email
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid email address.' });
     }
-
-    // Validate password
-    if (!password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password is required'
-      });
+    if (name.length < 2) {
+      return res.status(400).json({ success: false, message: 'Name must be at least 2 characters.' });
     }
-
-    // Verify credentials
-    const verification = await verifyUserCredentials(email, password);
-    if (!verification.success) {
-      return res.status(400).json({
-        success: false,
-        message: verification.message
-      });
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
     }
-
-    // Update last login
-    updateUserLogin(email);
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: verification.user.id, email },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn }
-    );
-
-    return res.json({
-      success: true,
-      message: 'Login successful',
-      token,
-      user: verification.user
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// Direct signup endpoint (no OTP required)
-router.post('/signup', async (req, res) => {
-  try {
-    const { email, password, name, phone } = req.body;
-
-    // Validate email
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid 10-digit Indian mobile number.' });
     }
-
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid email format'
-      });
-    }
-
-    // Validate password
-    if (!password || password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
-    }
-
-    // Validate name
-    if (!name || name.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name is required'
-      });
-    }
-
-    // Check if user already exists
     if (await userExists(email)) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: 'An account with this email already exists. Please login instead.'
       });
     }
 
-    // Create new user
-    const createResult = await createUser(email, password, name, phone);
-    if (!createResult.success) {
-      return res.status(400).json({
+    const destination = `${msg91WidgetConfig.countryCode}${phone}`;
+    const result = await sendMsg91WidgetOtp(destination);
+    if (!result.success) {
+      console.error('MSG91 widget registration OTP send failed:', result.error);
+      const notConfigured = result.error?.includes('must be configured');
+      return res.status(notConfigured ? 503 : 502).json({
         success: false,
-        message: createResult.message
+        message: notConfigured
+          ? 'SMS verification is not configured on the server.'
+          : 'Unable to send the SMS OTP. Please try again.'
       });
     }
 
+    const pending = {
+      email,
+      name,
+      password,
+      phone,
+      requestId: result.requestId,
+      expiresAt: Date.now() + msg91WidgetConfig.expiryMinutes * 60 * 1000,
+      verifying: false
+    };
+    pendingRegistrations.set(email, pending);
+    setTimeout(() => {
+      if (pendingRegistrations.get(email) === pending) pendingRegistrations.delete(email);
+    }, msg91WidgetConfig.expiryMinutes * 60 * 1000).unref?.();
+
+    return res.json({
+      success: true,
+      message: `OTP sent to +${destination}.`,
+      expiresIn: msg91WidgetConfig.expiryMinutes * 60
+    });
+  } catch (error) {
+    console.error('Send registration OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to start registration.' });
+  }
+});
+
+router.post('/verify-registration-otp', smsOtpVerifyLimiter, async (req, res) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
+    const accessToken = typeof req.body.accessToken === 'string' ? req.body.accessToken.trim() : '';
+
+    if (accessToken) {
+      const { name, password } = req.body;
+      const phone = typeof req.body.phone === 'string' ? req.body.phone.replace(/\D/g, '') : '';
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, message: 'Enter a valid email address.' });
+      }
+      if (typeof name !== 'string' || name.trim().length < 2) {
+        return res.status(400).json({ success: false, message: 'Name must be at least 2 characters.' });
+      }
+      if (typeof password !== 'string' || password.length < 6) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+      }
+      if (!/^[6-9]\d{9}$/.test(phone)) {
+        return res.status(400).json({ success: false, message: 'Enter a valid 10-digit Indian mobile number.' });
+      }
+      if (await userExists(email)) {
+        return res.status(409).json({
+          success: false,
+          message: 'An account with this email already exists. Please login instead.'
+        });
+      }
+
+      const verification = await verifyMsg91WidgetAccessToken(accessToken);
+      if (!verification.success) {
+        console.error('MSG91 widget access-token verification failed:', verification.error);
+        return res.status(400).json({ success: false, message: 'Mobile OTP verification failed. Please try again.' });
+      }
+
+      if (!msg91AccessTokenMatchesPhone(
+        verification.data,
+        phone,
+        msg91WidgetConfig.countryCode
+      )) {
+        return res.status(400).json({
+          success: false,
+          message: 'The verified mobile number does not match your registration number.'
+        });
+      }
+
+      const createResult = await createUser(email, password, name.trim(), phone);
+      if (!createResult.success) {
+        return res.status(400).json({ success: false, message: createResult.message });
+      }
+
+      const user = createResult.user;
+      await updateUserLogin(email);
+      const token = jwt.sign(
+        { userId: user.id, email },
+        jwtConfig.secret,
+        { expiresIn: jwtConfig.expiresIn }
+      );
+
+      return res.json({
+        success: true,
+        message: 'Account created successfully!',
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          createdAt: user.createdAt
+        }
+      });
+    }
+
+    const pending = pendingRegistrations.get(email);
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid email address.' });
+    }
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ success: false, message: 'Enter the 6-digit OTP.' });
+    }
+    if (!pending || pending.expiresAt <= Date.now()) {
+      pendingRegistrations.delete(email);
+      return res.status(400).json({
+        success: false,
+        message: 'Registration session expired. Please request a new OTP.'
+      });
+    }
+    if (pending.verifying) {
+      return res.status(409).json({ success: false, message: 'OTP verification is already in progress.' });
+    }
+
+    pending.verifying = true;
+    const verification = await verifyMsg91WidgetOtp(pending.requestId, otp);
+    if (pendingRegistrations.get(email) !== pending) {
+      return res.status(409).json({
+        success: false,
+        message: 'Registration session changed. Request a new OTP.'
+      });
+    }
+    if (!verification.success) {
+      pending.verifying = false;
+      console.error('MSG91 widget registration OTP verification failed:', verification.error);
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+    }
+
+    pendingRegistrations.delete(email);
+    if (await userExists(email)) {
+      return res.status(409).json({
+        success: false,
+        message: 'An account with this email already exists. Please login instead.'
+      });
+    }
+
+    const createResult = await createUser(email, pending.password, pending.name, pending.phone);
+    if (!createResult.success) {
+      return res.status(400).json({ success: false, message: createResult.message });
+    }
+
     const user = createResult.user;
-
-    // Update last login
-    updateUserLogin(email);
-
-    // Generate JWT token
+    await updateUserLogin(email);
     const token = jwt.sign(
       { userId: user.id, email },
       jwtConfig.secret,
@@ -228,7 +311,60 @@ router.post('/signup', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Verify registration OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to verify registration.' });
+  }
+});
+
+// Direct login endpoint (no OTP required)
+router.post('/login', async (req, res) => {
+  try {
+    const { email, identifier, password } = req.body;
+    const loginIdentifier = identifier || email;
+
+    if (!loginIdentifier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email or mobile number is required'
+      });
+    }
+
+    // Validate password
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+
+    // Verify credentials
+    const verification = await verifyUserCredentials(loginIdentifier, password);
+    if (!verification.success) {
+      return res.status(400).json({
+        success: false,
+        message: verification.message
+      });
+    }
+
+    // Update last login
+    const userEmail = verification.user.email;
+    updateUserLogin(userEmail);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: verification.user.id, email: userEmail },
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: verification.user
+    });
+  } catch (error) {
+    console.error('Login error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -236,9 +372,24 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+// Keep the legacy endpoint from creating accounts without phone verification.
+router.post('/signup', (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Direct sign-up is disabled. Verify your mobile number using /send-registration-otp first.'
+  });
+});
+
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { email, otp, password, name, phone, isSignup } = req.body;
+    const { email, otp, password, isSignup } = req.body;
+
+    if (isSignup) {
+      return res.status(400).json({
+        success: false,
+        message: 'New accounts must be verified by SMS. Use /verify-registration-otp.'
+      });
+    }
 
     // Validate input
     if (!email) {
@@ -265,42 +416,14 @@ router.post('/verify-otp', async (req, res) => {
       });
     }
 
-    let user;
-
-    if (isSignup) {
-      // Get the pending registration
-      const pending = pendingRegistrations.get(email);
-      if (!pending) {
-        return res.status(400).json({
-          success: false,
-          message: 'Registration session expired. Please start again.'
-        });
-      }
-
-      // Create new user
-      const createResult = await createUser(email, pending.password, name, phone);
-      if (!createResult.success) {
-        return res.status(400).json({
-          success: false,
-          message: createResult.message
-        });
-      }
-
-      user = createResult.user;
-
-      // Clean up pending registration
-      pendingRegistrations.delete(email);
-    } else {
-      // Login - verify credentials again
-      const credVerification = await verifyUserCredentials(email, password);
-      if (!credVerification.success) {
-        return res.status(400).json({
-          success: false,
-          message: credVerification.message
-        });
-      }
-      user = credVerification.user;
+    const credVerification = await verifyUserCredentials(email, password);
+    if (!credVerification.success) {
+      return res.status(400).json({
+        success: false,
+        message: credVerification.message
+      });
     }
+    const user = credVerification.user;
 
     // Update last login
     updateUserLogin(email);
@@ -314,7 +437,7 @@ router.post('/verify-otp', async (req, res) => {
 
     return res.json({
       success: true,
-      message: isSignup ? 'Account created successfully!' : 'Login successful',
+      message: 'Login successful',
       token,
       user: {
         id: user.id,

@@ -47,6 +47,28 @@ export const sensitiveLimiter = rateLimit({
   legacyHeaders: false
 });
 
+export const smsOtpSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: {
+    success: false,
+    message: 'Too many OTP requests. Please try again in 15 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+export const smsOtpVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    success: false,
+    message: 'Too many OTP verification attempts. Please try again in 15 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 /**
  * Create a handler for rate limited requests to log them
  */

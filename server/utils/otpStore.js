@@ -1,3 +1,5 @@
+import { randomInt } from 'node:crypto';
+
 // In-memory OTP storage (use Redis in production)
 const otpStore = new Map();
 
@@ -5,7 +7,7 @@ const otpStore = new Map();
 export function generateOtp(length = 6) {
   let otp = '';
   for (let i = 0; i < length; i++) {
-    otp += Math.floor(Math.random() * 10);
+    otp += randomInt(10);
   }
   return otp;
 }

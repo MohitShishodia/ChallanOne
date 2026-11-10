@@ -19,7 +19,7 @@ A modern, full-stack web application for checking and paying traffic challans (e
 - **📋 Challan History** - View complete challan history for any vehicle
 
 ### User Features
-- **👤 User Authentication** - Secure login/signup with OTP verification
+- **👤 User Authentication** - Password login and MSG91 SMS-verified registration
 - **📱 Responsive Design** - Optimized for mobile and desktop
 - **🎧 24/7 Support** - Integrated support ticket system
 
@@ -135,6 +135,13 @@ ChallanOne/
    # Email Configuration - Brevo (formerly Sendinblue)
    BREVO_API_KEY=your_brevo_api_key_here
 
+   # MSG91 OTP Widget (registration verification)
+   MSG91_AUTH_KEY=your_msg91_auth_key
+   MSG91_WIDGET_ID=your_msg91_widget_id
+   MSG91_WIDGET_TOKEN=your_msg91_widget_token
+   MSG91_COUNTRY_CODE=91
+   MSG91_OTP_EXPIRY_MINUTES=15
+
    # Razorpay Configuration (use matching test keys locally; live keys in production)
    RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXX
    RAZORPAY_KEY_SECRET=XXXXXXXXXXXXXXXX
@@ -142,6 +149,11 @@ ChallanOne/
    # External API Configuration
    APICLUB_API_KEY=your_apiclub_key_here
    ```
+
+   Create and enable an OTP Widget in MSG91. The registration OTP is generated
+   and verified by MSG91. The Authkey and Widget token must be configured on
+   the backend; the widget token is returned to the browser for the MSG91 SDK.
+   Set the expiry to match the widget's OTP expiry (15 minutes in the example).
 
 2. **Frontend Environment Variables**
    
@@ -176,8 +188,10 @@ ChallanOne/
 ### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/signup` | Register new user |
-| POST | `/api/auth/login` | User login |
+| POST | `/api/auth/send-registration-otp` | Send OTP through the MSG91 Widget to a new user's Indian mobile number |
+| POST | `/api/auth/verify-registration-otp` | Verify the Widget OTP and create the user account |
+| POST | `/api/auth/signup` | Disabled; registrations must use SMS verification |
+| POST | `/api/auth/login` | Sign in with email or mobile number and password |
 | POST | `/api/auth/send-otp` | Send OTP for verification |
 | POST | `/api/auth/verify-otp` | Verify OTP |
 

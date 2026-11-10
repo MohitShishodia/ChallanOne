@@ -1,6 +1,7 @@
 // User management with MongoDB/Mongoose
 import crypto from 'crypto';
 import UserModel from '../models/User.js';
+import { resolveLoginIdentifier } from '../utils/loginIdentifier.js';
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
@@ -38,9 +39,23 @@ export async function createUser(email, password, name = null, phone = null) {
   }
 }
 
-export async function verifyUserCredentials(email, password) {
+export async function verifyUserCredentials(identifier, password) {
   try {
-    const user = await UserModel.findOne({ email: email.toLowerCase() });
+    const resolvedIdentifier = resolveLoginIdentifier(identifier);
+    if (!resolvedIdentifier) {
+      return { success: false, message: 'Enter a valid email address or 10-digit mobile number.' };
+    }
+
+    let user;
+    if (resolvedIdentifier.type === 'phone') {
+      const users = await UserModel.find(resolvedIdentifier.query).limit(2);
+      if (users.length > 1) {
+        return { success: false, message: 'This mobile number is linked to multiple accounts. Please use your email to sign in.' };
+      }
+      [user] = users;
+    } else {
+      user = await UserModel.findOne(resolvedIdentifier.query);
+    }
     if (!user) return { success: false, message: 'User not found. Please sign up first.' };
     if (!verifyPassword(password, user.password_hash)) return { success: false, message: 'Invalid password' };
 

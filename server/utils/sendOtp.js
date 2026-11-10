@@ -1,4 +1,4 @@
-import { emailConfig, smsConfig } from '../config.js';
+import { emailConfig, msg91WidgetConfig } from '../config.js';
 
 const brevoConfigured = Boolean(emailConfig.apiKey && emailConfig.apiKey !== 'your-brevo-api-key');
 
@@ -9,34 +9,116 @@ if (brevoConfigured) {
   console.log('📧 Email (Brevo): not configured (email OTP disabled)');
 }
 
-// Send OTP via SMS using Fast2SMS
-export async function sendSmsOtp(phone, otp) {
+function getMsg91WidgetConfigError() {
+  if (!msg91WidgetConfig.authKey || !msg91WidgetConfig.widgetId) {
+    return 'MSG91_AUTH_KEY and MSG91_WIDGET_ID must be configured.';
+  }
+  if (!Number.isInteger(msg91WidgetConfig.expiryMinutes) || msg91WidgetConfig.expiryMinutes < 1) {
+    return 'MSG91_OTP_EXPIRY_MINUTES must be a positive whole number.';
+  }
+  return null;
+}
+
+async function getProviderResponse(response) {
+  const rawBody = await response.text();
+  let data;
   try {
-    const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+    data = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    data = { message: rawBody };
+  }
+  const providerMessage = data.message || data.error;
+  const message = typeof providerMessage === 'string' && providerMessage.trim()
+    ? providerMessage.trim()
+    : `MSG91 returned HTTP ${response.status}`;
+  return { data, message };
+}
+
+// MSG91's widget generates and stores the OTP; the API key remains server-side.
+export async function sendMsg91WidgetOtp(identifier) {
+  const configError = getMsg91WidgetConfigError();
+  if (configError) return { success: false, error: configError };
+
+  try {
+    const response = await fetch('https://api.msg91.com/api/v5/widget/sendOtp', {
       method: 'POST',
       headers: {
-        'authorization': smsConfig.apiKey,
+        authkey: msg91WidgetConfig.authKey,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        route: 'otp',
-        variables_values: otp,
-        numbers: phone,
-        flash: 0
+        widgetId: msg91WidgetConfig.widgetId,
+        identifier
       })
     });
-
-    const data = await response.json();
-
-    if (data.return === true) {
-      console.log(`✅ SMS OTP sent successfully to ${phone}`);
-      return { success: true, requestId: data.request_id };
-    } else {
-      console.error('❌ Fast2SMS error:', data.message);
-      return { success: false, error: data.message };
+    const { data, message } = await getProviderResponse(response);
+    if (!response.ok || data.type !== 'success') {
+      return { success: false, error: message };
     }
+
+    // MSG91's Widget retry/verify examples refer to the send response's
+    // `message` value as the request ID.
+    const requestId = data.reqId || data.requestId || data.request_id || data.message;
+    if (typeof requestId !== 'string' || !requestId) {
+      return { success: false, error: 'MSG91 did not return a widget request ID.' };
+    }
+
+    return { success: true, requestId };
   } catch (error) {
-    console.error('❌ Error sending SMS OTP:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Verify the OTP against the same MSG91 widget send request.
+export async function verifyMsg91WidgetOtp(requestId, otp) {
+  const configError = getMsg91WidgetConfigError();
+  if (configError) return { success: false, error: configError };
+
+  try {
+    const response = await fetch('https://api.msg91.com/api/v5/widget/verifyOtp', {
+      method: 'POST',
+      headers: {
+        authkey: msg91WidgetConfig.authKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        widgetId: msg91WidgetConfig.widgetId,
+        reqId: requestId,
+        otp
+      })
+    });
+    const { data, message } = await getProviderResponse(response);
+    if (!response.ok || data.type !== 'success') {
+      return { success: false, error: message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function verifyMsg91WidgetAccessToken(accessToken) {
+  const configError = getMsg91WidgetConfigError();
+  if (configError) return { success: false, error: configError };
+
+  try {
+    const response = await fetch('https://api.msg91.com/api/v5/widget/verifyAccessToken', {
+      method: 'POST',
+      headers: {
+        authkey: msg91WidgetConfig.authKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({ 'access-token': accessToken })
+    });
+    const { data, message } = await getProviderResponse(response);
+    if (!response.ok || data.type !== 'success') {
+      return { success: false, error: message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
     return { success: false, error: error.message };
   }
 }
