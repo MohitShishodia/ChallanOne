@@ -8,7 +8,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test tests/**/*.test.js",
-    "test:watch": "node --test --watch tests/**/*.test.js"
+    "test:watch": "node --test --watch tests/**/*.test.js",
+    "migrate:allow-duplicate-emails": "node scripts/allowDuplicateEmails.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

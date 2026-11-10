@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const paymentSchema = new mongoose.Schema({
   vehicle_number:      { type: String },
+  user_id:             { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   user_email:          { type: String, lowercase: true, trim: true },
   payment_type:        { type: String, enum: ['CHALLAN', 'PREMIUM_REPORT'], default: 'CHALLAN' },
   challan_ids:         { type: [mongoose.Schema.Types.ObjectId], ref: 'Challan', default: [] },

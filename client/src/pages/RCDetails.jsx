@@ -78,9 +78,14 @@ export default function RCDetails() {
 
       const userStr = localStorage.getItem('user')
       const user = userStr ? JSON.parse(userStr) : {}
+      const authToken = localStorage.getItem('authToken')
+      const requestHeaders = {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+      }
       const orderResponse = await fetch(API.payment.premiumReportCreateOrder, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: requestHeaders,
         body: JSON.stringify({ userEmail: user.email || '' })
       })
       const orderData = await orderResponse.json()
@@ -99,7 +104,7 @@ export default function RCDetails() {
           try {
             const verifyResponse = await fetch(API.payment.premiumReportVerify, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: requestHeaders,
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,

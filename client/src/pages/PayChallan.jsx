@@ -432,10 +432,15 @@ export default function PayChallan() {
       const user = userStr ? JSON.parse(userStr) : {}
       const challansToPay = data.challans.filter(c => idsToPay.includes(c.id) && c.status !== 'PAID')
       const { subtotal, courtFeeTotal, convenienceFee, total } = calculatePaymentTotal(challansToPay)
+      const authToken = localStorage.getItem('authToken')
+      const requestHeaders = {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+      }
 
       const orderResponse = await fetch(`${API_BASE_URL}/api/payment/create-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: requestHeaders,
         body: JSON.stringify({
           amount: total,
           vehicleNumber: data.vehicle.number,
@@ -460,7 +465,7 @@ export default function PayChallan() {
           try {
             const verifyResponse = await fetch(`${API_BASE_URL}/api/payment/verify`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: requestHeaders,
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,

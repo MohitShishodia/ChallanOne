@@ -15,9 +15,9 @@ function write(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-export function saveUserPayment(receipt) {
+export function saveUserPayment(receipt, userId) {
   const list = read(PAYMENTS_KEY)
-  const entry = { ...receipt, savedAt: new Date().toISOString() }
+  const entry = { ...receipt, userId: userId || receipt.userId, savedAt: new Date().toISOString() }
   const filtered = list.filter((p) => p.id !== entry.id)
   write(PAYMENTS_KEY, [entry, ...filtered].slice(0, 50))
 }

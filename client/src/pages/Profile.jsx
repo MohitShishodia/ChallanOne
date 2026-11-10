@@ -43,9 +43,8 @@ export default function Profile() {
       const data = await res.json()
       if (data.success && data.receipts?.length) {
         setPayments((prev) => {
-          const userEmail = user.email.toLowerCase()
           const ownReceipts = data.receipts.filter(
-            (receipt) => receipt.userEmail?.toLowerCase() === userEmail
+            (receipt) => receipt.userId === user.id
           )
           const merged = [...ownReceipts, ...prev]
           const seen = new Set()
@@ -59,14 +58,12 @@ export default function Profile() {
     } catch {
       /* keep local */
     }
-  }, [user?.email])
+  }, [user?.id, user?.email])
 
   useEffect(() => {
     if (user) {
       setForm({ name: user.name || '', email: user.email || '' })
-      setPayments(getUserPayments().filter(
-        (payment) => payment.userEmail?.toLowerCase() === user.email?.toLowerCase()
-      ))
+      setPayments(getUserPayments().filter((payment) => payment.userId === user.id))
     }
     fetchReceipts()
   }, [user, fetchReceipts])

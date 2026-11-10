@@ -132,6 +132,10 @@ cd /var/www/challanone
 bash deploy/deploy.sh
 ```
 
+The deploy script runs the MongoDB migration that replaces the unique user-email
+index with a non-unique lookup index. Accounts must use distinct mobile numbers;
+shared email addresses require mobile-number sign-in and SMS password recovery.
+
 ## Logs
 
 ```bash

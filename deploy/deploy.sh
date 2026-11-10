@@ -22,6 +22,9 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+echo "==> Migrate user email index to allow duplicate email addresses"
+npm run migrate:allow-duplicate-emails
+
 echo "==> Restart API (PM2)"
 cd "$APP_DIR/server"
 # Stop crash loops from leftover node processes holding PORT

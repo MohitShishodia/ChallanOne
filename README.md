@@ -191,9 +191,15 @@ ChallanOne/
 | POST | `/api/auth/send-registration-otp` | Send OTP through the MSG91 Widget to a new user's Indian mobile number |
 | POST | `/api/auth/verify-registration-otp` | Verify the Widget OTP and create the user account |
 | POST | `/api/auth/signup` | Disabled; registrations must use SMS verification |
-| POST | `/api/auth/login` | Sign in with email or mobile number and password |
+| POST | `/api/auth/login` | Sign in with a unique email or registered mobile number and password |
 | POST | `/api/auth/send-otp` | Send OTP for verification |
 | POST | `/api/auth/verify-otp` | Verify OTP |
+| POST | `/api/auth/forgot-password` | Send a password-reset SMS OTP to the registered mobile number |
+| POST | `/api/auth/reset-password` | Verify the SMS OTP and reset the password |
+
+Accounts may share an email address, but each account must use its own mobile
+number. Shared-email accounts must sign in and recover passwords using that
+registered number. The VPS deploy script migrates the MongoDB email index.
 
 ### Challans
 | Method | Endpoint | Description |

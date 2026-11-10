@@ -13,6 +13,7 @@ describe('Profile', () => {
       .replace(/\//g, '_')
     localStorage.setItem('authToken', `header.${tokenPayload}.signature`)
     localStorage.setItem('user', JSON.stringify({
+      id: 'user-1',
       name: 'Mohit Shishodia',
       email: 'mohit@example.com',
       phone: '9876543210',
@@ -20,6 +21,7 @@ describe('Profile', () => {
     localStorage.setItem('challanone_payments', JSON.stringify([
       {
         id: 'payment-1',
+        userId: 'user-1',
         userEmail: 'mohit@example.com',
         totalAmount: 1250,
         paidAt: '2026-10-12T10:00:00.000Z',
@@ -36,7 +38,7 @@ describe('Profile', () => {
       json: async () => options.method === 'PATCH'
         ? {
             success: true,
-            user: { name: 'Mohit Updated', email: 'updated@example.com', phone: '9876543210' },
+            user: { id: 'user-1', name: 'Mohit Updated', email: 'updated@example.com', phone: '9876543210' },
           }
         : { success: true, receipts: [] },
     }))

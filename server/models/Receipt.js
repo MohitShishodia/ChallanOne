@@ -4,6 +4,7 @@ const receiptSchema = new mongoose.Schema({
   payment_id:      { type: mongoose.Schema.Types.ObjectId, ref: 'Payment', default: null },
   receipt_number:  { type: String, required: true, unique: true },
   vehicle_number:  { type: String },
+  user_id:         { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   user_email:      { type: String, lowercase: true, trim: true },
   challan_details: { type: mongoose.Schema.Types.Mixed },
   amount_paid:     { type: Number, default: 0 },

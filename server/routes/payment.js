@@ -4,8 +4,9 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import PaymentModel from '../models/Payment.js';
 import ReceiptModel from '../models/Receipt.js';
+import UserModel from '../models/User.js';
 import { emitPaymentEvent } from '../utils/searchLogger.js';
-import { userAuth } from '../middleware/userAuth.js';
+import { optionalUserAuth, userAuth } from '../middleware/userAuth.js';
 
 const router = express.Router();
 
@@ -113,6 +114,7 @@ router.post('/webhook', (req, res, next) => {
 
     await saveRazorpayPayment(payment.id, {
       vehicle_number: notes.vehicleNumber || undefined,
+      user_id: notes.userId || undefined,
       user_email: notes.userEmail || undefined,
       payment_type: notes.product === 'premium_report' ? 'PREMIUM_REPORT' : 'CHALLAN',
       total_amount: totalAmount,
@@ -133,7 +135,7 @@ router.post('/webhook', (req, res, next) => {
 });
 
 // Create Razorpay order
-router.post('/create-order', requireRazorpay, async (req, res) => {
+router.post('/create-order', optionalUserAuth, requireRazorpay, async (req, res) => {
   try {
     const { amount, vehicleNumber, challans, userEmail } = req.body || {};
     const amountInPaise = Number.isFinite(amount) ? Math.round(amount * 100) : 0;
@@ -150,7 +152,8 @@ router.post('/create-order', requireRazorpay, async (req, res) => {
       receipt: receiptId,
       notes: {
         vehicleNumber: vehicleNumber || '',
-        userEmail: userEmail || ''
+        userEmail: req.user?.email || userEmail || '',
+        userId: req.user?.userId || ''
       }
     };
 
@@ -173,7 +176,7 @@ router.post('/create-order', requireRazorpay, async (req, res) => {
   }
 });
 
-router.post('/premium-report/create-order', requireRazorpay, async (req, res) => {
+router.post('/premium-report/create-order', optionalUserAuth, requireRazorpay, async (req, res) => {
   try {
     const receiptId = `PRM-${Date.now()}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
     const order = await razorpay.orders.create({
@@ -182,7 +185,8 @@ router.post('/premium-report/create-order', requireRazorpay, async (req, res) =>
       receipt: receiptId,
       notes: {
         product: 'premium_report',
-        userEmail: String(req.body?.userEmail || '').trim().slice(0, 254)
+        userEmail: String(req.user?.email || req.body?.userEmail || '').trim().slice(0, 254),
+        userId: req.user?.userId || ''
       }
     });
 
@@ -201,7 +205,7 @@ router.post('/premium-report/create-order', requireRazorpay, async (req, res) =>
   }
 });
 
-router.post('/premium-report/verify', requireRazorpay, async (req, res) => {
+router.post('/premium-report/verify', optionalUserAuth, requireRazorpay, async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
     if (
@@ -231,8 +235,12 @@ router.post('/premium-report/verify', requireRazorpay, async (req, res) => {
     ) {
       return res.status(400).json({ success: false, message: 'Invalid premium report order' });
     }
+    if (req.user?.userId && order.notes.userId && req.user.userId !== order.notes.userId) {
+      return res.status(403).json({ success: false, message: 'This payment belongs to another account' });
+    }
 
     await saveRazorpayPayment(razorpay_payment_id, {
+      user_id: order.notes.userId || req.user?.userId || undefined,
       user_email: order.notes.userEmail || undefined,
       payment_type: 'PREMIUM_REPORT',
       subtotal: PREMIUM_REPORT_PRICE_PAISE / 100,
@@ -253,7 +261,7 @@ router.post('/premium-report/verify', requireRazorpay, async (req, res) => {
 });
 
 // Verify payment and store receipt
-router.post('/verify', requireRazorpay, async (req, res) => {
+router.post('/verify', optionalUserAuth, requireRazorpay, async (req, res) => {
   try {
     const {
       razorpay_order_id, razorpay_payment_id, razorpay_signature,
@@ -282,6 +290,16 @@ router.post('/verify', requireRazorpay, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment verification failed' });
     }
 
+    const order = await razorpay.orders.fetch(razorpay_order_id);
+    if (order.id !== razorpay_order_id) {
+      return res.status(400).json({ success: false, message: 'Invalid payment order' });
+    }
+    if (req.user?.userId && order.notes?.userId && req.user.userId !== order.notes.userId) {
+      return res.status(403).json({ success: false, message: 'This payment belongs to another account' });
+    }
+
+    const paymentUserId = order.notes?.userId || req.user?.userId || undefined;
+    const paymentUserEmail = req.user?.email || order.notes?.userEmail || userEmail;
     console.log('💳 Payment signature verified; saving payment to MongoDB...');
 
     const receiptNumber = `RCPT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
@@ -290,8 +308,9 @@ router.post('/verify', requireRazorpay, async (req, res) => {
       .filter(id => mongoose.isValidObjectId(id));
 
     const payment = await saveRazorpayPayment(razorpay_payment_id, {
+      user_id: paymentUserId,
       vehicle_number: vehicleNumber,
-      user_email: userEmail,
+      user_email: paymentUserEmail,
       challan_ids: challanDbIds,
       subtotal,
       convenience_fee: convenienceFee,
@@ -309,7 +328,8 @@ router.post('/verify', requireRazorpay, async (req, res) => {
         payment_id: payment._id,
         receipt_number: receiptNumber,
         vehicle_number: vehicleNumber,
-        user_email: userEmail,
+        user_id: paymentUserId,
+        user_email: paymentUserEmail,
         challan_details: challans,
         amount_paid: totalAmount,
         payment_date: new Date(),
@@ -333,7 +353,8 @@ router.post('/verify', requireRazorpay, async (req, res) => {
       id: receiptNumber,
       razorpayOrderId: razorpay_order_id,
       razorpayPaymentId: razorpay_payment_id,
-      userEmail,
+      userId: paymentUserId,
+      userEmail: paymentUserEmail,
       vehicleNumber,
       challans,
       subtotal,
@@ -381,10 +402,19 @@ router.get('/receipt/:id', async (req, res) => {
 router.get('/user-receipts', userAuth, async (req, res) => {
   try {
     const normalizedEmail = String(req.user.email).trim().toLowerCase();
-    const receipts = await ReceiptModel.find({ user_email: normalizedEmail }).sort({ payment_date: -1 });
+    const accountsWithEmail = await UserModel.countDocuments({ email: normalizedEmail });
+    const receiptFilters = [{ user_id: req.user.userId }];
+    if (accountsWithEmail === 1) {
+      receiptFilters.push({
+        user_email: normalizedEmail,
+        user_id: null
+      });
+    }
+    const receipts = await ReceiptModel.find({ $or: receiptFilters }).sort({ payment_date: -1 });
 
     const formattedReceipts = receipts.map(r => ({
       id: r.receipt_number,
+      userId: r.user_id?.toString() || req.user.userId,
       vehicleNumber: r.vehicle_number,
       challans: r.challan_details,
       totalAmount: r.amount_paid,

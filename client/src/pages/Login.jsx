@@ -57,7 +57,7 @@ export default function Login() {
   const [showForgot, setShowForgot] = useState(false)
   const [signupStep, setSignupStep] = useState('details')
   const [signupOtp, setSignupOtp] = useState('')
-  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotPhone, setForgotPhone] = useState('')
   const [forgotOtp, setForgotOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
@@ -214,7 +214,7 @@ export default function Login() {
       const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
+        body: JSON.stringify({ phone: forgotPhone })
       })
       const data = await res.json()
       if (data.success) {
@@ -239,15 +239,15 @@ export default function Login() {
       const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, newPassword })
+        body: JSON.stringify({ phone: forgotPhone, otp: forgotOtp, newPassword })
       })
       const data = await res.json()
       if (data.success) {
         setSuccess(data.message)
         setTimeout(() => {
           setShowForgot(false); setForgotStep('email')
-          setForgotEmail(''); setForgotOtp(''); setNewPassword(''); setConfirmNewPassword('')
-          setEmail(forgotEmail); setError(''); setSuccess('')
+          setForgotPhone(''); setForgotOtp(''); setNewPassword(''); setConfirmNewPassword('')
+          setEmail(forgotPhone); setError(''); setSuccess('')
         }, 1500)
       } else setError(data.message || 'Failed to reset password')
     } catch { setError('Network error. Please try again.') }
@@ -274,7 +274,7 @@ export default function Login() {
           </h1>
           <p className="mt-1 text-[13.5px] text-slate-500">
             {showForgot
-              ? (forgotStep === 'email' ? "We'll send a 6-digit OTP to your email" : forgotStep === 'otp' ? `Enter the OTP sent to ${forgotEmail}` : 'Choose a strong password')
+              ? (forgotStep === 'email' ? "We'll send a 6-digit SMS OTP to your registered mobile number" : forgotStep === 'otp' ? `Enter the OTP sent to +91 ${forgotPhone}` : 'Choose a strong password')
               : (activeTab === 'login'
                 ? 'Login to manage your challans'
                 : signupStep === 'otp'
@@ -461,8 +461,20 @@ export default function Login() {
             {forgotStep === 'email' && (
               <form onSubmit={handleSendForgotOtp} className="surface-card p-4 space-y-3 animate-fade-up">
                 <div>
-                  <label className="field-label">Email Address</label>
-                  <input type="email" required placeholder="Enter your email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="input-field" />
+                  <label className="field-label">Registered Mobile Number</label>
+                  <div className="flex">
+                    <span className="flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 px-3 text-[13px] text-slate-500">+91</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      required
+                      maxLength={10}
+                      placeholder="10 digit mobile number"
+                      value={forgotPhone}
+                      onChange={(e) => setForgotPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      className="input-field rounded-l-none"
+                    />
+                  </div>
                 </div>
                 <button disabled={loading} className="btn-primary mt-1">{loading ? 'Sending...' : 'Send OTP'}</button>
               </form>

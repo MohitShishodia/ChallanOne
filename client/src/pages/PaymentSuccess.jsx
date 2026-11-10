@@ -3,14 +3,16 @@ import { useEffect } from 'react'
 import PageHeader from '../components/PageHeader'
 import PostPaymentSteps from '../components/PostPaymentSteps'
 import { saveUserPayment } from '../utils/userStorage'
+import { useAuth } from '../context/AuthContext'
 
 export default function PaymentSuccess() {
   const location = useLocation()
   const { receipt } = location.state || {}
+  const { user } = useAuth()
 
   useEffect(() => {
-    if (receipt) saveUserPayment(receipt)
-  }, [receipt])
+    if (receipt) saveUserPayment(receipt, user?.id)
+  }, [receipt, user?.id])
 
   if (!receipt) return <Navigate to="/" replace />
 

@@ -9,7 +9,16 @@ import {
   verifyMsg91WidgetAccessToken
 } from '../utils/sendOtp.js';
 import { msg91AccessTokenMatchesPhone } from '../utils/msg91Identity.js';
-import { createUser, verifyUserCredentials, updateUserLogin, getUser, userExists, updateUserProfile } from '../data/users.js';
+import {
+  createUser,
+  verifyUserCredentials,
+  updateUserLogin,
+  getUser,
+  findUserByPhone,
+  phoneExists,
+  updateUserProfile,
+  updatePassword
+} from '../data/users.js';
 import { userAuth } from '../middleware/userAuth.js';
 import { smsOtpSendLimiter, smsOtpVerifyLimiter } from '../middleware/rateLimiter.js';
 
@@ -17,6 +26,11 @@ const router = express.Router();
 
 // Pending registrations are discarded after the OTP expires.
 const pendingRegistrations = new Map();
+const passwordResetSessions = new Map();
+
+function registrationKey(email, phone) {
+  return `${email}:${phone}`;
+}
 
 router.get('/registration-widget-config', (req, res) => {
   if (!msg91WidgetConfig.widgetId || !msg91WidgetConfig.widgetToken) {
@@ -127,10 +141,14 @@ router.post('/send-registration-otp', smsOtpSendLimiter, async (req, res) => {
     if (!/^[6-9]\d{9}$/.test(phone)) {
       return res.status(400).json({ success: false, message: 'Enter a valid 10-digit Indian mobile number.' });
     }
-    if (await userExists(email)) {
+    const phoneCheck = await phoneExists(phone);
+    if (!phoneCheck.success) {
+      return res.status(500).json({ success: false, message: 'Unable to verify this mobile number.' });
+    }
+    if (phoneCheck.exists) {
       return res.status(409).json({
         success: false,
-        message: 'An account with this email already exists. Please login instead.'
+        message: 'This mobile number is already linked to an account. Sign in with that number or use a different number.'
       });
     }
 
@@ -156,9 +174,10 @@ router.post('/send-registration-otp', smsOtpSendLimiter, async (req, res) => {
       expiresAt: Date.now() + msg91WidgetConfig.expiryMinutes * 60 * 1000,
       verifying: false
     };
-    pendingRegistrations.set(email, pending);
+    const key = registrationKey(email, phone);
+    pendingRegistrations.set(key, pending);
     setTimeout(() => {
-      if (pendingRegistrations.get(email) === pending) pendingRegistrations.delete(email);
+      if (pendingRegistrations.get(key) === pending) pendingRegistrations.delete(key);
     }, msg91WidgetConfig.expiryMinutes * 60 * 1000).unref?.();
 
     return res.json({
@@ -193,10 +212,14 @@ router.post('/verify-registration-otp', smsOtpVerifyLimiter, async (req, res) =>
       if (!/^[6-9]\d{9}$/.test(phone)) {
         return res.status(400).json({ success: false, message: 'Enter a valid 10-digit Indian mobile number.' });
       }
-      if (await userExists(email)) {
+      const phoneCheck = await phoneExists(phone);
+      if (!phoneCheck.success) {
+        return res.status(500).json({ success: false, message: 'Unable to verify this mobile number.' });
+      }
+      if (phoneCheck.exists) {
         return res.status(409).json({
           success: false,
-          message: 'An account with this email already exists. Please login instead.'
+          message: 'This mobile number is already linked to an account. Use a different number.'
         });
       }
 
@@ -223,7 +246,7 @@ router.post('/verify-registration-otp', smsOtpVerifyLimiter, async (req, res) =>
       }
 
       const user = createResult.user;
-      await updateUserLogin(email);
+      await updateUserLogin(user.id);
       const token = jwt.sign(
         { userId: user.id, email },
         jwtConfig.secret,
@@ -244,16 +267,17 @@ router.post('/verify-registration-otp', smsOtpVerifyLimiter, async (req, res) =>
       });
     }
 
-    const pending = pendingRegistrations.get(email);
-
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ success: false, message: 'Enter a valid email address.' });
     }
+    const phone = typeof req.body.phone === 'string' ? req.body.phone.replace(/\D/g, '') : '';
+    const key = registrationKey(email, phone);
+    const pending = pendingRegistrations.get(key);
     if (!/^\d{6}$/.test(otp)) {
       return res.status(400).json({ success: false, message: 'Enter the 6-digit OTP.' });
     }
     if (!pending || pending.expiresAt <= Date.now()) {
-      pendingRegistrations.delete(email);
+      pendingRegistrations.delete(key);
       return res.status(400).json({
         success: false,
         message: 'Registration session expired. Please request a new OTP.'
@@ -265,7 +289,7 @@ router.post('/verify-registration-otp', smsOtpVerifyLimiter, async (req, res) =>
 
     pending.verifying = true;
     const verification = await verifyMsg91WidgetOtp(pending.requestId, otp);
-    if (pendingRegistrations.get(email) !== pending) {
+    if (pendingRegistrations.get(key) !== pending) {
       return res.status(409).json({
         success: false,
         message: 'Registration session changed. Request a new OTP.'
@@ -277,11 +301,15 @@ router.post('/verify-registration-otp', smsOtpVerifyLimiter, async (req, res) =>
       return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
     }
 
-    pendingRegistrations.delete(email);
-    if (await userExists(email)) {
+    pendingRegistrations.delete(key);
+    const phoneCheck = await phoneExists(pending.phone);
+    if (!phoneCheck.success) {
+      return res.status(500).json({ success: false, message: 'Unable to verify this mobile number.' });
+    }
+    if (phoneCheck.exists) {
       return res.status(409).json({
         success: false,
-        message: 'An account with this email already exists. Please login instead.'
+        message: 'This mobile number is already linked to an account. Use a different number.'
       });
     }
 
@@ -291,7 +319,7 @@ router.post('/verify-registration-otp', smsOtpVerifyLimiter, async (req, res) =>
     }
 
     const user = createResult.user;
-    await updateUserLogin(email);
+    await updateUserLogin(user.id);
     const token = jwt.sign(
       { userId: user.id, email },
       jwtConfig.secret,
@@ -348,7 +376,7 @@ router.post('/login', async (req, res) => {
 
     // Update last login
     const userEmail = verification.user.email;
-    updateUserLogin(userEmail);
+    updateUserLogin(verification.user.id);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -426,11 +454,11 @@ router.post('/verify-otp', async (req, res) => {
     const user = credVerification.user;
 
     // Update last login
-    updateUserLogin(email);
+    updateUserLogin(user.id);
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email },
+      { userId: user.id, email: user.email },
       jwtConfig.secret,
       { expiresIn: jwtConfig.expiresIn }
     );
@@ -460,7 +488,7 @@ router.post('/verify-otp', async (req, res) => {
 router.patch('/profile', userAuth, async (req, res) => {
   try {
     const { name, email } = req.body;
-    const result = await updateUserProfile(req.user.email, { name, email });
+    const result = await updateUserProfile(req.user.userId, { name, email });
 
     if (!result.success) {
       return res.status(400).json({ success: false, message: result.message });
@@ -489,7 +517,7 @@ router.get('/me', async (req, res) => {
 
     try {
       const decoded = jwt.verify(token, jwtConfig.secret);
-      const user = await getUser(decoded.email);
+      const user = await getUser(decoded.userId);
 
       if (!user) {
         return res.status(404).json({
@@ -517,55 +545,40 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// Forgot password - send OTP to email
-router.post('/forgot-password', async (req, res) => {
+// Forgot password - send an SMS OTP to the account's registered mobile number
+router.post('/forgot-password', smsOtpSendLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
-
-    // Validate email
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
+    const phone = typeof req.body.phone === 'string' ? req.body.phone.replace(/\D/g, '') : '';
+    const account = await findUserByPhone(phone);
+    if (!account.success) {
+      return res.status(400).json({ success: false, message: account.message });
     }
 
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid email format'
-      });
-    }
-
-    // Check if user exists
-    if (!await userExists(email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'No account found with this email address.'
-      });
-    }
-
-    // Generate OTP
-    const otp = generateOtp(otpConfig.length);
-
-    // Store OTP
-    storeOtp(email, otp, otpConfig.expiryMinutes);
-
-    // Send OTP via email
-    const result = await sendEmailOtp(email, otp);
-
+    const destination = `${msg91WidgetConfig.countryCode}${phone}`;
+    const result = await sendMsg91WidgetOtp(destination);
     if (!result.success) {
-      return res.status(500).json({
+      console.error('MSG91 password-reset OTP send failed:', result.error);
+      return res.status(502).json({
         success: false,
-        message: 'Failed to send OTP email. Please try again.'
+        message: 'Unable to send the SMS OTP. Please try again.'
       });
     }
+
+    const session = {
+      userId: account.user.id,
+      requestId: result.requestId,
+      expiresAt: Date.now() + msg91WidgetConfig.expiryMinutes * 60 * 1000,
+      verifying: false
+    };
+    passwordResetSessions.set(phone, session);
+    setTimeout(() => {
+      if (passwordResetSessions.get(phone) === session) passwordResetSessions.delete(phone);
+    }, msg91WidgetConfig.expiryMinutes * 60 * 1000).unref?.();
 
     return res.json({
       success: true,
-      message: `Password reset OTP sent to ${email}`,
-      expiresIn: otpConfig.expiryMinutes * 60
+      message: `Password reset OTP sent to +${destination}`,
+      expiresIn: msg91WidgetConfig.expiryMinutes * 60
     });
   } catch (error) {
     console.error('Forgot password error:', error);
@@ -576,53 +589,50 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// Reset password - verify OTP and update password
-router.post('/reset-password', async (req, res) => {
+// Reset password - verify the SMS OTP and update the matched account
+router.post('/reset-password', smsOtpVerifyLimiter, async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
-
-    // Validate input
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
+    const phone = typeof req.body.phone === 'string' ? req.body.phone.replace(/\D/g, '') : '';
+    const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
+    const newPassword = typeof req.body.newPassword === 'string' ? req.body.newPassword : '';
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid 10-digit Indian mobile number.' });
+    }
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ success: false, message: 'Enter the 6-digit OTP.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
     }
 
-    if (!otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'OTP is required'
-      });
+    const session = passwordResetSessions.get(phone);
+    if (!session || session.expiresAt <= Date.now()) {
+      passwordResetSessions.delete(phone);
+      return res.status(400).json({ success: false, message: 'Reset session expired. Request a new OTP.' });
+    }
+    if (session.verifying) {
+      return res.status(409).json({ success: false, message: 'OTP verification is already in progress.' });
     }
 
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
+    session.verifying = true;
+    const verification = await verifyMsg91WidgetOtp(session.requestId, otp);
+    if (passwordResetSessions.get(phone) !== session) {
+      return res.status(409).json({ success: false, message: 'Reset session changed. Request a new OTP.' });
+    }
+    if (!verification.success) {
+      session.verifying = false;
+      console.error('MSG91 password-reset OTP verification failed:', verification.error);
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
     }
 
-    // Verify OTP
-    const verification = verifyOtp(email, otp);
-
-    if (!verification.valid) {
-      return res.status(400).json({
-        success: false,
-        message: verification.message
-      });
-    }
-
-    // Update password (need to import updatePassword)
-    const { updatePassword } = await import('../data/users.js');
-    const updateResult = await updatePassword(email, newPassword);
-
+    const updateResult = await updatePassword(session.userId, newPassword);
     if (!updateResult.success) {
       return res.status(400).json({
         success: false,
         message: updateResult.message
       });
     }
+    passwordResetSessions.delete(phone);
 
     return res.json({
       success: true,
